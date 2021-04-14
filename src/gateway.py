@@ -33,9 +33,11 @@ from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 #Logging
 import logging
 FORMAT = '%(asctime)-15s %(levelname)s %(name)s: %(message)s'
-logging.basicConfig(level=logging.ERROR, format=FORMAT)
+logging.basicConfig(filename="gateway_logs.txt",
+                    filemode='w',
+                    level=logging.DEBUG, 
+                    format=FORMAT)
 logger = logging.getLogger('GATEWAY')
-logger.setLevel(level=logging.DEBUG)
 if ('debug' in sys.argv):
     logger.disabled = False
 else:
@@ -149,7 +151,7 @@ class gateway():
         except Exception as e:
             # Log
             logger.error(f"Exception opening {ip}:{port}: {e}")
-            return
+            raise Exception(f"Exception opening {ip}:{port}: {e}")
 
         # Loop
         logger.debug("SimumatikGateway " + version + " ready...")
@@ -296,7 +298,7 @@ class gateway():
             self.status = GatewayStatus.ERROR
             self.error_msg = 'Exception during setup: '+str(e)
             logger.error(self.error_msg)
-            return
+            raise Exception(self.error_msg)
 
         # Get response before defined timeout (4 x poll_time)
         try:
