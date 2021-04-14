@@ -45,6 +45,9 @@ class mqtt_client(driver):
         self.ip = '127.0.0.1'
         self.port = 1883
 
+        # Interal vars
+        self.new_values = {}
+
 
     def connect(self) -> bool:
         """ Connect driver.
@@ -57,7 +60,7 @@ class mqtt_client(driver):
             self._connection = mqtt.Client(self._name)
             self._connection.on_message = self.onMessage
             #self._connection.on_log = self.onLog
-            self._connection.connect(self.ip, port=self.port, keepalive=60)
+            self._connection.connect(self.ip, port=int(self.port), keepalive=60)
             self._connection.loop_start()
 
         except Exception as e:
@@ -102,7 +105,7 @@ class mqtt_client(driver):
         """
         res = []
         for var_id in variables:
-            res.append((var_id, self.variables[var_id]['value'], VariableQuality.GOOD))
+            res.append((var_id, self.new_values[var_id], VariableQuality.GOOD))
         return res
 
 
@@ -132,4 +135,4 @@ class mqtt_client(driver):
     def onMessage(self, client, userdata, message):
         var_id = message.topic
         if var_id in self.variables:
-            self.variables[var_id]['value'] = self.getValueFromString(self.variables[var_id]['datatype'], str(message.payload.decode("utf-8")))
+            self.new_values[var_id] = self.getValueFromString(self.variables[var_id]['datatype'], str(message.payload.decode("utf-8")))
