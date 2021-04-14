@@ -70,7 +70,7 @@ class udp_generic(driver):
 
             sec_now = int(time.perf_counter())
             data = {"poll": sec_now}
-            self._connection.sendto(json.dumps(data).encode('utf8'), (self.ip, self.port))
+            self._connection.sendto(json.dumps(data).encode('utf8'), (self.ip, int(self.port)))
             self._last_sent_poll = sec_now
 
             data, address = self._connection.recvfrom(self.max_size)
@@ -117,7 +117,7 @@ class udp_generic(driver):
         try:
             while True:
                 _data, address = self._connection.recvfrom(self.max_size)
-                if (_data != None and address == (self.ip, self.port)):
+                if (_data != None and address == (self.ip, int(self.port))):
                     _data = json.loads(_data.decode('utf-8'))
                     _recv_data.update(_data)
         except:
@@ -165,7 +165,7 @@ class udp_generic(driver):
 
         if _send_data:
             try:
-                self._connection.sendto(json.dumps(_send_data).encode('utf8'), (self.ip, self.port))
+                self._connection.sendto(json.dumps(_send_data).encode('utf8'), (self.ip, int(self.port)))
                 for (var_id, new_value) in variables:
                     res.append((var_id, new_value, VariableQuality.GOOD))
             except:
