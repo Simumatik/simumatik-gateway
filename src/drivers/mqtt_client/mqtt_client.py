@@ -105,7 +105,10 @@ class mqtt_client(driver):
         """
         res = []
         for var_id in variables:
-            res.append((var_id, self.new_values[var_id], VariableQuality.GOOD))
+            if var_id in self.new_values:
+                res.append((var_id, self.new_values[var_id], VariableQuality.GOOD))
+            else:
+                res.append((var_id, None, VariableQuality.BAD))
         return res
 
 
