@@ -44,7 +44,7 @@ else:
     logger.disabled = True
 
 # Version
-version = "2.0.1"
+version = "2.0.2"
 
 # Settings
 poll_time = 1 # seconds

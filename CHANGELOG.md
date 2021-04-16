@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 2.0.2 - 16/04/2021
+- MQTT driver: Fix quality check on read
+
 ## 2.0.1 - 14/04/2021
 - MQTT driver: Fix vars read and port 
 - UDP driver: Minor fix
