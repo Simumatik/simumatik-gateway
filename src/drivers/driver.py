@@ -102,7 +102,7 @@ class driver(threading.Thread):
             self.changeStatus(DriverStatus.STANDBY)
 
 
-    def get_new_driver_alias(self):
+    def create_new_driver_alias(self):
         ''' Provides a new driver alias id.'''
         counter = 1
         while True:
@@ -113,10 +113,11 @@ class driver(threading.Thread):
             else:
                 counter += 1
     
-    
+
     def get_aliases(self):
-        ''' Returns a list of driver aliases.'''
+        ''' Returns a list with driver aliases.'''
         return list(self.aliases.keys())
+
 
     def run(self):
         """ Run loop."""
@@ -252,19 +253,15 @@ class driver(threading.Thread):
 
         :returns: True if setup_data is compatible or False if not
         """
-        try:
-            if setup_data:
-                for key, value in setup_data['parameters'].items():
-                    if self.__dict__[key] != value:
-                        break
-                else:
-                    return True
-                
-        except Exception as e:
-            self.sendDebugInfo('Exception during setup: '+str(e))
-        
-        return False
-
+        param_data = setup_data.get('parameters', None)
+        if param_data:
+            for key, value in param_data.items():
+                if self.__dict__[key] != value:
+                    return False
+            else:
+                return True
+        else:
+            return True
         
 
     def _addVariables(self, variable_data: dict, alias:str='') -> bool:
@@ -276,7 +273,6 @@ class driver(threading.Thread):
         """
         try:
             if variable_data is not None and self._connection is not None:
-                print(self.name, variable_data, alias)
                 self.addVariables(variable_data)
                 # Add variable ids to alias dict if alias provided (used when multiplexing drivers)
                 if alias in self.aliases:

@@ -442,8 +442,23 @@ class gateway():
                 }
                 logger.debug("Driver " + driver_id + " not found")
         else:
-            #It is an alias?
-            return
+            for (driver, _) in self.drivers.values():
+                if driver_id in driver.aliases:
+                    driver.aliases.pop(driver_id)
+                    response_json = {   
+                        "ID": request_id,
+                        "DELETE": 'Success',
+                        "DRIVER": driver_id
+                    }
+                    break
+            else:
+                response_json = {   
+                    "ID": request_id,
+                    "DELETE": 'Failed',
+                    "DRIVER": driver_id
+                }
+                logger.debug("Driver " + driver_id + " not found")
+
         self.udp_socket.sendto(json.dumps(response_json).encode('utf8'), self.server_address)
         logger.info(f"Driver {driver_id} deleted")
         
@@ -451,6 +466,7 @@ class gateway():
     def send_driver_update(self, driver_id, driver_data):
         (driver, _) = self.drivers[driver_id]
         if driver.aliases:
+            # If the driver has aliases we need to split the telegram to the server (demux)
             updates = {}
             for var_id, var_value in driver_data.items():
                 for alias_id, var_ids in driver.aliases.items():
@@ -468,7 +484,6 @@ class gateway():
                     "UPDATE": data,
                     "DRIVER": id
                 }
-                print(id, data)
                 self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
 
         else:
@@ -522,8 +537,8 @@ class gateway():
             # Check if compatible driver already exists
             for existing_driver_id, (driver, pipe) in self.drivers.items():
                 if driver.checkSetupCompatible(request_json["SETUP"]):
-                    print(f"Driver {existing_driver_id} is compatible, using that instead")
-                    driver_id = driver.get_new_driver_alias()
+                    driver_id = driver.create_new_driver_alias()
+                    logger.info(f"Driver {existing_driver_id} is compatible, using that for {driver_id}")
                     pipe.send(json.dumps({DriverActions.ADD_VARIABLES:{driver_id:request_json["SETUP"].get("variables", None)}}))
                     break
 
