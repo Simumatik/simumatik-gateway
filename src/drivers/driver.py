@@ -19,7 +19,6 @@ from multiprocessing import Pipe
 import time
 from enum import Enum
 import json
-import logging
 from typing import Optional
 
 class DriverStatus(str, Enum):
@@ -30,6 +29,7 @@ class DriverStatus(str, Enum):
 
 class DriverActions(str, Enum):
     SETUP = 'SETUP'
+    ADD_VARIABLES = 'ADD_VARIABLES'
     UPDATE = 'UPDATE'
     STATUS = 'STATUS'
     INFO = 'INFO'
@@ -88,6 +88,9 @@ class driver(threading.Thread):
         self.last_read = time.perf_counter() # last read package sent
         self.last_write = time.perf_counter() # last write package sent
         self.last_forced_write = time.perf_counter() # last read package sent
+
+        # Aliases
+        self.aliases = {}
         
         # Driver internal data
         self.variables = {} # Dictionary to store variable data (definition and additional data specific to each driver)
@@ -98,6 +101,22 @@ class driver(threading.Thread):
         else:
             self.changeStatus(DriverStatus.STANDBY)
 
+
+    def get_new_driver_alias(self):
+        ''' Provides a new driver alias id.'''
+        counter = 1
+        while True:
+            alias = f"{self.name}.{counter}"
+            if alias not in self.aliases:
+                self.aliases[alias] = []
+                return alias
+            else:
+                counter += 1
+    
+    
+    def get_aliases(self):
+        ''' Returns a list of driver aliases.'''
+        return list(self.aliases.keys())
 
     def run(self):
         """ Run loop."""
@@ -134,6 +153,12 @@ class driver(threading.Thread):
                         else:
                             self.sendDebugInfo('SETUP action failed! Actual status is not STANDBY.')
                             
+                    # Action SETUP
+                    elif action == DriverActions.ADD_VARIABLES:
+                        alias_id, data = data.popitem() 
+                        if not self._addVariables(data, alias_id):
+                            self.sendDebugInfo('ADD_VARIABLES action failed!')
+
                     # Action UPDATE
                     elif action == DriverActions.UPDATE:
                         if self.status == DriverStatus.RUNNING: 
@@ -211,11 +236,55 @@ class driver(threading.Thread):
             if setup_data:
                 self.__dict__.update(setup_data['parameters'])
                 if self.connect():
-                    self.addVariables(setup_data['variables'])
+                    if self._addVariables(setup_data['variables']):
+                        return True
+                
+        except Exception as e:
+            self.sendDebugInfo('Exception during setup: '+str(e))
+        
+        return False
+
+
+    def checkSetupCompatible(self, setup_data: dict) -> bool:
+        """ Tells if the provided Setup data is compatible with the actual driver. 
+
+        :param setup_data: Setup specific data including parameters and variables. (See documentation)
+
+        :returns: True if setup_data is compatible or False if not
+        """
+        try:
+            if setup_data:
+                for key, value in setup_data['parameters'].items():
+                    if self.__dict__[key] != value:
+                        break
+                else:
                     return True
                 
         except Exception as e:
             self.sendDebugInfo('Exception during setup: '+str(e))
+        
+        return False
+
+        
+
+    def _addVariables(self, variable_data: dict, alias:str='') -> bool:
+        """ Executed when setup is already done but new variables want to be added. 
+
+        :param variable_data: Variable specific data. (See documentation)
+
+        :returns: True if variables are added or False if not
+        """
+        try:
+            if variable_data is not None and self._connection is not None:
+                print(self.name, variable_data, alias)
+                self.addVariables(variable_data)
+                # Add variable ids to alias dict if alias provided (used when multiplexing drivers)
+                if alias in self.aliases:
+                    self.aliases[alias] += list(variable_data.keys())
+                return True
+                
+        except Exception as e:
+            self.sendDebugInfo('Exception during addVariables: '+str(e))
         
         return False
 

@@ -35,9 +35,11 @@ import logging
 FORMAT = '%(asctime)-15s %(levelname)s %(name)s: %(message)s'
 logging.basicConfig(filename="gateway_logs.txt",
                     filemode='w',
-                    level=logging.DEBUG, 
+                    level=logging.ERROR, 
                     format=FORMAT)
 logger = logging.getLogger('GATEWAY')
+logger.propagate = True
+logger.setLevel(level=logging.DEBUG)
 if ('debug' in sys.argv):
     logger.disabled = False
 else:
@@ -133,6 +135,10 @@ class gateway():
             else:
                 id += 1
     
+    def get_driver_id_from_alias(self, alias):
+        ''' driver aliases start with driver name followed by ".x" '''
+        return alias.split('.')[0]
+        
     def run(self, ip:str='127.0.0.1', port:int=2323):
         ''' Main loop'''
 
@@ -419,7 +425,7 @@ class gateway():
                 "DELETE": 'Success',
                 "DRIVER": 'all'
             }
-        else:
+        elif driver_id in self.drivers:
             try:
                 (driver, pipe) = self.drivers.pop(driver_id)
                 self.clean_driver(driver_id, driver, pipe)
@@ -435,59 +441,103 @@ class gateway():
                     "DRIVER": driver_id
                 }
                 logger.debug("Driver " + driver_id + " not found")
+        else:
+            #It is an alias?
+            return
         self.udp_socket.sendto(json.dumps(response_json).encode('utf8'), self.server_address)
         logger.info(f"Driver {driver_id} deleted")
         
 
     def send_driver_update(self, driver_id, driver_data):
-        update_msg = {   
-            "ID": self.get_new_message_id(),
-            "UPDATE": driver_data,
-            "DRIVER": driver_id
-        }
-        self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
-        
+        (driver, _) = self.drivers[driver_id]
+        if driver.aliases:
+            updates = {}
+            for var_id, var_value in driver_data.items():
+                for alias_id, var_ids in driver.aliases.items():
+                    if var_id in var_ids:
+                        if alias_id not in updates: updates[alias_id] = {}
+                        updates[alias_id][var_id] = var_value
+                        break
+                else:
+                    if driver_id not in updates: updates[driver_id] = {}
+                    updates[driver_id][var_id] = var_value
+            
+            for id, data in updates.items():
+                update_msg = {   
+                    "ID": self.get_new_message_id(),
+                    "UPDATE": data,
+                    "DRIVER": id
+                }
+                print(id, data)
+                self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
+
+        else:
+            update_msg = {   
+                "ID": self.get_new_message_id(),
+                "UPDATE": driver_data,
+                "DRIVER": driver_id
+            }
+            self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
+
 
     def send_driver_status(self, driver_id, driver_status):
-        update_msg = {   
-            "ID": self.get_new_message_id(),
-            "STATUS": driver_status,
-            "DRIVER": driver_id
-        }
-        self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
+        ids = [driver_id]
+        (driver, _) = self.drivers[driver_id]
+        if driver.aliases:
+            ids += driver.get_aliases()
+        for id in ids:
+            update_msg = {   
+                "ID": self.get_new_message_id(),
+                "STATUS": driver_status,
+                "DRIVER": id
+            }
+            self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
         
 
     def send_driver_info(self, driver_id, driver_info):
-        update_msg = {   
-            "ID": self.get_new_message_id(),
-            "INFO": driver_info,
-            "DRIVER": driver_id
-        }
-        self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
+        ids = [driver_id]
+        (driver, _) = self.drivers[driver_id]
+        if driver.aliases:
+            ids += driver.get_aliases()
+        for id in ids:
+            update_msg = {   
+                "ID": self.get_new_message_id(),
+                "INFO": driver_info,
+                "DRIVER": id
+            }
+            self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
         
 
     def do_driver_setup(self, request_json):
-        # Create driver pipe and get new id
-        pipe, driver_pipe = Pipe()
-        driver_id = self.get_new_driver_id()
         driver_type = request_json["DRIVER"]
         status = "Success"
 
         # registered requested
-        if (driver_type in registered_drivers):
-            # Create driver
-            driver_class, _ = registered_drivers[driver_type]
-            driver = driver_class(driver_id, driver_pipe)
-            driver.setDaemon(True)
-            driver.start()
-            pipe.send(json.dumps({DriverActions.SETUP:request_json["SETUP"]}))
-            self.drivers[driver_id] = (driver, pipe)
-            logger.info(f'New {driver_type} driver: {driver_id}')        
-
-        # Wrong driver type requested
-        else:
+        if driver_type not in registered_drivers:
+            # Wrong driver type requested
             status = "Failed"
             driver_id = None
+            
+        else:
+            # Check if compatible driver already exists
+            for existing_driver_id, (driver, pipe) in self.drivers.items():
+                if driver.checkSetupCompatible(request_json["SETUP"]):
+                    print(f"Driver {existing_driver_id} is compatible, using that instead")
+                    driver_id = driver.get_new_driver_alias()
+                    pipe.send(json.dumps({DriverActions.ADD_VARIABLES:{driver_id:request_json["SETUP"].get("variables", None)}}))
+                    break
+
+            else:
+                # Create new driver
+                pipe, driver_pipe = Pipe()
+                driver_class, _ = registered_drivers[driver_type]
+                driver_id = self.get_new_driver_id()
+                driver = driver_class(driver_id, driver_pipe)
+                driver.setDaemon(True)
+                driver.start()
+                self.drivers[driver_id] = (driver, pipe)
+                pipe.send(json.dumps({DriverActions.SETUP:request_json["SETUP"]}))
+                logger.info(f'New {driver_type} driver: {driver_id}')        
 
         # Send response
         response_json = {   
@@ -502,7 +552,7 @@ class gateway():
 
     def do_driver_update(self, request_json):
         try:
-            driver_id = request_json["DRIVER"]
+            driver_id = self.get_driver_id_from_alias(request_json["DRIVER"])
             (_, pipe) = self.drivers[driver_id]
             update_data = request_json["UPDATE"]
             if pipe:
