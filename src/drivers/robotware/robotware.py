@@ -93,7 +93,7 @@ class robotware(driver):
         """
         try:
             if not ABB_SDK_FOUND:
-                return False
+                raise Exception('ABB RobotWare SDK not found')
 
             # Scan network
             scanner = NetworkScanner()
