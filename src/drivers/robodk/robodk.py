@@ -69,10 +69,10 @@ class robodk(driver):
         
         : returns: True if connection stablished False if not
         """
-        if not ROBODK_SDK_FOUND:
-            return False
-
         try:
+            if not ROBODK_SDK_FOUND:
+                raise Exception('ABB RobotWare SDK not found')
+        
             self._connection = Robolink()
             if self._connection:
                 self.sendDebugInfo('SETUP: Driver RoboDK Scanning...')
