@@ -4,3 +4,4 @@ opcua==0.98.13
 SimpleWebSocketServer==0.1.1
 paho-mqtt==1.5.1
 #roslibpy
+pythonnet==2.5.2
