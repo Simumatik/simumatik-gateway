@@ -71,7 +71,7 @@ class robodk(driver):
         """
         try:
             if not ROBODK_SDK_FOUND:
-                raise Exception('ABB RobotWare SDK not found')
+                raise Exception('RoboDK SDK not found')
         
             self._connection = Robolink()
             if self._connection:
