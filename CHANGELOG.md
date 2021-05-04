@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2.0.3 - 04/05/2021
+- Add missing dependency
+- RoboDK/Robotware: Warn if SDK isn't found
+
 ## 2.0.2 - 16/04/2021
 - MQTT driver: Fix quality check on read
 
