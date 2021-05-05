@@ -31,6 +31,9 @@ class mqtt_client(driver):
     
     port: int
         MQTT Broker port. Default = 1883
+
+    retain: bool
+        Retain published topics by the driver in the MQTT Broker. Default = True
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None):
@@ -44,6 +47,7 @@ class mqtt_client(driver):
         # Parameters
         self.ip = '127.0.0.1'
         self.port = 1883
+        self.retain = True
 
         # Interal vars
         self.new_values = {}
@@ -89,7 +93,7 @@ class mqtt_client(driver):
             try:
                 var_data['value'] = self.defaultVariableValue(var_data['datatype'], var_data['size'])
                 if var_data['operation'] == VariableOperation.WRITE:
-                    self._connection.publish(var_id, var_data['value'])
+                    self._connection.publish(var_id, var_data['value'], retain=self.retain)
                 if var_data['operation'] == VariableOperation.READ:
                     self._connection.subscribe(var_id)
                 self.variables[var_id] = var_data
