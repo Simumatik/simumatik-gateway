@@ -349,8 +349,9 @@ class driver(threading.Thread):
                             if (self.variables[var_id]['value'] != value):
                                 self.variables[var_id]['value'] = value
                                 updates[var_id] = value
-                        else:
+                        elif self.variables[var_id]['value'] != None:
                             self.sendDebugInfo(f'Variable {var_id} read quality is {quality}')
+                            self.variables[var_id]['value'] = None
 
                     if updates:
                         self.sendUpdate(updates)
