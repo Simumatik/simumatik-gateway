@@ -61,7 +61,7 @@ class mqtt_client(driver):
         try:
             self.port = int(self.port)
 
-            self._connection = mqtt.Client(self._name)
+            self._connection = mqtt.Client(self._name, clean_session=not self.retain)
             self._connection.on_message = self.onMessage
             #self._connection.on_log = self.onLog
             self._connection.connect(self.ip, port=int(self.port), keepalive=60)
