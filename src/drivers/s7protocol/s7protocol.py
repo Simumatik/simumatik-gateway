@@ -106,7 +106,7 @@ class s7protocol(driver):
                 var_data['value'] = 0
                 self.variables[var_id] = var_data
             else:
-                self.sendDebugInfo('SETUP: Bad variable definition: {}'.format(var_id))
+                self.sendDebugVarInfo(('SETUP: Bad variable definition: {}'.format(var_id), var_id))
 
 
     def readVariables(self, variables: list) -> list:
