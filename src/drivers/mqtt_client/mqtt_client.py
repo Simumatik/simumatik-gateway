@@ -98,7 +98,7 @@ class mqtt_client(driver):
                     self._connection.subscribe(var_id)
                 self.variables[var_id] = var_data
             except:
-                self.sendDebugInfo('SETUP: Variable NOT found {}'.format(var_id))
+                self.sendDebugVarInfo(('SETUP: Variable NOT found {}'.format(var_id), var_id))
 
 
     def readVariables(self, variables: list) -> list:
