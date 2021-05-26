@@ -442,6 +442,7 @@ class gateway():
                 }
                 logger.debug("Driver " + driver_id + " not found")
         else:
+            # Check driver aliases
             for (driver, _) in self.drivers.values():
                 if driver_id in driver.aliases:
                     driver.aliases.pop(driver_id)
@@ -568,7 +569,10 @@ class gateway():
                 driver.setDaemon(True)
                 driver.start()
                 self.drivers[driver_id] = (driver, pipe)
+                # Set-up driver and add variables as alias
                 pipe.send(json.dumps({DriverActions.SETUP:request_json["SETUP"]}))
+                alias_id = driver.create_new_driver_alias()
+                pipe.send(json.dumps({DriverActions.ADD_VARIABLES:{alias_id:request_json["SETUP"].get("variables", None)}}))
                 logger.info(f'New {driver_type} driver: {driver_id}')        
 
                 # Send response
