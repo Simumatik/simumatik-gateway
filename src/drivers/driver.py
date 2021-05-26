@@ -33,7 +33,7 @@ class DriverActions(str, Enum):
     UPDATE = 'UPDATE'
     STATUS = 'STATUS'
     INFO = 'INFO'
-    VAR_INFO = 'INFO'
+    VAR_INFO = 'VAR_INFO'
     RESET = 'RESET'
     EXIT = 'EXIT'
 
