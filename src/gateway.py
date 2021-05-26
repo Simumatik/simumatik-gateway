@@ -405,7 +405,7 @@ class gateway():
                             self.send_driver_info(driver_id, data)
                             logger.debug('Driver {} debug info: {}'.format(driver_id, data))
                         elif action == DriverActions.VAR_INFO:
-                            (var_id, var_data) = data
+                            (var_data, var_id) = data
                             self.send_var_info(driver_id, var_data, var_id)
                             logger.debug('Driver {} debug info: {}'.format(driver_id, data))
                         sleep_time = 0 # No need of sleep if data sent
