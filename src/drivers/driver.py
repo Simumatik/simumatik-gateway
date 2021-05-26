@@ -33,6 +33,7 @@ class DriverActions(str, Enum):
     UPDATE = 'UPDATE'
     STATUS = 'STATUS'
     INFO = 'INFO'
+    VAR_INFO = 'INFO'
     RESET = 'RESET'
     EXIT = 'EXIT'
 
@@ -166,11 +167,11 @@ class driver(threading.Thread):
                                         if self.variables[var_name]['operation'] == VariableOperation.WRITE:
                                             self.pending_updates.update({var_name:var_value})
                                         else:
-                                            self.sendDebugInfo('UPDATE action failed! Variable defined operation is not write: ' + var_name)
+                                            self.sendDebugVarInfo(('UPDATE action failed! Variable defined operation is not write: ' + var_name, var_name))
                                     else:
-                                        self.sendDebugInfo('UPDATE action failed! Variable not defined: ' + var_name)
+                                        self.sendDebugVarInfo(('UPDATE action failed! Variable not defined: ' + var_name, var_name))
                             else:
-                                self.sendDebugInfo('UPDATE action failed! Data format is wrong: ' + var_name)
+                                self.sendDebugVarInfo(('UPDATE action failed! Data format is wrong: ' + var_name, var_name))
                         else:
                             self.sendDebugInfo('UPDATE action failed! Actual status is not RUNNING.')
                 
@@ -207,6 +208,17 @@ class driver(threading.Thread):
         try:
             if self.pipe:
                 self.pipe.send(json.dumps({DriverActions.INFO: debug_info}))
+        except:
+            pass
+
+    def sendDebugVarInfo(self, debug_info:tuple):
+        """ Send variable debug telegram to server.
+
+        :param debug_info: message sent in the telegram
+        """
+        try:
+            if self.pipe:
+                self.pipe.send(json.dumps({DriverActions.VAR_INFO: debug_info}))
         except:
             pass
 
