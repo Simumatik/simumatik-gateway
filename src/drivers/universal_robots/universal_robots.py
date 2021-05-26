@@ -107,11 +107,11 @@ class universal_robots(driver):
                         output_vars[var_id] = ur_type
 
                     self.variables[var_id] = var_data
-                    self.sendDebugInfo(f'SETUP: Variable found {var_id}')
+                    self.sendDebugVarInfo((f'SETUP: Variable found {var_id}', var_id))
                 else:
-                    self.sendDebugInfo(f'SETUP: Variable type not valid {var_data["datatype"]}')
+                    self.sendDebugVarInfo((f'SETUP: Variable type not valid {var_data["datatype"]}', var_id))
             except:
-                self.sendDebugInfo(f'SETUP: Variable not found {var_id}')
+                self.sendDebugVarInfo((f'SETUP: Variable not found {var_id}', var_id))
 
                   
         if input_vars:
