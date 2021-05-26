@@ -91,6 +91,7 @@ class driver(threading.Thread):
 
         # Aliases
         self.aliases = {}
+        self.aliases_counter = 0
         
         # Driver internal data
         self.variables = {} # Dictionary to store variable data (definition and additional data specific to each driver)
@@ -104,14 +105,10 @@ class driver(threading.Thread):
 
     def create_new_driver_alias(self):
         ''' Provides a new driver alias id.'''
-        counter = 1
-        while True:
-            alias = f"{self.name}.{counter}"
-            if alias not in self.aliases:
-                self.aliases[alias] = []
-                return alias
-            else:
-                counter += 1
+        alias = f"{self.name}.{self.aliases_counter}"
+        self.aliases[alias] = []
+        self.aliases_counter += 1
+        return alias
     
 
     def get_aliases(self):
@@ -154,7 +151,7 @@ class driver(threading.Thread):
                         else:
                             self.sendDebugInfo('SETUP action failed! Actual status is not STANDBY.')
                             
-                    # Action SETUP
+                    # Action ADD VARIABLES
                     elif action == DriverActions.ADD_VARIABLES:
                         alias_id, data = data.popitem() 
                         if not self._addVariables(data, alias_id):
@@ -227,7 +224,7 @@ class driver(threading.Thread):
 
 
     def _setup(self, setup_data: dict) -> bool:
-        """ Executed to setup the driver. This method calls the specific driver connect() and addVariables() methods. 
+        """ Executed to setup the driver. This method calls the specific driver connect(). Variables need to be add with the ADD VARIABLES action. 
 
         :param setup_data: Setup specific data including parameters and variables. (See documentation)
 
@@ -236,9 +233,7 @@ class driver(threading.Thread):
         try:
             if setup_data:
                 self.__dict__.update(setup_data['parameters'])
-                if self.connect():
-                    if self._addVariables(setup_data['variables']):
-                        return True
+                return self.connect()
                 
         except Exception as e:
             self.sendDebugInfo('Exception during setup: '+str(e))
@@ -264,7 +259,7 @@ class driver(threading.Thread):
             return True
         
 
-    def _addVariables(self, variable_data: dict, alias:str='') -> bool:
+    def _addVariables(self, variable_data: dict, alias: str) -> bool:
         """ Executed when setup is already done but new variables want to be added. 
 
         :param variable_data: Variable specific data. (See documentation)
@@ -272,11 +267,9 @@ class driver(threading.Thread):
         :returns: True if variables are added or False if not
         """
         try:
-            if variable_data is not None and self._connection is not None:
+            if variable_data is not None and self._connection is not None and alias in self.aliases:
                 self.addVariables(variable_data)
-                # Add variable ids to alias dict if alias provided (used when multiplexing drivers)
-                if alias in self.aliases:
-                    self.aliases[alias] += list(variable_data.keys())
+                self.aliases[alias] += list(variable_data.keys())
                 return True
                 
         except Exception as e:
