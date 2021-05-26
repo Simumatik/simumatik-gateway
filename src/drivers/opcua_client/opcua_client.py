@@ -116,7 +116,7 @@ class opcua_client(driver):
 
         for var_id, node in vars_found.items():
             # debug info
-            self.sendDebugInfo('SETUP: Variable found {}'.format(var_id))
+            self.sendDebugVarInfo(('SETUP: Variable found {}'.format(var_id), var_id))
             # Add node to info
             self.variables[var_id] = dict(variables[var_id])
             self.variables[var_id]['node'] = node
@@ -134,7 +134,7 @@ class opcua_client(driver):
                 
         # Remove variables not found
         for var_id in var_idents_not_found + var_paths_not_found + var_names_not_found:
-            self.sendDebugInfo('SETUP: Variable NOT found {}'.format(var_id))
+            self.sendDebugVarInfo(('SETUP: Variable NOT found {}'.format(var_id), var_id))
 
 
     def readVariables(self, variables: list) -> list:
