@@ -579,7 +579,7 @@ class gateway():
                 response_json = {   
                     "ID": request_json["ID"],
                     "SETUP": "Success",
-                    "DRIVER": driver_id
+                    "DRIVER": alias_id
                 }
                 self.udp_socket.sendto(json.dumps(response_json).encode('utf8'), self.server_address)
 
