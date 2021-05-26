@@ -113,12 +113,12 @@ class robodk(driver):
                     if value is not None:
                         var_data['value'] = None # Force first update
                         self.variables[var_id] = var_data
-                        self.sendDebugInfo(f'SETUP: Variable found {var_id}')
+                        self.sendDebugVarInfo((f'SETUP: Variable found {var_id}', var_id))
                         continue
             except:
                 pass
             
-            self.sendDebugInfo(f'SETUP: Variable not found {var_id}')
+            self.sendDebugVarInfo((f'SETUP: Variable not found {var_id}', var_id))
 
 
     def readVariables(self, variables: list) -> list:
