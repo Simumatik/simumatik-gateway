@@ -105,7 +105,7 @@ class cprog_cri(driver):
                 var_data['value'] = self.defaultVariableValue(var_data['datatype'], var_data['size'])
                 self.variables[var_id] = var_data
             else:
-                self.sendDebugInfo(f'SETUP: Variable not suported: {var_id}')
+                self.sendDebugVarInfo((f'SETUP: Variable not suported: {var_id}', var_id))
         pass
 
 
