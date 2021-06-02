@@ -115,6 +115,10 @@ class universal_robots(driver):
 
                   
         if input_vars:
+            # Support multiplexing
+            if self.inputs_data:
+                input_vars.update(self.inputs_data.__dict__)
+
             self.inputs_data = self._connection.send_input_setup(list(input_vars.keys()), list(input_vars.values()))
             if not self.inputs_data:
                 self.sendDebugInfo(f'SETUP: Unable to configure inputs')
@@ -125,6 +129,11 @@ class universal_robots(driver):
                     self.inputs_data.__dict__[input_var] = 0
 
         if output_vars:
+            # Support multiplexing
+            for var_key, var_data in self.variables.items():
+                if var_key not in self.inputs_data.__dict__:
+                    output_vars[var_key] = var_data
+
             result = self._connection.send_output_setup(list(output_vars.keys()), list(output_vars.values()), frequency = self.frequency)
             if not result:
                 self.sendDebugInfo(f'SETUP: Unable to configure outputs')
