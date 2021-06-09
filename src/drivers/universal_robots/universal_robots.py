@@ -51,6 +51,8 @@ class universal_robots(driver):
         self.frequency = 125
         # Variables
         self.inputs_data = None
+        self.inputs_setup = None
+        self.outputs_setup = None
 
 
     def connect(self) -> bool:
@@ -116,26 +118,31 @@ class universal_robots(driver):
                   
         if input_vars:
             # Support multiplexing
-            if self.inputs_data:
-                input_vars.update(self.inputs_data.__dict__)
+            if self.inputs_setup:
+                input_vars.update(self.inputs_setup)
 
             self.inputs_data = self._connection.send_input_setup(list(input_vars.keys()), list(input_vars.values()))
-            if not self.inputs_data:
-                self.sendDebugInfo(f'SETUP: Unable to configure inputs')
+            if self.inputs_data:
+                # Necessary to avoid error "Exception during variable transmission: Uninitialized parameter"
+                for input_var in self.inputs_data.__dict__.keys():
+                    if self.inputs_data.__dict__[input_var] == None:
+                        self.inputs_data.__dict__[input_var] = 0
 
-            # Necessary to avoid error "Exception during variable transmission: Uninitialized parameter"
-            for input_var in self.inputs_data.__dict__.keys():
-                if self.inputs_data.__dict__[input_var] == None:
-                    self.inputs_data.__dict__[input_var] = 0
+                # Save inputs setup data
+                self.inputs_setup = input_vars
+            else:
+                self.sendDebugInfo(f'SETUP: Unable to configure inputs')
 
         if output_vars:
             # Support multiplexing
-            for var_key, var_data in self.variables.items():
-                if var_key not in self.inputs_data.__dict__:
-                    output_vars[var_key] = var_data
+            if self.outputs_setup:
+                output_vars.update(self.outputs_setup)
 
             result = self._connection.send_output_setup(list(output_vars.keys()), list(output_vars.values()), frequency = self.frequency)
-            if not result:
+            if result:
+                # Save outputs setup data
+                self.outputs_setup = output_vars
+            else:
                 self.sendDebugInfo(f'SETUP: Unable to configure outputs')
 
         if not self._connection.send_start():
@@ -149,7 +156,7 @@ class universal_robots(driver):
         """
         ur_data = self._connection.receive()
         res = []
-
+        self.sendDebugInfo(ur_data.__dict__)
         for var_id in variables:
             try:
                 new_value = ur_data.__dict__[var_id]
@@ -174,7 +181,7 @@ class universal_robots(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
-
+        self.sendDebugInfo(self.inputs_data.__dict__)
         for (var_id, new_value) in variables:
             self.inputs_data.__dict__[var_id] = new_value
             
