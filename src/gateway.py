@@ -553,9 +553,11 @@ class gateway():
             # Check if compatible driver already exists
             for existing_driver_id, (driver, pipe) in self.drivers.items():
                 if driver.__class__ == driver_class:
+                    logger.info(f"Previous driver {existing_driver_id} ({driver.__class__}) found for {driver_class}")
                     if driver.checkSetupCompatible(request_json["SETUP"]):
+                        logger.info(f"Driver {existing_driver_id} is compatible")
                         driver_id = driver.create_new_driver_alias()
-                        logger.info(f"Driver {existing_driver_id} is compatible, using that for {driver_id}")
+                        logger.info(f"New alias {driver_id} created")
                         # Send response
                         response_json = {   
                             "ID": request_json["ID"],
@@ -573,6 +575,8 @@ class gateway():
                             }
                             self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
                         break
+                    else:
+                        logger.info(f"Previous driver {existing_driver_id} NOT COMPATIBLE")
 
             else:
                 # Create new driver
