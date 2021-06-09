@@ -148,15 +148,17 @@ class driver(threading.Thread):
                             if self._setup(data):
                                 self.changeStatus(DriverStatus.RUNNING)
                             else:
+                                self._connection = None
                                 self.sendDebugInfo('SETUP action failed! Setup not completed.')
                         else:
                             self.sendDebugInfo('SETUP action failed! Actual status is not STANDBY.')
                             
                     # Action ADD VARIABLES
                     elif action == DriverActions.ADD_VARIABLES:
-                        alias_id, data = data.popitem() 
-                        if not self._addVariables(data, alias_id):
-                            self.sendDebugInfo('ADD_VARIABLES action failed!')
+                        alias_id, data = data.popitem()
+                        if self._connection:
+                            if not self._addVariables(data, alias_id):
+                                self.sendDebugInfo('ADD_VARIABLES action failed!')
 
                     # Action UPDATE
                     elif action == DriverActions.UPDATE:
