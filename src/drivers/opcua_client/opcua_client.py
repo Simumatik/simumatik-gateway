@@ -192,8 +192,12 @@ class opcua_client(driver):
                 res[name] = parent
                 names.remove(name)
         # Check children nodes
-        if names:   
-            for child in parent.get_children():
+        if names:
+            try:
+                children = parent.get_children()
+            except Exception as e:
+                children = []
+            for child in children:
                 res_child, names = self.find_nodes_by_name(child, names)
                 res.update(res_child)
                 if not names: break
