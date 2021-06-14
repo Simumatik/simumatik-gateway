@@ -23,6 +23,9 @@ from ..driver import driver, VariableOperation, VariableQuality
 # https://www.universal-robots.com/how-tos-and-faqs/how-to/ur-how-tos/real-time-data-exchange-rtde-guide-22229/
 from .rtde import rtde
 
+import logging
+logging.getLogger('rtde').setLevel(logging.CRITICAL)
+
 # Driver that connects to robodk
 class universal_robots(driver):
     '''
