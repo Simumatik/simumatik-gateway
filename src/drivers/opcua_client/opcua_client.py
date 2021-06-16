@@ -22,6 +22,8 @@ from typing import Optional
 
 from ..driver import VariableOperation, driver, VariableQuality 
 
+import logging
+logging.getLogger('opcua').setLevel(logging.CRITICAL)
 
 class SubHandler(object):
 
