@@ -126,56 +126,60 @@ class driver(threading.Thread):
 
                     sdata = self.pipe.recv()
                     action, data = json.loads(sdata).popitem()
+                    
+                    try:
+                        # Action EXIT
+                        if action == DriverActions.EXIT:
+                            self._cleanup()
+                            self.changeStatus(DriverStatus.EXIT)
 
-                    # Action EXIT
-                    if action == DriverActions.EXIT:
-                        self._cleanup()
-                        self.changeStatus(DriverStatus.EXIT)
-
-                    # Action RESET
-                    elif action == DriverActions.RESET:
-                        if self.status == DriverStatus.ERROR: 
-                            if self._cleanup():
-                                self.changeStatus(DriverStatus.STANDBY)
+                        # Action RESET
+                        elif action == DriverActions.RESET:
+                            if self.status == DriverStatus.ERROR: 
+                                if self._cleanup():
+                                    self.changeStatus(DriverStatus.STANDBY)
+                                else:
+                                    self.sendDebugInfo('RESET action failed! Cleanup not completed.')
                             else:
-                                self.sendDebugInfo('RESET action failed! Cleanup not completed.')
-                        else:
-                            self.sendDebugInfo('RESET action failed! Actual status is not ERROR.')
+                                self.sendDebugInfo('RESET action failed! Actual status is not ERROR.')
 
-                    # Action SETUP
-                    elif action == DriverActions.SETUP:
-                        if self.status == DriverStatus.STANDBY: 
-                            if self._setup(data):
-                                self.changeStatus(DriverStatus.RUNNING)
+                        # Action SETUP
+                        elif action == DriverActions.SETUP:
+                            if self.status == DriverStatus.STANDBY: 
+                                if self._setup(data):
+                                    self.changeStatus(DriverStatus.RUNNING)
+                                else:
+                                    self.changeStatus(DriverStatus.ERROR)
+                                    self.sendDebugInfo('SETUP action failed! Setup not completed.')
                             else:
-                                self._connection = None
-                                self.sendDebugInfo('SETUP action failed! Setup not completed.')
-                        else:
-                            self.sendDebugInfo('SETUP action failed! Actual status is not STANDBY.')
-                            
-                    # Action ADD VARIABLES
-                    elif action == DriverActions.ADD_VARIABLES:
-                        alias_id, data = data.popitem()
-                        if self._connection:
-                            if not self._addVariables(data, alias_id):
-                                self.sendDebugInfo('ADD_VARIABLES action failed!')
+                                self.sendDebugInfo('SETUP action failed! Actual status is not STANDBY.')
 
-                    # Action UPDATE
-                    elif action == DriverActions.UPDATE:
-                        if self.status == DriverStatus.RUNNING: 
-                            if isinstance(data, dict):
-                                for var_name, var_value in data.items():
-                                    if var_name in self.variables:
-                                        if self.variables[var_name]['operation'] == VariableOperation.WRITE:
-                                            self.pending_updates.update({var_name:var_value})
+                        # Action ADD VARIABLES
+                        elif action == DriverActions.ADD_VARIABLES:
+                            alias_id, data = data.popitem()
+                            if self.status == DriverStatus.RUNNING: 
+                                if not self._addVariables(data, alias_id):
+                                    self.sendDebugInfo('ADD_VARIABLES action failed!')
+
+                        # Action UPDATE
+                        elif action == DriverActions.UPDATE:
+                            if self.status == DriverStatus.RUNNING: 
+                                if isinstance(data, dict):
+                                    for var_name, var_value in data.items():
+                                        if var_name in self.variables:
+                                            if self.variables[var_name]['operation'] == VariableOperation.WRITE:
+                                                self.pending_updates.update({var_name:var_value})
+                                            else:
+                                                self.sendDebugVarInfo(('UPDATE action failed! Variable defined operation is not write: ' + var_name, var_name))
                                         else:
-                                            self.sendDebugVarInfo(('UPDATE action failed! Variable defined operation is not write: ' + var_name, var_name))
-                                    else:
-                                        self.sendDebugVarInfo(('UPDATE action failed! Variable not defined: ' + var_name, var_name))
+                                            self.sendDebugVarInfo(('UPDATE action failed! Variable not defined: ' + var_name, var_name))
+                                else:
+                                    self.sendDebugVarInfo(('UPDATE action failed! Data format is wrong: ' + var_name, var_name))
                             else:
-                                self.sendDebugVarInfo(('UPDATE action failed! Data format is wrong: ' + var_name, var_name))
-                        else:
-                            self.sendDebugInfo('UPDATE action failed! Actual status is not RUNNING.')
+                                self.sendDebugInfo('UPDATE action failed! Actual status is not RUNNING.')
+                except Exception as e:
+                    self.changeStatus(DriverStatus.ERROR)
+                    self.sendDebugInfo('Exception executing action: ' + str(e))
                 
             except Exception as e:
                 self.sendDebugInfo('Exception parsing pipe message: '+str(e)+', '+str(sdata))
