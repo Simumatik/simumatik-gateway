@@ -159,7 +159,6 @@ class universal_robots(driver):
         """
         ur_data = self._connection.receive()
         res = []
-        self.sendDebugInfo(ur_data.__dict__)
         for var_id in variables:
             try:
                 new_value = ur_data.__dict__[var_id]
@@ -184,7 +183,6 @@ class universal_robots(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
-        self.sendDebugInfo(self.inputs_data.__dict__)
         for (var_id, new_value) in variables:
             self.inputs_data.__dict__[var_id] = new_value
             
