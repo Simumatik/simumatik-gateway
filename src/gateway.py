@@ -248,20 +248,12 @@ class gateway():
                         connection.sendMessage(json.dumps({"response": {"id": req["id"], "command": command, "data": res_data}}))
                         logger.debug('Response sent: {}'.format(json.dumps({"response": {"id": req["id"], "command": command, "data": res_data}})))
 
-            #------------------------------
-            # Do actions
-            #------------------------------
             # Driver running
             if self.status == GatewayStatus.CONNECTED:
-                sleep_time = self.doRun()
-            else:
-                sleep_time = 1e-2 
+                self.doRun() 
 
-            #------------------------------
-            # Sleep if required
-            #------------------------------
-            if len(self.drivers) == 0 and sleep_time > 0:
-                time.sleep(sleep_time)
+            # Sleep
+            time.sleep(5e-3)
     
 
     def close(self):
@@ -346,8 +338,6 @@ class gateway():
 
     def doRun(self):
         """ Executed while gateway is connected."""
-        # Default sleep time to return if nothing is done
-        sleep_time = 1e-3
         # Send polling message within the interval
         if (time.time()-self.last_poll_sent) >= poll_time:
             try:
@@ -377,7 +367,6 @@ class gateway():
                     self.do_driver_update(request_json)
                 elif ('POLLING' in request_json):
                     self.last_poll_received = time.time()
-                sleep_time = 0 # No need of sleep if data received
         except:
             # No data received
             pass
@@ -408,16 +397,12 @@ class gateway():
                             (var_data, var_id) = data
                             self.send_var_info(driver_id, var_data, var_id)
                             logger.debug('Driver {} debug info: {}'.format(driver_id, data))
-                        sleep_time = 0 # No need of sleep if data sent
 
         except Exception as e:
             self.status = GatewayStatus.ERROR
             self.error_msg = 'Exception during run: '+str(e)
             logger.error(self.error_msg)
             return 0 # No need of sleep if an error
-        
-        return sleep_time
-
 
     def do_driver_delete(self, request_json):
         request_id = request_json["ID"]
