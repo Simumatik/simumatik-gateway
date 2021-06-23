@@ -177,9 +177,9 @@ class driver(threading.Thread):
                                     self.sendDebugVarInfo(('UPDATE action failed! Data format is wrong: ' + var_name, var_name))
                             else:
                                 self.sendDebugInfo('UPDATE action failed! Actual status is not RUNNING.')
-                except Exception as e:
-                    self.changeStatus(DriverStatus.ERROR)
-                    self.sendDebugInfo('Exception executing action: ' + str(e))
+                    except Exception as e:
+                        self.changeStatus(DriverStatus.ERROR)
+                        self.sendDebugInfo('Exception executing action: ' + str(e))
                 
             except Exception as e:
                 self.sendDebugInfo('Exception parsing pipe message: '+str(e)+', '+str(sdata))
