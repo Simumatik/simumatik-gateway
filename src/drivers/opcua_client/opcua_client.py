@@ -22,6 +22,8 @@ from typing import Optional
 
 from ..driver import VariableOperation, driver, VariableQuality 
 
+import logging
+logging.getLogger('opcua').setLevel(logging.CRITICAL)
 
 class SubHandler(object):
 
@@ -116,7 +118,7 @@ class opcua_client(driver):
 
         for var_id, node in vars_found.items():
             # debug info
-            self.sendDebugInfo('SETUP: Variable found {}'.format(var_id))
+            self.sendDebugVarInfo(('SETUP: Variable found {}'.format(var_id), var_id))
             # Add node to info
             self.variables[var_id] = dict(variables[var_id])
             self.variables[var_id]['node'] = node
@@ -134,7 +136,7 @@ class opcua_client(driver):
                 
         # Remove variables not found
         for var_id in var_idents_not_found + var_paths_not_found + var_names_not_found:
-            self.sendDebugInfo('SETUP: Variable NOT found {}'.format(var_id))
+            self.sendDebugVarInfo(('SETUP: Variable NOT found {}'.format(var_id), var_id))
 
 
     def readVariables(self, variables: list) -> list:
@@ -192,8 +194,12 @@ class opcua_client(driver):
                 res[name] = parent
                 names.remove(name)
         # Check children nodes
-        if names:   
-            for child in parent.get_children():
+        if names:
+            try:
+                children = parent.get_children()
+            except Exception as e:
+                children = []
+            for child in children:
                 res_child, names = self.find_nodes_by_name(child, names)
                 res.update(res_child)
                 if not names: break

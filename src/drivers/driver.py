@@ -19,7 +19,6 @@ from multiprocessing import Pipe
 import time
 from enum import Enum
 import json
-import logging
 from typing import Optional
 
 class DriverStatus(str, Enum):
@@ -30,9 +29,11 @@ class DriverStatus(str, Enum):
 
 class DriverActions(str, Enum):
     SETUP = 'SETUP'
+    ADD_VARIABLES = 'ADD_VARIABLES'
     UPDATE = 'UPDATE'
     STATUS = 'STATUS'
     INFO = 'INFO'
+    VAR_INFO = 'VAR_INFO'
     RESET = 'RESET'
     EXIT = 'EXIT'
 
@@ -84,10 +85,14 @@ class driver(threading.Thread):
         self.name = name
         self.pipe = pipe
         self._connection = None
-        self.sleep_time = 1e-5
+        self.sleep_time = 5e-3
         self.last_read = time.perf_counter() # last read package sent
         self.last_write = time.perf_counter() # last write package sent
         self.last_forced_write = time.perf_counter() # last read package sent
+
+        # Aliases
+        self.aliases = {}
+        self.aliases_counter = 0
         
         # Driver internal data
         self.variables = {} # Dictionary to store variable data (definition and additional data specific to each driver)
@@ -99,6 +104,19 @@ class driver(threading.Thread):
             self.changeStatus(DriverStatus.STANDBY)
 
 
+    def create_new_driver_alias(self):
+        ''' Provides a new driver alias id.'''
+        alias = f"{self.name}.{self.aliases_counter}"
+        self.aliases[alias] = []
+        self.aliases_counter += 1
+        return alias
+    
+
+    def get_aliases(self):
+        ''' Returns a list with driver aliases.'''
+        return list(self.aliases.keys())
+
+
     def run(self):
         """ Run loop."""
         while self.status != DriverStatus.EXIT:
@@ -108,48 +126,60 @@ class driver(threading.Thread):
 
                     sdata = self.pipe.recv()
                     action, data = json.loads(sdata).popitem()
+                    
+                    try:
+                        # Action EXIT
+                        if action == DriverActions.EXIT:
+                            self._cleanup()
+                            self.changeStatus(DriverStatus.EXIT)
 
-                    # Action EXIT
-                    if action == DriverActions.EXIT:
-                        self._cleanup()
-                        self.changeStatus(DriverStatus.EXIT)
-
-                    # Action RESET
-                    elif action == DriverActions.RESET:
-                        if self.status == DriverStatus.ERROR: 
-                            if self._cleanup():
-                                self.changeStatus(DriverStatus.STANDBY)
+                        # Action RESET
+                        elif action == DriverActions.RESET:
+                            if self.status == DriverStatus.ERROR: 
+                                if self._cleanup():
+                                    self.changeStatus(DriverStatus.STANDBY)
+                                else:
+                                    self.sendDebugInfo('RESET action failed! Cleanup not completed.')
                             else:
-                                self.sendDebugInfo('RESET action failed! Cleanup not completed.')
-                        else:
-                            self.sendDebugInfo('RESET action failed! Actual status is not ERROR.')
+                                self.sendDebugInfo('RESET action failed! Actual status is not ERROR.')
 
-                    # Action SETUP
-                    elif action == DriverActions.SETUP:
-                        if self.status == DriverStatus.STANDBY: 
-                            if self._setup(data):
-                                self.changeStatus(DriverStatus.RUNNING)
+                        # Action SETUP
+                        elif action == DriverActions.SETUP:
+                            if self.status == DriverStatus.STANDBY: 
+                                if self._setup(data):
+                                    self.changeStatus(DriverStatus.RUNNING)
+                                else:
+                                    self.changeStatus(DriverStatus.ERROR)
+                                    self.sendDebugInfo('SETUP action failed! Setup not completed.')
                             else:
-                                self.sendDebugInfo('SETUP action failed! Setup not completed.')
-                        else:
-                            self.sendDebugInfo('SETUP action failed! Actual status is not STANDBY.')
-                            
-                    # Action UPDATE
-                    elif action == DriverActions.UPDATE:
-                        if self.status == DriverStatus.RUNNING: 
-                            if isinstance(data, dict):
-                                for var_name, var_value in data.items():
-                                    if var_name in self.variables:
-                                        if self.variables[var_name]['operation'] == VariableOperation.WRITE:
-                                            self.pending_updates.update({var_name:var_value})
+                                self.sendDebugInfo('SETUP action failed! Actual status is not STANDBY.')
+
+                        # Action ADD VARIABLES
+                        elif action == DriverActions.ADD_VARIABLES:
+                            alias_id, data = data.popitem()
+                            if self.status == DriverStatus.RUNNING: 
+                                if not self._addVariables(data, alias_id):
+                                    self.sendDebugInfo('ADD_VARIABLES action failed!')
+
+                        # Action UPDATE
+                        elif action == DriverActions.UPDATE:
+                            if self.status == DriverStatus.RUNNING: 
+                                if isinstance(data, dict):
+                                    for var_name, var_value in data.items():
+                                        if var_name in self.variables:
+                                            if self.variables[var_name]['operation'] == VariableOperation.WRITE:
+                                                self.pending_updates.update({var_name:var_value})
+                                            else:
+                                                self.sendDebugVarInfo(('UPDATE action failed! Variable defined operation is not write: ' + var_name, var_name))
                                         else:
-                                            self.sendDebugInfo('UPDATE action failed! Variable defined operation is not write: ' + var_name)
-                                    else:
-                                        self.sendDebugInfo('UPDATE action failed! Variable not defined: ' + var_name)
+                                            self.sendDebugVarInfo(('UPDATE action failed! Variable not defined: ' + var_name, var_name))
+                                else:
+                                    self.sendDebugVarInfo(('UPDATE action failed! Data format is wrong: ' + var_name, var_name))
                             else:
-                                self.sendDebugInfo('UPDATE action failed! Data format is wrong: ' + var_name)
-                        else:
-                            self.sendDebugInfo('UPDATE action failed! Actual status is not RUNNING.')
+                                self.sendDebugInfo('UPDATE action failed! Actual status is not RUNNING.')
+                    except Exception as e:
+                        self.changeStatus(DriverStatus.ERROR)
+                        self.sendDebugInfo('Exception executing action: ' + str(e))
                 
             except Exception as e:
                 self.sendDebugInfo('Exception parsing pipe message: '+str(e)+', '+str(sdata))
@@ -158,9 +188,8 @@ class driver(threading.Thread):
             if self.status == DriverStatus.RUNNING:
                 if not self._transmitVariables():
                     self.changeStatus(DriverStatus.ERROR)
-            else:
-                # Sleep
-                time.sleep(self.sleep_time)
+            # Sleep
+            time.sleep(self.sleep_time)
 
                 
     def changeStatus(self, new_status:DriverStatus):
@@ -187,6 +216,17 @@ class driver(threading.Thread):
         except:
             pass
 
+    def sendDebugVarInfo(self, debug_info:tuple):
+        """ Send variable debug telegram to server.
+
+        :param debug_info: message sent in the telegram
+        """
+        try:
+            if self.pipe:
+                self.pipe.send(json.dumps({DriverActions.VAR_INFO: debug_info}))
+        except:
+            pass
+
 
     def sendUpdate(self, data:dict):
         """ Send update telegram to server. 
@@ -201,7 +241,7 @@ class driver(threading.Thread):
 
 
     def _setup(self, setup_data: dict) -> bool:
-        """ Executed to setup the driver. This method calls the specific driver connect() and addVariables() methods. 
+        """ Executed to setup the driver. This method calls the specific driver connect(). Variables need to be add with the ADD VARIABLES action. 
 
         :param setup_data: Setup specific data including parameters and variables. (See documentation)
 
@@ -210,12 +250,47 @@ class driver(threading.Thread):
         try:
             if setup_data:
                 self.__dict__.update(setup_data['parameters'])
-                if self.connect():
-                    self.addVariables(setup_data['variables'])
-                    return True
+                return self.connect()
                 
         except Exception as e:
             self.sendDebugInfo('Exception during setup: '+str(e))
+        
+        return False
+
+
+    def checkSetupCompatible(self, setup_data: dict) -> bool:
+        """ Tells if the provided Setup data is compatible with the actual driver. 
+
+        :param setup_data: Setup specific data including parameters and variables. (See documentation)
+
+        :returns: True if setup_data is compatible or False if not
+        """
+        param_data = setup_data.get('parameters', None)
+        if param_data:
+            for key, value in param_data.items():
+                if self.__dict__[key] != value:
+                    return False
+            else:
+                return True
+        else:
+            return True
+        
+
+    def _addVariables(self, variable_data: dict, alias: str) -> bool:
+        """ Executed when setup is already done but new variables want to be added. 
+
+        :param variable_data: Variable specific data. (See documentation)
+
+        :returns: True if variables are added or False if not
+        """
+        try:
+            if variable_data is not None and self._connection is not None and alias in self.aliases:
+                self.addVariables(variable_data)
+                self.aliases[alias] += list(variable_data.keys())
+                return True
+                
+        except Exception as e:
+            self.sendDebugInfo('Exception during addVariables: '+str(e))
         
         return False
 
@@ -284,8 +359,9 @@ class driver(threading.Thread):
                             if (self.variables[var_id]['value'] != value):
                                 self.variables[var_id]['value'] = value
                                 updates[var_id] = value
-                        else:
+                        elif self.variables[var_id]['value'] != None:
                             self.sendDebugInfo(f'Variable {var_id} read quality is {quality}')
+                            self.variables[var_id]['value'] = None
 
                     if updates:
                         self.sendUpdate(updates)
