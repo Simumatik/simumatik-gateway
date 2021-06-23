@@ -23,6 +23,9 @@ from ..driver import driver, VariableOperation, VariableQuality
 # https://www.universal-robots.com/how-tos-and-faqs/how-to/ur-how-tos/real-time-data-exchange-rtde-guide-22229/
 from .rtde import rtde
 
+import logging
+logging.getLogger('rtde').setLevel(logging.CRITICAL)
+
 # Driver that connects to robodk
 class universal_robots(driver):
     '''
@@ -51,6 +54,8 @@ class universal_robots(driver):
         self.frequency = 125
         # Variables
         self.inputs_data = None
+        self.inputs_setup = None
+        self.outputs_setup = None
 
 
     def connect(self) -> bool:
@@ -107,26 +112,40 @@ class universal_robots(driver):
                         output_vars[var_id] = ur_type
 
                     self.variables[var_id] = var_data
-                    self.sendDebugInfo(f'SETUP: Variable found {var_id}')
+                    self.sendDebugVarInfo((f'SETUP: Variable found {var_id}', var_id))
                 else:
-                    self.sendDebugInfo(f'SETUP: Variable type not valid {var_data["datatype"]}')
+                    self.sendDebugVarInfo((f'SETUP: Variable type not valid {var_data["datatype"]}', var_id))
             except:
-                self.sendDebugInfo(f'SETUP: Variable not found {var_id}')
+                self.sendDebugVarInfo((f'SETUP: Variable not found {var_id}', var_id))
 
                   
         if input_vars:
+            # Support multiplexing
+            if self.inputs_setup:
+                input_vars.update(self.inputs_setup)
+
             self.inputs_data = self._connection.send_input_setup(list(input_vars.keys()), list(input_vars.values()))
-            if not self.inputs_data:
+            if self.inputs_data:
+                # Necessary to avoid error "Exception during variable transmission: Uninitialized parameter"
+                for input_var in self.inputs_data.__dict__.keys():
+                    if self.inputs_data.__dict__[input_var] == None:
+                        self.inputs_data.__dict__[input_var] = 0
+
+                # Save inputs setup data
+                self.inputs_setup = input_vars
+            else:
                 self.sendDebugInfo(f'SETUP: Unable to configure inputs')
 
-            # Necessary to avoid error "Exception during variable transmission: Uninitialized parameter"
-            for input_var in self.inputs_data.__dict__.keys():
-                if self.inputs_data.__dict__[input_var] == None:
-                    self.inputs_data.__dict__[input_var] = 0
-
         if output_vars:
+            # Support multiplexing
+            if self.outputs_setup:
+                output_vars.update(self.outputs_setup)
+
             result = self._connection.send_output_setup(list(output_vars.keys()), list(output_vars.values()), frequency = self.frequency)
-            if not result:
+            if result:
+                # Save outputs setup data
+                self.outputs_setup = output_vars
+            else:
                 self.sendDebugInfo(f'SETUP: Unable to configure outputs')
 
         if not self._connection.send_start():
@@ -140,7 +159,6 @@ class universal_robots(driver):
         """
         ur_data = self._connection.receive()
         res = []
-
         for var_id in variables:
             try:
                 new_value = ur_data.__dict__[var_id]
@@ -165,7 +183,6 @@ class universal_robots(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
-
         for (var_id, new_value) in variables:
             self.inputs_data.__dict__[var_id] = new_value
             
