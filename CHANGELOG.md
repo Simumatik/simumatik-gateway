@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 2.1.0 - 23/06/2021
+- Add drivers multiplexing support (better performance)
+- Update sleeping times/logic (lower cpu use)
+- Add retain option in MQTT driver
+- Better Error state handling
+- Fix OPCUA driver crash
+- Improve logging
+
 ## 2.0.3 - 04/05/2021
 - Add missing dependency
 - RoboDK/Robotware: Warn if SDK isn't found
