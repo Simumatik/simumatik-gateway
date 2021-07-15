@@ -17,7 +17,25 @@
 from multiprocessing import Pipe
 from typing import Optional
 
-from ..driver import driver
+from ..driver import driver, VariableQuality
+import matlab.engine
+import os, sys, winreg
+
+# Import SDK
+# MATLAB_SDK_FOUND = False
+
+# try:
+#     if os.name == 'nt':# Just try on windows
+#         reg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
+#         key = winreg.OpenKey(reg, r"SOFTWARE\RoboDK")
+
+#         robodk_path = winreg.QueryValueEx(key, "INSTDIR")[0] + "\Python"
+#         sys.path.append(robodk_path) # Add path to system path
+
+#         from robolink import Robolink, ITEM_TYPE_ROBOT
+#         ROBODK_SDK_FOUND = True
+# except:
+#     pass
 
 
 class development(driver):
@@ -38,7 +56,7 @@ class development(driver):
         driver.__init__(self, name, pipe)
 
         # Parameters
-        self.myparam = 3
+        self.session_id = None
 
 
     def connect(self) -> bool:
@@ -46,13 +64,27 @@ class development(driver):
         
         : returns: True if connection stablished False if not
         """
-        return True
+        # Get list of shared matlab sessions
+        sessions = matlab.engine.find_matlab()
+        try:
+            assert sessions, "No shared matlab sessions found"
+            if self.session_id:
+                # id specified, try connecting to that session
+                self._connection = matlab.engine.connect_matlab(self.session_id)
+            else:
+                self._connection = matlab.engine.connect_matlab(sessions[0])
+            return True
+
+        except Exception as e:
+            self.sendDebugInfo(e)
+        
+        return False
 
 
     def disconnect(self):
         """ Disconnect driver.
         """
-        pass
+        self._connection.exit()
 
 
     def addVariables(self, variables: dict):
@@ -61,7 +93,9 @@ class development(driver):
         : param variables: Variables to add in a dict following the setup format. (See documentation) 
         
         """
-        pass
+        self.variables.update(variables)
+        for var_id in self.variables:
+            self.variables[var_id]['value'] = self.defaultVariableValue(self.variables[var_id]['datatype'], self.variables[var_id]['size'])
 
 
     def readVariables(self, variables: list) -> list:
@@ -69,7 +103,18 @@ class development(driver):
         : param variables: List of variable ids to be read. 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        return []
+        res = []
+        for var_id in variables:
+            try:
+                new_value = self._connection.workspace[var_id]
+                res.append((var_id, str(new_value), VariableQuality.GOOD))
+            except Exception as e:
+                new_value = "undefined"
+                res.append((var_id, str(new_value), VariableQuality.BAD))
+            print(f"From matlab: {var_id}={new_value}")
+
+
+        return res
 
 
     def writeVariables(self, variables: list) -> list:
@@ -77,4 +122,9 @@ class development(driver):
         : param variables: List of tupples with variable ids and the values to be written (var_id, var_value). 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        return []
+        res = []
+        for (var_id, new_value) in variables:
+            self._connection.workspace[var_id] = new_value
+            res.append(var_id, new_value, VariableQuality.GOOD)
+            print(f"To matlab: {var_id}={new_value}")
+        return res
