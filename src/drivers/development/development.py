@@ -107,10 +107,13 @@ class development(driver):
         for var_id in variables:
             try:
                 new_value = self._connection.workspace[var_id]
-                res.append((var_id, str(new_value), VariableQuality.GOOD))
-            except Exception as e:
-                new_value = "undefined"
-                res.append((var_id, str(new_value), VariableQuality.BAD))
+                if self.variables[var_id]['size'] > 1:
+                    new_value = [self.getValueFromString(self.variables[var_id]['datatype'], i) for i in new_value[0]]
+                else:
+                    new_value = self.getValueFromString(self.variables[var_id]['datatype'], new_value)
+                res.append((var_id, new_value, VariableQuality.GOOD))
+            except:
+                res.append((var_id, self.variables[var_id]['value'], VariableQuality.BAD))
             print(f"From matlab: {var_id}={new_value}")
 
 
