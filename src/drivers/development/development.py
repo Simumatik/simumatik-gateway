@@ -18,24 +18,29 @@ from multiprocessing import Pipe
 from typing import Optional
 
 from ..driver import driver, VariableQuality
-import matlab.engine
 import os, sys, winreg
 
 # Import SDK
-# MATLAB_SDK_FOUND = False
+MATLAB_SDK_FOUND = False
 
-# try:
-#     if os.name == 'nt':# Just try on windows
-#         reg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
-#         key = winreg.OpenKey(reg, r"SOFTWARE\RoboDK")
+try:
+    if os.name == 'nt':# Just try on windows
+        reg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
 
-#         robodk_path = winreg.QueryValueEx(key, "INSTDIR")[0] + "\Python"
-#         sys.path.append(robodk_path) # Add path to system path
+        # Get registry key to the latest version of MATLAB installed
+        key = winreg.OpenKey(reg, "SOFTWARE\\MathWorks\\MATLAB")
+        matlab_version = winreg.EnumKey(key, 0)
+        key = winreg.OpenKey(reg, "SOFTWARE\\MathWorks\\MATLAB\\" + matlab_version)
+        
+        # Path to python engine relative to MATLABROOT
+        matlab_path = winreg.QueryValueEx(key, "MATLABROOT")[0] + "\\extern\\engines\\python"
+        assert os.path.isdir(matlab_path + "\\build\\lib"), "Matlab engine not built"
+        sys.path.append(matlab_path + "\\build\\lib") # Add path to system path 
 
-#         from robolink import Robolink, ITEM_TYPE_ROBOT
-#         ROBODK_SDK_FOUND = True
-# except:
-#     pass
+        MATLAB_SDK_FOUND = True
+        import matlab.engine
+except Exception as e:
+    print(e)
 
 
 class development(driver):
@@ -61,7 +66,7 @@ class development(driver):
 
     def connect(self) -> bool:
         """ Connect driver.
-        
+
         : returns: True if connection stablished False if not
         """
         # Get list of shared matlab sessions
@@ -77,7 +82,7 @@ class development(driver):
 
         except Exception as e:
             self.sendDebugInfo(e)
-        
+
         return False
 
 
@@ -90,8 +95,8 @@ class development(driver):
     def addVariables(self, variables: dict):
         """ Add variables to the driver. Correctly added variables will be added to internal dictionary 'variables'.
         Any error adding a variable should be communicated to the server using sendDebugInfo() method.
-        : param variables: Variables to add in a dict following the setup format. (See documentation) 
-        
+        : param variables: Variables to add in a dict following the setup format. (See documentation)
+
         """
         self.variables.update(variables)
         for var_id in self.variables:
@@ -100,7 +105,7 @@ class development(driver):
 
     def readVariables(self, variables: list) -> list:
         """ Read given variable values. In case that the read is not possible or generates an error BAD quality should be returned.
-        : param variables: List of variable ids to be read. 
+        : param variables: List of variable ids to be read.
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
@@ -122,7 +127,7 @@ class development(driver):
 
     def writeVariables(self, variables: list) -> list:
         """ Write given variable values. In case that the write is not possible or generates an error BAD quality should be returned.
-        : param variables: List of tupples with variable ids and the values to be written (var_id, var_value). 
+        : param variables: List of tupples with variable ids and the values to be written (var_id, var_value).
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
