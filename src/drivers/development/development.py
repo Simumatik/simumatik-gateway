@@ -23,7 +23,7 @@ import os, sys, winreg
 # Import SDK
 MATLAB_SDK_FOUND = False
 
-try:
+def add_matlab_path():
     if os.name == 'nt':# Just try on windows
         reg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
 
@@ -37,11 +37,8 @@ try:
         assert os.path.isdir(matlab_path + "\\build\\lib"), "Matlab engine not built"
         sys.path.append(matlab_path + "\\build\\lib") # Add path to system path 
 
+        
         MATLAB_SDK_FOUND = True
-        import matlab.engine
-except Exception as e:
-    print(e)
-
 
 class development(driver):
     '''
@@ -69,9 +66,13 @@ class development(driver):
 
         : returns: True if connection stablished False if not
         """
-        # Get list of shared matlab sessions
-        sessions = matlab.engine.find_matlab()
         try:
+            if not MATLAB_SDK_FOUND:
+                add_matlab_path()
+                import matlab.engine
+            
+            # Get list of shared matlab sessions
+            sessions = matlab.engine.find_matlab()
             assert sessions, "No shared matlab sessions found"
             if self.session_id:
                 # id specified, try connecting to that session
@@ -81,7 +82,7 @@ class development(driver):
             return True
 
         except Exception as e:
-            self.sendDebugInfo(e)
+            self.sendDebugInfo('SETUP failed: ' + str(e))
 
         return False
 
@@ -119,7 +120,6 @@ class development(driver):
                 res.append((var_id, new_value, VariableQuality.GOOD))
             except:
                 res.append((var_id, self.variables[var_id]['value'], VariableQuality.BAD))
-            print(f"From matlab: {var_id}={new_value}")
 
 
         return res
@@ -134,5 +134,4 @@ class development(driver):
         for (var_id, new_value) in variables:
             self._connection.workspace[var_id] = new_value
             res.append((var_id, new_value, VariableQuality.GOOD))
-            print(f"To matlab: {var_id}={new_value}")
         return res
