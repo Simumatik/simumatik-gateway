@@ -74,7 +74,7 @@ class development(driver):
             # Get list of shared matlab sessions
             sessions = matlab.engine.find_matlab()
             assert sessions, "No shared matlab sessions found"
-            if self.session_id:
+            if self.session_id and self.session_id != "any":
                 # id specified, try connecting to that session
                 self._connection = matlab.engine.connect_matlab(self.session_id)
             else:
