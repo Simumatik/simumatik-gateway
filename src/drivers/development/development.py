@@ -133,6 +133,6 @@ class development(driver):
         res = []
         for (var_id, new_value) in variables:
             self._connection.workspace[var_id] = new_value
-            res.append(var_id, new_value, VariableQuality.GOOD)
+            res.append((var_id, new_value, VariableQuality.GOOD))
             print(f"To matlab: {var_id}={new_value}")
         return res
