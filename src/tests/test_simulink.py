@@ -15,12 +15,12 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ''' 
-TEST MATLAB driver
+TEST Simulink driver
 ------------------------
 
 This test requires MATLAB running in the same machine, also make sure that
 the MATLAB session is shared by running 'matlab.engine.shareEngine' in MATLAB.
-Just execute the script to create the driver and test the diferent actions.
+Just execute the script to create the driver and test the different actions.
 '''
 
 import sys
@@ -28,24 +28,25 @@ from os import path
 import time
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from drivers.matlab.matlab import matlab
+from drivers.simulink.simulink import simulink
 from drivers.driver import VariableOperation, VariableDatatype
 
+port_number = 1
+
 VARIABLES = {
-    'input_int':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
-    'output_int':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
-    'input_float_arr':{'datatype': VariableDatatype.FLOAT, 'size': 3, 'operation': VariableOperation.WRITE},
-    'output_float_arr':{'datatype': VariableDatatype.FLOAT, 'size': 3, 'operation': VariableOperation.READ},
+    port_number:{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.READ},
     }
 
-d = matlab('test', None)
+d = simulink('test', None)
+d.autorun_simulink = True
+d.simulink_block = "simulink_test1/Test_Block"
 if d.connect():
     d.addVariables(VARIABLES)
 
     counter = 0
     while time.perf_counter() < 10:
         d.writeVariables([('input_int', counter),('input_float_arr',[counter/10, counter/100, counter/1000])])
-        print(d.readVariables(['output_int', 'output_float_arr']))
+        print(d.readVariables([port_number]))
         time.sleep(0.1)
         counter += 1
 

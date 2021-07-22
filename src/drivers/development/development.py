@@ -50,8 +50,12 @@ class development(driver):
     '''
     This driver uses the MATLAB Engine API to connect to a shared MATLAB session. (https://mathworks.com/help/matlab/matlab-engine-for-python.html)
 
-    session: str
-        Specifies the name of the MATLAB session to connect to. Can be set to 'any' if there is only one shared MATLAB session.
+    session_name: str
+        Specifies the name of the MATLAB session to connect to. Can be set to 'any' if there is only one shared MATLAB session.\n
+    simulink_block: str
+        Path to the block in Simulink. For example 'simulink_test/Test_Block'.\n
+    autorun_simulink: str
+        If enabled, Simulink will start running on connection and stop when disconnected.
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None):
@@ -63,7 +67,13 @@ class development(driver):
         driver.__init__(self, name, pipe)
 
         # Parameters
-        self.session_id = None
+        self.session_name = "any"
+        self.simulink_block = "simulink_session/block"
+        self.autorun_simulink = False
+
+        # Internal
+        self._runtime_object = None
+        self._rto_name = 'rto_' + self.simulink_block.replace(" ", "_").replace("/","_")
 
 
     def connect(self) -> bool:
@@ -79,11 +89,20 @@ class development(driver):
             # Get list of shared matlab sessions
             sessions = matlab.engine.find_matlab()
             assert sessions, "No shared matlab sessions found"
-            if self.session_id and self.session_id != "any":
+            if self.session_id != "any":
                 # id specified, try connecting to that session
                 self._connection = matlab.engine.connect_matlab(self.session_id)
             else:
                 self._connection = matlab.engine.connect_matlab(sessions[0])
+
+            # Start Simulink if autorun is enabled
+            if self.autorun_simulink:
+                self._connection.eval("set_param('simulink_test1','SimulationCommand','Start');", nargout=0)
+            
+            # Create temporary RuntimeObject for read/write operations
+            self._runtime_object = self._connection.eval(f"get_param('{self.simulink_block}', 'RuntimeObject');")
+            self._connection.workspace[self._rto_name] = self._runtime_object
+
             return True
 
         except Exception as e:
@@ -93,7 +112,10 @@ class development(driver):
 
 
     def disconnect(self):
-        """ Disconnect driver."""
+        """ Disconnect driver. Remove the temporary rto variable. """
+        self._connection.eval('clear ' + self._rto_name, nargout=0)
+        if self.autorun_simulink:
+            self._connection.eval("set_param('simulink_test1','SimulationCommand','Stop');", nargout=0)
         self._connection.exit()
 
 
@@ -115,15 +137,18 @@ class development(driver):
         """
         res = []
         for var_id in variables:
+            
             try:
-                new_value = self._connection.workspace[var_id]
+                assert self._runtime_object, "Simulation not running"
+                new_value = self._connection.eval(self._rto_name + '.OutputPort(' + str(var_id) + ').Data')
                 if self.variables[var_id]['size'] > 1:
                     new_value = [self.getValueFromString(self.variables[var_id]['datatype'], i) for i in new_value[0]]
                 else:
                     new_value = self.getValueFromString(self.variables[var_id]['datatype'], new_value)
                 res.append((var_id, new_value, VariableQuality.GOOD))
-            except:
+            except Exception as e:
                 res.append((var_id, self.variables[var_id]['value'], VariableQuality.BAD))
+                self.sendDebugInfo('READ failed: ' + str(e))
 
 
         return res
