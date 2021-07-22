@@ -141,7 +141,7 @@ class simulink(driver):
             
             try:
                 assert self._runtime_object, "Simulation not running"
-                new_value = self._connection.eval(self._rto_name + '.OutputPort(' + str(var_id) + ').Data')
+                new_value = self._connection.eval(self._rto_name + f'.OutputPort({var_id}).Data')
                 if self.variables[var_id]['size'] > 1:
                     new_value = [self.getValueFromString(self.variables[var_id]['datatype'], i) for i in new_value[0]]
                 else:
@@ -162,6 +162,11 @@ class simulink(driver):
         """
         res = []
         for (var_id, new_value) in variables:
-            self._connection.workspace[var_id] = new_value
-            res.append((var_id, new_value, VariableQuality.GOOD))
+            try:
+                self._connection.eval(f'{self._rto_name}.OutputPort({var_id}).Data={new_value}', nargout=0)
+                res.append((var_id, new_value, VariableQuality.GOOD))
+            except Exception as e:
+                res.append((var_id, new_value, VariableQuality.BAD))
+                self.sendDebugInfo('WRITE failed: ' + str(e))
+
         return res

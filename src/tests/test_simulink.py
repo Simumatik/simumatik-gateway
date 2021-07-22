@@ -45,7 +45,9 @@ if d.connect():
 
     counter = 0
     while time.perf_counter() < 10:
-        d.writeVariables([('input_int', counter),('input_float_arr',[counter/10, counter/100, counter/1000])])
+        # TODO: Figure out how to write to input ports..
+        # The commented line below gives an error
+        # d.writeVariables([('1', counter)])
         print(d.readVariables([port_number]))
         time.sleep(0.1)
         counter += 1
