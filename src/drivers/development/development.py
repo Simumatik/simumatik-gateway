@@ -18,13 +18,18 @@ from multiprocessing import Pipe
 from typing import Optional
 
 from ..driver import driver, VariableQuality
-import os, sys, winreg
+import os
+import sys
+import winreg
 
-# Import SDK
 MATLAB_SDK_FOUND = False
 
 def add_matlab_path():
-    if os.name == 'nt':# Just try on windows
+    '''
+    Tries to append the path of the matlab engine.
+    If successfull, MATLAB_SDK_FOUND is set to True. Otherwise an error is raised.
+    '''
+    if os.name == 'nt': # Only try on windows
         reg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
 
         # Get registry key to the latest version of MATLAB installed
@@ -35,18 +40,18 @@ def add_matlab_path():
         # Path to python engine relative to MATLABROOT
         matlab_path = winreg.QueryValueEx(key, "MATLABROOT")[0] + "\\extern\\engines\\python"
         assert os.path.isdir(matlab_path + "\\build\\lib"), "Matlab engine not built"
-        sys.path.append(matlab_path + "\\build\\lib") # Add path to system path 
 
+        sys.path.append(matlab_path + "\\build\\lib")
         
         MATLAB_SDK_FOUND = True
 
+
 class development(driver):
     '''
-    Driver that can be used for development. The driver can be used on a component just assigning the driver type "development".
-    Feel free to add your code in the methods below.
-    Parameters:
-    myparam: int
-        This is just an example of a driver parameter. Default = 3
+    This driver uses the MATLAB Engine API to connect to a shared MATLAB session. (https://mathworks.com/help/matlab/matlab-engine-for-python.html)
+
+    session: str
+        Specifies the name of the MATLAB session to connect to. Can be set to 'any' if there is only one shared MATLAB session.
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None):
@@ -88,8 +93,7 @@ class development(driver):
 
 
     def disconnect(self):
-        """ Disconnect driver.
-        """
+        """ Disconnect driver."""
         self._connection.exit()
 
 
