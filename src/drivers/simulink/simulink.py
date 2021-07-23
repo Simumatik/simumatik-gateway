@@ -73,7 +73,7 @@ class simulink(driver):
 
         # Internal
         self._runtime_object = None
-        self._rto_name = 'rto_' + self.simulink_block.replace(" ", "_").replace("/","_")
+        self._rto_name = None
 
 
     def connect(self) -> bool:
@@ -100,6 +100,7 @@ class simulink(driver):
                 self._connection.eval("set_param('simulink_test1','SimulationCommand','Start');", nargout=0)
             
             # Create temporary RuntimeObject for read/write operations
+            self._rto_name = 'rto_' + self.simulink_block.replace(" ", "_").replace("/","_")
             self._runtime_object = self._connection.eval(f"get_param('{self.simulink_block}', 'RuntimeObject');")
             self._connection.workspace[self._rto_name] = self._runtime_object
 
