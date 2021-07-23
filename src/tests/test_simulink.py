@@ -26,6 +26,7 @@ Just execute the script to create the driver and test the different actions.
 import sys
 from os import path
 import time
+import numpy
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from drivers.simulink.simulink import simulink
@@ -45,9 +46,8 @@ if d.connect():
 
     counter = 0
     while time.perf_counter() < 10:
-        # TODO: Figure out how to write to input ports..
-        # The commented line below gives an error
-        # d.writeVariables([('1', counter)])
+        # To successfully write, make sure that the simulink_block is of the type 'S-Function'
+        # d.writeVariables([('1', numpy.sin(counter/5))])
         print(d.readVariables([port_number]))
         time.sleep(0.1)
         counter += 1
