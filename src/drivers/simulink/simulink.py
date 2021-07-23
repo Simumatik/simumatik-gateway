@@ -106,7 +106,6 @@ class simulink(driver):
             return True
 
         except Exception as e:
-            print(e)
             self.sendDebugInfo('SETUP failed: ' + str(e))
 
         return False
@@ -163,7 +162,7 @@ class simulink(driver):
         res = []
         for (var_id, new_value) in variables:
             try:
-                self._connection.eval(f'{self._rto_name}.OutputPort({var_id}).Data={new_value}', nargout=0)
+                self._connection.eval(f'{self._rto_name}.InputPort({var_id}).Data={new_value};', nargout=0)
                 res.append((var_id, new_value, VariableQuality.GOOD))
             except Exception as e:
                 res.append((var_id, new_value, VariableQuality.BAD))
