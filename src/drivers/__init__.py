@@ -3,6 +3,7 @@ import platform
 from .driver import driver, DriverActions, DriverStatus
 
 from .cprog_cri.cprog_cri import cprog_cri
+from .micro800_http.micro800_http import micro800_http
 from .development.development import development
 from .mqtt_client.mqtt_client import mqtt_client
 from .opcua_client.opcua_client import opcua_client
@@ -20,6 +21,7 @@ registered_drivers = {
   "s7protocol": (s7protocol, "1"),
   "udp_driver": (udp_generic,"1"),
   "ur_driver": (universal_robots, "1"),
+  "micro800_http": (micro800_http, "1"),
 }
 
 if platform.system() == "Windows":
