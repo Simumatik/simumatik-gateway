@@ -89,13 +89,11 @@ def sendMRPaquet(socket, sessionhandle, service, path, request_data):
         # Format request
         mr_request = formatMR_request(MR_request)
         # Send request
-        #print "MR: Request packet sent:", MR_request
         mr_reply = sendUnconnectedMessage(socket, sessionhandle, mr_request)
         # Get reply
         MR_reply = getMR_reply(mr_reply)
         # Reply get
         if MR_reply:
-            #print "MR: Reply packet received:", MR_reply
             # Return MRResponsePacket
             return MR_reply.Response_Data
     # No reply
@@ -114,8 +112,7 @@ def forwardOpen(socket, session_handle, PLCpath, TO_NetConnID, ConnSerialNumber,
     if socket:
         """ Send a Message Router Forward Open Paquet."""
         mr_path = struct.pack('BB',PLCpath[0],PLCpath[1])
-        mr_path += "".join(map(chr, ROUTER_PATH))
-        #mr_path += struct.pack('BB',0x01,0x2c)
+        mr_path += struct.pack('BBBB', ROUTER_PATH[0],ROUTER_PATH[1],ROUTER_PATH[2],ROUTER_PATH[3])
         mr_path_len = int(len(mr_path)/2)
         mr_data = struct.pack('!bBIIHHIBbbbIHIHBB',  # b/B:1, h/H:2, i/I:4
                               0x07,                 # (BYTE) Priority
@@ -133,17 +130,14 @@ def forwardOpen(socket, session_handle, PLCpath, TO_NetConnID, ConnSerialNumber,
                               Parameters,           # (U16) TO_NetConnParam
                               0xA3,                 # (BYTE) TransportType
                               mr_path_len)          # (UBYTE)
-        #mr_data = '\x0A\x05\x00\x00\x00\x00\x12\x34\x56\x78\x67\x89\x04\x06\x12\x34\x12\x34\x01\x00\x00\x00\x00\x0F\x42\x40\x43\xF8\x00\x0F\x42\x40\x43\xF8\xA3\x03'
-        cm_path = "".join(map(chr, CM_PATH))
+        cm_path = struct.pack('BBBB',CM_PATH[0],CM_PATH[1],CM_PATH[2],CM_PATH[3])
         request_data = mr_data+mr_path
         reply_data = sendMRPaquet(socket, session_handle, FORWARD_OPEN, cm_path, request_data)
         connection = getConnetion(reply_data, mr_path)
         if connection:
-            #print "MR: Forward Open Successful Response.", connection
             return connection
-        else:
-            print("ERROR! MR: Forward Open Unsuccessful Response:", len(reply_data), reply_data)
-    # No socket
+
+    # No Connection
     return None
 
 def forwardClose(socket, session_handle, connection):

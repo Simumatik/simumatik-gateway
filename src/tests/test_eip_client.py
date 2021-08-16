@@ -29,26 +29,19 @@ VARIABLES = {
 
 # Create Driver
 d = eip_client(None, 'test')
-d.ip = "127.0.0.1"
+d.ip = "192.168.1.246"
 d.rack = 1
-d.slot = 1
+d.slot = 0
 if d.connect():
-    # Register session
-    res = d.registerSession()
-    if res:
-        # list services
-        d.listServices()
-        # Connect to PLC
-        connection = d.ConnectToLogixPLC(path=(1,1)) #(Backplane port of 1756-ENET, CPU Slot)
-        if connection:
-            # Read Data
-            cont = 0
-            #while (time.clock() < 10.0):
-            d.ReadPLCData(connection, 'rate')#['rate','ButtonClose'])
-            cont += 1
-            # Disconnect from PLC
-            d.DisconnectFromLogixPLC(connection)
-        # Unregister Session
-        d.unregisterSession()
-# Close session
-d.close()
+    
+    d.addVariables(VARIABLES)
+
+    counter = 0
+    while time.perf_counter() < 5:
+        d.writeVariables([('IB0', counter)])
+        print(d.readVariables(['QB0']))
+        time.sleep(1)
+        counter += 1
+
+    # Close session
+    d.disconnect()

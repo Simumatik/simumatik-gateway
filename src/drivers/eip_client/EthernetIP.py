@@ -70,8 +70,6 @@ def sendCIPPaquet(socket, request):
         #CONTEXT += 1
         if res == len(request_msg):
             # CIP message sent
-            #print "CIP Packet request sent:", request
-            #print "CIP Data Sent: ", ':'.join(x.encode('hex') for x in request_msg)
             # Check if reply available
             if (request.Command in [EIP_REGISTERSESSION, EIP_LISTSERVICES, EIP_SENDRRDATA, EIP_SENDUNITDATA]):
                 # Get reply header
@@ -82,7 +80,7 @@ def sendCIPPaquet(socket, request):
                     reply_datalength = 0
                 if len(reply_header)==24:
                     reply_command, reply_datalength = struct.unpack('HH',reply_header[:4])
-                    reply_data = ''
+                    reply_data = b''
                     # TODO: Check reply header
                     
                     # Get reply data
@@ -90,13 +88,11 @@ def sendCIPPaquet(socket, request):
                         reply_data = socket.recv(reply_datalength)
                     # Return reply
                     reply = CIP_Paquet._make(struct.unpack('HHIIiiI',reply_header)+(reply_data,))
-                    #print "CIP Packet reply received:", reply
-                    #print "CIP Data received: ", ':'.join(x.encode('hex') for x in (reply_header+reply_data))
                     return reply
                 else:
-                    return CIP_Paquet(0,0,0,0,0,0,0,'')
+                    return CIP_Paquet(0,0,0,0,0,0,0,b'')
             else:
-                return CIP_Paquet(0,0,0,0,0,0,0,'')
+                return CIP_Paquet(0,0,0,0,0,0,0,b'')
     return None
 
 def sendRegisterSession(socket):
@@ -122,7 +118,7 @@ def sendUnegisterSession(socket, sessionhandle):
     """ Sends an specific Register session packet."""
     global CONTEXT
     if socket:
-        data = ''
+        data = b''
         request = CIP_Paquet(Command = EIP_UNREGISTERSESSION,
                              Length = len(data),
                              Handle = sessionhandle,
@@ -141,7 +137,7 @@ def sendListServices(socket, sessionhandle):
     """ Sends an specific Register session packet."""
     global CONTEXT
     if socket:
-        data = ''
+        data = b''
         request = CIP_Paquet(Command = EIP_LISTSERVICES,
                              Length = len(data),
                              Handle = sessionhandle,
@@ -156,7 +152,7 @@ def sendListServices(socket, sessionhandle):
     # Not OK
     return None
 
-def sendRRData(socket, sessionhandle, packet=''):
+def sendRRData(socket, sessionhandle, packet=b''):
     """ Sends a RR Data packet."""
     global CONTEXT
     if socket:
@@ -175,7 +171,7 @@ def sendRRData(socket, sessionhandle, packet=''):
     else:
         return None
     
-def sendUnitData(socket, sessionhandle, packet=''):
+def sendUnitData(socket, sessionhandle, packet=b''):
     """ Sends a RR Data packet."""
     global CONTEXT
     if socket:

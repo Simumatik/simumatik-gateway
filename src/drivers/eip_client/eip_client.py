@@ -20,7 +20,7 @@ from typing import Optional
 import time
 from random import randrange
 import struct
-from ..driver import driver
+from ..driver import VariableDatatype, driver, VariableQuality
 from .EthernetIP import (EIP_PORT, sendRegisterSession, sendUnegisterSession, sendListServices)
 from .MessageRouter import forwardOpen, forwardClose, MR_Request_Paquet, formatMR_request
 from .ConnectionManager import sendConnectedMessage
@@ -28,9 +28,6 @@ from .CIP import (CIP_DATA_READ,CIP_DATA_READ_REPLY, CIP_DATA_WRITE, CIP_DATA_WR
                  CIP_MULTIPLE_SERVICE, CIP_MULTIPLE_SERVICE_REPLY, ROUTER_PATH, CM_PATH, 
                  DATATYPE_BOOL, DATATYPE_SINT, DATATYPE_INT, DATATYPE_DINT, DATATYPE_REAL)
 
-CIP_DEFAULT_TIMEOUT = 1000
-
-MAX_ITEMS = 10
 
 class eip_client(driver):
     '''
@@ -47,6 +44,9 @@ class eip_client(driver):
     network_port: int
         Network port number. Default = 1
     '''
+
+    # CONSTANTS
+    MAX_ITEMS = 10
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None):
         """
@@ -77,12 +77,16 @@ class eip_client(driver):
 
         try:
             # Register session
-            if self.registerSession():
-                self.listServices()
+            self._handle = sendRegisterSession(self._connection)
+            if self._handle:
+                # Check services
+                services = sendListServices(self._connection, self._handle)
                 # Connect to CPU
                 self._eip_connection = self.ConnectToLogixPLC(path=(self.network_port,self.slot))
                 if self._eip_connection is not None:
                     return True
+            else:
+                self.sendDebugInfo("Error registering session.")
         
         except Exception as e:
             self.sendDebugInfo(f"SETUP: EIP connection with {self.ip} cannot be stablished.")
@@ -104,96 +108,65 @@ class eip_client(driver):
                         self._eip_connection = None
                         
                     # Unregister session
-                    self.unregisterSession()
+                    sendUnegisterSession(self._connection, self._handle)
                     self._handle = None
                 # Close session
                 self._connection.close()
             
             except Exception as e:
-                self.sendDebugInfo(f"EIP Driver Error! Not possible to disconnect. "+str(e), time.clock())  
+                self.sendDebugInfo(f"Not possible to disconnect. "+str(e))  
         return False 
-    
-    def registerSession(self):
-        """ Sends a Ethernet/IP Encapsulation packet with register session command."""
-        self._handle = sendRegisterSession(self._socket)
-        if self._handle:
-            self._pipe.send(('DevLog', "AB CIP Driver Session registered.", time.clock()))
-            return True
-        else:
-            self._pipe.send(('DevLog', "AB CIP Driver error registering session.", time.clock()))
-            return False
 
-    def unregisterSession(self):
-        """ Sends a Ethernet/IP Encapsulation packet with register session command."""
-        if sendUnegisterSession(self._socket, self._handle):
-            self._pipe.send(('DevLog', "AB CIP Driver Session unregistered.", time.clock()))
-            return True
-        else:
-            self._pipe.send(('DevLog', "AB CIP Driver error unregistering session.", time.clock()))
-            return False
-    
-    def listServices(self):
-        """ Sends a Ethernet/IP Encapsulation packet with list services command."""
-        services = sendListServices(self._socket, self._handle)
-        if services:
-            self._pipe.send(('DevLog', "AB CIP Driver Service list received.", time.clock()))
-            return True
-        else:
-            self._pipe.send(('DevLog', "AB CIP Driver error receiving service list session.", time.clock()))
-            return False
 
-    def ConnectToLogixPLC(self, path):
-        """ Connect to a PLC in the specified path."""
-        connection = forwardOpen(self._socket,
-                                 self._handle,
-                                 path,
-                                 TO_NetConnID = randrange(0xFFFF),
-                                 ConnSerialNumber = randrange(0xFFFF), # VERY IMPORTANT!!!
-                                 RPI = 5000,
-                                 Parameters = 0xf843) # Important the order 0xf843
-        if connection is not None:
-            self._pipe.send(('DevLog', "AB CIP Driver Connected to Logix CPU", time.clock()))
-            self._packetNumber = 1
-        else:
-            self._pipe.send(('DevLog', "AB CIP Driver error connecting to Logix CPU.", time.clock()))
-        return connection
-    
-    def DisconnectFromLogixPLC(self, connection):
-        """ Disconnect from the PLC in the given connection."""
-        if forwardClose(self._socket, self._handle, connection):
-            self._pipe.send(('DevLog', "AB CIP Driver Disconnected from Logix CPU", time.clock()))
-            return True
-        else:
-            self._pipe.send(('DevLog', "AB CIP Driver error disconnecting from Logix CPU.", time.clock()))
-            return False
+    def addVariables(self, variables: dict):
+        """ Add variables to the driver. Correctly added variables will be added to internal dictionary 'variables'.
+        Any error adding a variable should be communicated to the server using sendDebugInfo() method.
 
-# Driver specific
-# ------------------
+        : param variables: Variables to add in a dict following the setup format. (See documentation) 
+        
+        """
+        for var_id, var_data in variables.items():
+            value = self.ReadPLCData(var_id)
+            if value is not None:
+                var_data['value'] = self.defaultVariableValue(var_data['datatype'], var_data['size'])
+                self.variables[var_id] = var_data
+            else:
+                self.sendDebugVarInfo((f'SETUP: Variable not found: {var_id}', var_id))
 
-    def readData(self, varray=[]):
+
+    def readVariables(self, variables: list) -> list:
+        """ Read given variable values. In case that the read is not possible or generates an error BAD quality should be returned.
+        : param variables: List of variable ids to be read. 
+
+        : returns: list of tupples including (var_id, var_value, VariableQuality)
+        """
         """ Read given variable."""
-        # Results
+        varray = []
+        for var_id in variables:
+            varray.append((var_id, self.variables[var_id]['area']))
+
         res = []
-        try:
-            if self._connection is not None:
-                while len(varray):
-                    if len(varray) >= MAX_ITEMS:
-                        rarray = varray[:MAX_ITEMS]
-                        del varray[:MAX_ITEMS]
-                    else:
-                        rarray = varray[:]
-                        varray = []
-                    # Read
-                    res += self.MultipleReadPLCData(rarray)                
-                    
-        except Exception as e:
-            self._pipe.send(('DevLog', "AB CIP Driver error reading data: "+str(e), time.clock()))
+        if len(varray)>0:
             
+            while len(varray):
+                if len(varray) >= self.MAX_ITEMS:
+                    rarray = varray[:self.MAX_ITEMS]
+                    del varray[:self.MAX_ITEMS]
+                else:
+                    rarray = varray[:]
+                    varray = []                    # Read
+                
+                res += self.MultipleReadPLCData(rarray)                
+                                
         # Return list
         return res
     
-    def writeData(self,  varray=[]):
-        """ Returns Robot input Value."""
+    def writeVariables(self, variables: list) -> list:
+        """ Write given variable values. In case that the write is not possible or generates an error BAD quality should be returned.
+        : param variables: List of tupples with variable ids and the values to be written (var_id, var_value). 
+
+        : returns: list of tupples including (var_id, var_value, VariableQuality)
+        """
         # Results
         res = []
         try:
@@ -207,17 +180,46 @@ class eip_client(driver):
                         res.append((vname, None, "Error"))
                         
         except Exception as e:
-            self._pipe.send(('DevLog', "AB CIP Driver error writing data: "+str(e), time.clock()))
+            self.sendDebugInfo("Error writing data: "+str(e))
             
         # Return list
         return res
+
+
+# Driver specific
+# ------------------
+
+    def ConnectToLogixPLC(self, path):
+        """ Connect to a PLC in the specified path."""
+        connection = forwardOpen(self._connection,
+                                 self._handle,
+                                 path,
+                                 TO_NetConnID = randrange(0xFFFF),
+                                 ConnSerialNumber = randrange(0xFFFF), # VERY IMPORTANT!!!
+                                 RPI = 5000,
+                                 Parameters = 0xf843) # Important the order 0xf843
+        if connection is not None:
+            self._packetNumber = 1
+        else:
+            self.sendDebugInfo("Error connecting to Logix CPU.")
+        return connection
+    
+
+    def DisconnectFromLogixPLC(self, connection):
+        """ Disconnect from the PLC in the given connection."""
+        if forwardClose(self._connection, self._handle, connection):
+            return True
+        else:
+            self.sendDebugInfo("Error disconnecting from Logix CPU.")
+            return False
+
 
     def ReadPLCData(self, vname):
         """ Read Tag from PLC."""
         # Check connection
         if self._connection is not None:
             # Create CIP request
-            request_path = struct.pack('BB',0x91,len(vname)) + vname
+            request_path = struct.pack('BB',0x91,len(vname)) + vname.encode()
             if len(vname)%2 != 0:
                 request_path += struct.pack('B',0x00)    
             request_data = struct.pack('H',1)
@@ -230,10 +232,7 @@ class eip_client(driver):
             packet_nb = struct.pack('H',self._packetNumber)
             mr_request = packet_nb + formatMR_request(MR_request)
             # Send request
-            #print "MR: Request packet sent:", ':'.join(x.encode('hex') for x in mr_request) 
-            # Send connected packet
-            reply = sendConnectedMessage(self._socket, self._handle, self._connection, mr_request)
-            #print "Data received: ", ':'.join(x.encode('hex') for x in reply)
+            reply = sendConnectedMessage(self._connection, self._handle, self._eip_connection, mr_request)
             self._packetNumber = self._packetNumber + 1 if self._packetNumber<65000 else 0
             
             # Process reply
@@ -284,7 +283,7 @@ class eip_client(driver):
             elif vtype == 'Real':
                 request_data = struct.pack('HHf', DATATYPE_REAL, 1, vvalue)
             else:
-                self._pipe.send(('DevLog', "AB CIP Driver wrong data type: {0} -> {1}".format(vname, vtype), time.clock()))
+                self.sendDebugInfo("Wrong data type: {0} -> {1}".format(vname, vtype))
                 return False
             
             # create MR Request
@@ -296,10 +295,7 @@ class eip_client(driver):
             packet_nb = struct.pack('H',self._packetNumber)
             mr_request = packet_nb + formatMR_request(MR_request)
             # Send request
-            #print "MR: Request packet sent:", ':'.join(x.encode('hex') for x in mr_request) 
-            # Send connected packet
-            reply = sendConnectedMessage(self._socket, self._handle, self._connection, mr_request)
-            #print "Data received: ", ':'.join(x.encode('hex') for x in reply)
+            reply = sendConnectedMessage(self._connection, self._handle, self._eip_connection, mr_request)
             self._packetNumber = self._packetNumber + 1 if self._packetNumber<65000 else 0
             
             # Process reply
@@ -322,7 +318,7 @@ class eip_client(driver):
             offsets = ''
             requests = ''
             # loop variables
-            for (vname, vtype, vaddr) in varray:
+            for vname in varray:
                 offsets += struct.pack('H', offset)
                 tag_data = struct.pack('BB', 0x91, len(vname)) + vname
                 if len(vname)%2 != 0:
@@ -342,7 +338,7 @@ class eip_client(driver):
             packet_nb = struct.pack('H',self._packetNumber)
             mr_request = packet_nb + formatMR_request(MR_request)
             # Send connected packet
-            reply = sendConnectedMessage(self._socket, self._handle, self._connection, mr_request)
+            reply = sendConnectedMessage(self._connection, self._handle, self._eip_connection, mr_request)
             self._packetNumber = self._packetNumber + 1 if self._packetNumber<65000 else 0
 
             # Process reply
@@ -358,21 +354,24 @@ class eip_client(driver):
                         service_reply, reply_status= struct.unpack('HH',reply_data[offset:offset+4])
                         if service_reply == CIP_DATA_READ_REPLY and reply_status == 0:
                             datatype = struct.unpack('H',reply_data[offset+4:offset+6])[0]
+                            var_id = varray[nservice][0]
                             if datatype == DATATYPE_BOOL:
                                 value = struct.unpack('B',reply_data[offset+6:offset+7])[0]
-                                res.append((varray[nservice][0], value != 0, "Good"))
+                                res.append((var_id, value != 0, VariableQuality.GOOD))
                             elif datatype == DATATYPE_SINT:
                                 value = struct.unpack('B',reply_data[offset+6:offset+7])[0]
-                                res.append((varray[nservice][0], value, "Good"))
+                                res.append((var_id, value, VariableQuality.GOOD))
                             elif datatype == DATATYPE_INT:
                                 value = struct.unpack('H',reply_data[offset+6:offset+8])[0]
-                                res.append((varray[nservice][0], value, "Good"))
+                                res.append((var_id, value, VariableQuality.GOOD))
                             elif datatype == DATATYPE_DINT:
                                 value = struct.unpack('I',reply_data[offset+6:offset+10])[0]
-                                res.append((varray[nservice][0], value, "Good"))
+                                res.append((var_id, value, VariableQuality.GOOD))
                             elif datatype == DATATYPE_REAL:
                                 value = struct.unpack('f',reply_data[offset+6:offset+10])[0]
-                                res.append((varray[nservice][0], value, "Good"))
+                                res.append((var_id, value, VariableQuality.GOOD))
+                        else:
+                            res.append((var_id, self.variables[var_id]['value'], VariableQuality.BAD))
         # Return list
         return res
 
@@ -409,7 +408,7 @@ class eip_client(driver):
             packet_nb = struct.pack('H',self._packetNumber)
             mr_request = packet_nb + formatMR_request(MR_request)
             # Send connected packet
-            reply = sendConnectedMessage(self._socket, self._handle, self._connection, mr_request)
+            reply = sendConnectedMessage(self._connection, self._handle, self._eip_connection, mr_request)
             self._packetNumber = self._packetNumber + 1 if self._packetNumber<65000 else 0
 
             # Process reply
