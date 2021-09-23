@@ -410,10 +410,10 @@ def getAreaFromString(vaddress, vdtype):
         if vaddress[p] == "B" and vdtype == VariableDatatype.BYTE:
             datatype = S7_Byte
             p = 2
-        elif vaddress[p] == "W" and vdtype == VariableDatatype.WORD:
+        elif vaddress[p] == "W" and vdtype in [VariableDatatype.WORD, VariableDatatype.INTEGER]:
             datatype = S7_Word
             p = 2
-        elif vaddress[p] == "D" and vdtype == VariableDatatype.DWORD:
+        elif vaddress[p] == "D" and vdtype == [VariableDatatype.DWORD, VariableDatatype.FLOAT]:
             datatype = S7_DoubleWord
             p = 2
         elif vaddress[p:].find('.') and vdtype == VariableDatatype.BOOL:
