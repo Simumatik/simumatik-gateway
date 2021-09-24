@@ -139,8 +139,14 @@ def PDUReadAreas(socket, PDU_id, areas = []):
                             value = struct.unpack('B',reply.Data[point+4:dataend])
                         elif area.Type == S7_Word:
                             value = struct.unpack('!H',reply.Data[point+4:dataend])
+                        elif area.Type == S7_Int:
+                            value = struct.unpack('!h',reply.Data[point+4:dataend])
                         elif area.Type == S7_DoubleWord:
                             value = struct.unpack('!I',reply.Data[point+4:dataend])
+                        elif area.Type == S7_DoubleInt:
+                            value = struct.unpack('!i',reply.Data[point+4:dataend])
+                        elif area.Type == S7_Real:
+                            value = struct.unpack('!f',reply.Data[point+4:dataend])
                         results.append((name, value[0], VariableQuality.GOOD))
                         # Value has an extra bit if not even length
                         point = dataend+dataend%2
@@ -174,9 +180,15 @@ def PDUWriteAreas(socket, PDU_id, areadata=[]):
                 if area.Count%2:
                     DATA += b'\x00'
             elif area.Type == S7_Word:
-                DATA += struct.pack('!BBHH', 0, DATA_TRANSPORT_SIZE_BBYTE, area.Count*16, value)
+                DATA += struct.pack('!BBHH', 0, DATA_TRANSPORT_SIZE_BBYTE, area.Count*16, value) 
+            elif area.Type == S7_Int:
+                DATA += struct.pack('!BBHh', 0, DATA_TRANSPORT_SIZE_BINT, area.Count*16, value) 
             elif area.Type == S7_DoubleWord:
                 DATA += struct.pack('!BBHI', 0, DATA_TRANSPORT_SIZE_BBYTE, area.Count*32, value)
+            elif area.Type == S7_DoubleInt:
+                DATA += struct.pack('!BBHi', 0, DATA_TRANSPORT_SIZE_BINT, area.Count*32, value)
+            elif area.Type == S7_Real:
+                DATA += struct.pack('!BBHf', 0, DATA_TRANSPORT_SIZE_BREAL, area.Count*4, value)
             
         request = PDU(Command = 0x32,
                         Type = 0x01,
@@ -413,15 +425,24 @@ def getAreaFromString(vaddress, vdtype):
         elif vaddress[p] == "W" and vdtype == VariableDatatype.WORD:
             datatype = S7_Word
             p = 2
+        elif vaddress[p] == "W" and vdtype == VariableDatatype.INTEGER:
+            datatype = S7_Int
+            p = 2
         elif vaddress[p] == "D" and vdtype == VariableDatatype.DWORD:
             datatype = S7_DoubleWord
+            p = 2
+        elif vaddress[p] == "D" and vdtype == VariableDatatype.INTEGER:
+            datatype = S7_DoubleInt
+            p = 2
+        elif vaddress[p] == "D" and vdtype == VariableDatatype.FLOAT:
+            datatype = S7_Real
             p = 2
         elif vaddress[p:].find('.') and vdtype == VariableDatatype.BOOL:
             datatype = S7_Bit
         else:
             return None
         # Get Start
-        if datatype in [S7_Byte, S7_Word, S7_DoubleWord]:
+        if datatype in [S7_Byte, S7_Word, S7_Int, S7_DoubleWord, S7_DoubleInt, S7_Real]:
             start = int(vaddress[p:])
         elif datatype in [S7_Bit]:
             start_H, start_L = vaddress[p:].split('.')
@@ -432,7 +453,7 @@ def getAreaFromString(vaddress, vdtype):
         # Calculate Start address
         if datatype == S7_Bit:      
             tstart = start
-        elif datatype in [S7_Byte, S7_Word, S7_DoubleWord]:         
+        elif datatype in [S7_Byte, S7_Word, S7_Int, S7_DoubleWord, S7_DoubleInt, S7_Real]:         
             tstart = start * 8
         # Fill parameter data
         areaformated += struct.pack('!BHHBBH',
