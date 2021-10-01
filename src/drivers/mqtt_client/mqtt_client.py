@@ -96,6 +96,9 @@ class mqtt_client(driver):
                     self._connection.publish(var_id, var_data['value'], retain=self.retain)
                 if var_data['operation'] == VariableOperation.READ:
                     self._connection.subscribe(var_id)
+                if var_id in self.variables:
+                    if self.variables[var_id]['operation'] != var_data['operation']:
+                        var_data['operation'] = VariableOperation.BOTH
                 self.variables[var_id] = var_data
             except:
                 self.sendDebugVarInfo(('SETUP: Variable NOT found {}'.format(var_id), var_id))
