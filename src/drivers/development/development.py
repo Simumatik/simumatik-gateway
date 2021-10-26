@@ -18,6 +18,7 @@ from multiprocessing import Pipe
 from typing import Optional
 
 from ..driver import driver
+import pyads
 
 
 class development(driver):
@@ -37,8 +38,9 @@ class development(driver):
         # Inherit
         driver.__init__(self, name, pipe)
 
-        # Parameters
-        self.myparam = 3
+        self.net_id = '192.168.0.1.1.1'
+        self.port = pyads.PORT_TC3PLC1
+        print("INIT!!" + self.net_id + ":" + self.port)
 
 
     def connect(self) -> bool:
@@ -46,13 +48,33 @@ class development(driver):
         
         : returns: True if connection stablished False if not
         """
-        return True
+        print("CONNECT!!")
+        # Create connection
+        try:
+            self._connection = pyads.Connection(self.net_id, self.port)
+            self._connection.open()
+        except:
+            print("Connection failed")
+            self.sendDebugInfo(f"SETUP: Connection with {self.net_id} cannot be stablished.")
+            return False
 
+        # Check connection status.
+        state = self._connection.read_state()
+        if state[0] == pyads.ADSSTATE_RUN:
+            print("connected")
+            self.sendDebugInfo("SETUP: Driver connected") 
+            return True
+        else:
+            print("not in run")
+            self.sendDebugInfo("SETUP: Driver not connected") 
+            return False
 
     def disconnect(self):
         """ Disconnect driver.
         """
-        pass
+        # close connection
+        print("CLOSING!!")
+        self._connection.close()
 
 
     def addVariables(self, variables: dict):
