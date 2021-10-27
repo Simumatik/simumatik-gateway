@@ -96,7 +96,7 @@ class development(driver):
                 var_value = self._connection.read_by_name(var_id)
                 res.append((var_id, var_value, VariableQuality.GOOD))
             except Exception as e:
-                res.append((var_id, None, VariableQuality.ERROR))
+                res.append((var_id, None, VariableQuality.BAD))
                 self.sendDebugInfo(f'SETUP: Cannot read variable \"{var_id}\" ({e})')
                  
         return res
