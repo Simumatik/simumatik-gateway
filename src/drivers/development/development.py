@@ -17,7 +17,7 @@
 from multiprocessing import Pipe
 from typing import Optional
 
-from ..driver import driver
+from ..driver import driver, VariableQuality 
 import pyads
 
 
@@ -25,9 +25,10 @@ class development(driver):
     '''
     Driver that can be used for development. The driver can be used on a component just assigning the driver type "development".
     Feel free to add your code in the methods below.
+
     Parameters:
-    myparam: int
-        This is just an example of a driver parameter. Default = 3
+    net_id  : String    : the Beckhoff twincat route to the PLC
+    port    : Int       : port to connect to
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None):
@@ -37,10 +38,9 @@ class development(driver):
         """
         # Inherit
         driver.__init__(self, name, pipe)
-
+        
         self.net_id = '192.168.0.1.1.1'
         self.port = pyads.PORT_TC3PLC1
-        print("INIT!!" + self.net_id + ":" + self.port)
 
 
     def connect(self) -> bool:
@@ -48,55 +48,73 @@ class development(driver):
         
         : returns: True if connection stablished False if not
         """
-        print("CONNECT!!")
         # Create connection
         try:
             self._connection = pyads.Connection(self.net_id, self.port)
             self._connection.open()
-        except:
-            print("Connection failed")
-            self.sendDebugInfo(f"SETUP: Connection with {self.net_id} cannot be stablished.")
+        except Exception as e:
+            self.sendDebugInfo(f"SETUP: Connection with {self.net_id} cannot be stablished. ({e})")
             return False
 
         # Check connection status.
         state = self._connection.read_state()
         if state[0] == pyads.ADSSTATE_RUN:
-            print("connected")
             self.sendDebugInfo("SETUP: Driver connected") 
             return True
         else:
-            print("not in run")
-            self.sendDebugInfo("SETUP: Driver not connected") 
+            self.sendDebugInfo(f"SETUP: Driver not connected, ADS state = {state[0]}") 
             return False
 
     def disconnect(self):
         """ Disconnect driver.
         """
-        # close connection
-        print("CLOSING!!")
-        self._connection.close()
+        if self._connection:
+            self._connection.close()
 
 
     def addVariables(self, variables: dict):
         """ Add variables to the driver. Correctly added variables will be added to internal dictionary 'variables'.
         Any error adding a variable should be communicated to the server using sendDebugInfo() method.
         : param variables: Variables to add in a dict following the setup format. (See documentation) 
-        
         """
-        pass
-
-
+        for var_id in list(variables.keys()):
+            var_data = dict(variables[var_id])
+            var_id = "GVL.Wrong_Variable"
+            try:
+                var_data['value'] = self._connection.read_by_name(var_id)
+                self.variables[var_id] = var_data 
+            except Exception as e:
+                self.sendDebugInfo(f'SETUP: {e} \"{var_id}\"')
+                
     def readVariables(self, variables: list) -> list:
         """ Read given variable values. In case that the read is not possible or generates an error BAD quality should be returned.
         : param variables: List of variable ids to be read. 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        return []
-
+        res = []
+        for var_id in variables:
+            try:
+                var_value = self._connection.read_by_name(var_id)
+                res.append((var_id, var_value, VariableQuality.GOOD))
+            except Exception as e:
+                res.append((var_id, None, VariableQuality.ERROR))
+                self.sendDebugInfo(f'SETUP: Cannot read variable \"{var_id}\" ({e})')
+                 
+        return res
+        
 
     def writeVariables(self, variables: list) -> list:
         """ Write given variable values. In case that the write is not possible or generates an error BAD quality should be returned.
         : param variables: List of tupples with variable ids and the values to be written (var_id, var_value). 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        return []
+        res = []
+        for (var_id, var_value)  in variables: 
+            try:
+                self._connection.write_by_name(var_id, var_value)
+                res.append((var_id, var_value, VariableQuality.GOOD))
+            except Exception as e:
+                res.append((var_id, var_value, VariableQuality.BAD))
+                self.sendDebugInfo(f'SETUP: Cannot write variable \"{var_id}\" ({e})')
+
+        return res
