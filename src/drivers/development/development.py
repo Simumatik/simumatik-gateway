@@ -79,7 +79,6 @@ class development(driver):
         """
         for var_id in list(variables.keys()):
             var_data = dict(variables[var_id])
-            var_id = "GVL.Wrong_Variable"
             try:
                 var_data['value'] = self._connection.read_by_name(var_id)
                 self.variables[var_id] = var_data 
