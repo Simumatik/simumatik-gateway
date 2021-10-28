@@ -90,16 +90,6 @@ class development(driver):
         : param variables: List of variable ids to be read. 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        # res = []
-        # for var_id in variables:
-        #     try:
-        #         var_value = self._connection.read_by_name(var_id)
-        #         res.append((var_id, var_value, VariableQuality.GOOD))
-        #     except Exception as e:
-        #         res.append((var_id, None, VariableQuality.BAD))
-        #         self.sendDebugInfo(f'SETUP: Cannot read variable \"{var_id}\" ({e})')
-                 
-        # return res
         res = []
         try:
             values = self._connection.read_list_by_name(variables)
@@ -119,12 +109,15 @@ class development(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
-        for (var_id, var_value)  in variables: 
-            try:
-                self._connection.write_by_name(var_id, var_value)
-                res.append((var_id, var_value, VariableQuality.GOOD))
-            except Exception as e:
+        dictionary = {var_id:var_value for (var_id, var_value) in variables}    
+
+        try:
+            self._connection.write_list_by_name(dictionary)
+        except:
+            for (var_id, var_value)  in variables: 
                 res.append((var_id, var_value, VariableQuality.BAD))
-                self.sendDebugInfo(f'SETUP: Cannot write variable \"{var_id}\" ({e})')
+        else:
+            for (var_id, var_value)  in variables: 
+                res.append((var_id, var_value, VariableQuality.GOOD))
 
         return res
