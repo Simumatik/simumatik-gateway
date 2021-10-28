@@ -90,17 +90,28 @@ class development(driver):
         : param variables: List of variable ids to be read. 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        res = []
-        for var_id in variables:
-            try:
-                var_value = self._connection.read_by_name(var_id)
-                res.append((var_id, var_value, VariableQuality.GOOD))
-            except Exception as e:
-                res.append((var_id, None, VariableQuality.BAD))
-                self.sendDebugInfo(f'SETUP: Cannot read variable \"{var_id}\" ({e})')
+        # res = []
+        # for var_id in variables:
+        #     try:
+        #         var_value = self._connection.read_by_name(var_id)
+        #         res.append((var_id, var_value, VariableQuality.GOOD))
+        #     except Exception as e:
+        #         res.append((var_id, None, VariableQuality.BAD))
+        #         self.sendDebugInfo(f'SETUP: Cannot read variable \"{var_id}\" ({e})')
                  
+        # return res
+        res = []
+        try:
+            values = self._connection.read_list_by_name(variables)
+        except:
+            for var_id in variables:
+                res.append((var_id, None, VariableQuality.BAD))
+        else:
+            for var_id in values:
+                res.append((var_id, values[var_id], VariableQuality.GOOD))
+
         return res
-        
+
 
     def writeVariables(self, variables: list) -> list:
         """ Write given variable values. In case that the write is not possible or generates an error BAD quality should be returned.
