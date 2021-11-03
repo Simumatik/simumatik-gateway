@@ -24,22 +24,19 @@ from drivers.driver import VariableOperation, VariableDatatype
 
 # Define your I/O variables here
 VARIABLES = {
-    'GVL.Digital_In1':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
-    'GVL.Digital_Out1':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
+    'inputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
+    'outputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
     }
 
 # Add your custom logic in this test.
 d = development(None, 'test')
-d.net_id = "192.168.1.160.1.1"
-d.port = 851
-
 if d.connect():
     d.addVariables(VARIABLES)
 
     counter = 0
     while time.perf_counter() < 5:
-        d.writeVariables([('GVL.Digital_In1', counter%2)])
-        print(d.readVariables(['GVL.Digital_Out1']))
+        d.writeVariables([('inputs', counter)])
+        print(d.readVariables(['outputs']))
         time.sleep(0.1)
         counter += 1
 
