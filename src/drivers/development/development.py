@@ -16,19 +16,24 @@
 
 from multiprocessing import Pipe
 from typing import Optional
-import pythoncom
+import pythoncom, win32com.client
 
-from ..driver import driver
+from ..driver import driver, VariableQuality, VariableOperation, VariableDatatype
 
-FANUC_API_FOUND = True
-try:
-    from .fanuc_wrapper import (FRCRobot, constants)
-    #import fanuc_wrapper
-except Exception as e:
-    print(e)
-    FANUC_API_FOUND = False
-
-assert FANUC_API_FOUND, "Fanuc is not installed"
+FANUC_CLSID = '{6D7E3A01-9ECC-11D0-94D5-0020AF68F0A3}'
+# CONSTANTS
+frJointDisplayType = 0
+frJoint = 9
+frDInType  = 1
+frDOutType = 2
+frAInType = 3
+frAOutType = 4
+frPLCInType = 6
+frPLCOutType = 7
+frRDInType = 8
+frRDOutType = 9
+frGPInType = 18
+frGPOutType = 19
 
 class development(driver):
     '''
@@ -48,10 +53,9 @@ class development(driver):
         driver.__init__(self, name, pipe)
 
         # Parameters
+        self.ip = '127.0.0.1'
         self.joint_group = None
         self.joint_positions = None
-        self.input_group = None
-        self.output_group = None
 
 
     def connect(self) -> bool:
@@ -60,40 +64,29 @@ class development(driver):
         : returns: True if connection stablished False if not
         """
         try:
-            # Create API Instance
-            #from .fanuc_wrapper import FRCRobot
             pythoncom.CoInitialize()
-            self._connection = FRCRobot()
+            self._connection = win32com.client.Dispatch(FANUC_CLSID)
         except Exception as e:
-            print(e)
-            self.sendDebugInfo("Felkod 1")
+            self.sendDebugInfo(f"RoboGuide COM Interface not found! {e}")
             return False
 
         # Connect
-        ip = '127.0.0.1'
-        ip2 = '127.0.0.1:9001'
         try:
-            self._connection.ConnectEx(HostName=ip, NoWait=False, NumRetries=1, Period=1)#, NoWait=False)
-            print(self._connection.HostName)
-            print(self._connection.IsOffline)
-        except:
-            print("Connection failed! Client not found")
+            self._connection.ConnectEx(HostName=self.ip, NoWait=False, NumRetries=1, Period=1)
+            assert self._connection.IsConnected, f"Connection failed! Client not found at: {self.ip}"
+        except Exception as e:
+            self.sendDebugInfo(e)
             return False
-            
-        assert self._connection.IsConnected, f"Cannot coonect to {ip}" 
+        self.sendDebugInfo(f"Connected to Host: {self._connection.HostName}")
 
         try:
             # Add pointers
             mobjCurPos = self._connection.CurPosition
-            assert mobjCurPos.NumGroups>0, "Joint positions not available"
-            print("Groups found:", mobjCurPos.NumGroups)
-            self.joint_group = mobjCurPos.Group(1, constants.frJointDisplayType)
-            self.joint_positions = self.joint_group.Formats(constants.frJoint)
-            self.input_group = self._connection.IOTypes(constants.frDInType).Signals
-            self.output_group = self._connection.IOTypes(constants.frDOutType).Signals
-            self.input_group.Simulate = True
-        except:
-            print("Could not find joints")
+            assert mobjCurPos.NumGroups>0, f"Connection failed! Axis group not found"
+            self.joint_group = mobjCurPos.Group(1, frJointDisplayType)
+            self.joint_positions = self.joint_group.Formats(frJoint)
+        except Exception as e:
+            self.sendDebugInfo(e)
             return False
 
         return True
@@ -111,22 +104,47 @@ class development(driver):
         : param variables: Variables to add in a dict following the setup format. (See documentation) 
         
         """
-
         for var_id, var_data in variables.items():
             try:
                 if var_id == 'Axis':
-                    var_data[0] = [None for i in range(var_data['size'])]
+                    var_data['value'] = [None for i in range(var_data['size'])]
                     self.variables[var_id] = var_data
                     continue
                 else:
-                    self.joint_group.Refresh()
-                    value = self.joint_positions.Item(0)
-                    if value is not None:
-                        var_data['value'] = None # Force first update
-                        self.variables[var_id] = var_data
-                        self.sendDebugVarInfo((f'SETUP: Variable found {var_id}', var_id))
+                    if var_id[:2]=="DI" and var_data['datatype']==VariableDatatype.BOOL and var_data['operation']==VariableOperation.WRITE:
+                        var_data['area'] = frDInType
+                    elif var_id[:2]=="DO" and var_data['datatype']==VariableDatatype.BOOL and var_data['operation']==VariableOperation.READ:
+                        var_data['area'] = frDOutType
+                    elif var_id[:2]=="RI" and var_data['datatype']==VariableDatatype.BOOL and var_data['operation']==VariableOperation.WRITE:
+                        var_data['area'] = frRDInType
+                    elif var_id[:2]=="RO" and var_data['datatype']==VariableDatatype.BOOL and var_data['operation']==VariableOperation.READ:
+                        var_data['area'] = frRDOutType
+                    elif var_id[:2]=="GI" and var_data['datatype'] in [VariableDatatype.BYTE,VariableDatatype.WORD] and var_data['operation']==VariableOperation.WRITE:
+                        var_data['area'] = frGPInType
+                    elif var_id[:2]=="GO" and var_data['datatype'] in [VariableDatatype.BYTE,VariableDatatype.WORD] and var_data['operation']==VariableOperation.READ:
+                        var_data['area'] = frGPOutType
+                    elif var_id[:2]=="AI" and var_data['datatype']==VariableDatatype.WORD and var_data['operation']==VariableOperation.WRITE:
+                        var_data['area'] = frAInType
+                    elif var_id[:2]=="AO" and var_data['datatype']==VariableDatatype.WORD and var_data['operation']==VariableOperation.READ:
+                        var_data['area'] = frAOutType
+                    else:
+                        self.sendDebugVarInfo((f'SETUP: Variable definition is wrong: {var_id}', var_id))
                         continue
-            except:
+                    try:
+                        var_data['port'] = int(var_id[2:])
+                        assert var_data['port']>0, "Variable port number is wrong"
+                    except:
+                        self.sendDebugVarInfo((f'SETUP: Variable port number is wrong: {var_id}', var_id))
+                        continue
+                    # Prepare input signals to be written (simulated)
+                    if var_data['operation']==VariableOperation.WRITE:
+                        self._connection.IOTypes(var_data['area']).Signals(var_data['port']).Simulate = True
+                    var_data['value'] = None # Force first update
+                    self.variables[var_id] = var_data
+                    self.sendDebugVarInfo((f'SETUP: Variable found {var_id}', var_id))
+                    continue
+            except Exception as e:
+                self.sendDebugVarInfo((f'SETUP: Error setting up variable: {var_id}, {e}', var_id))
                 pass
             
             self.sendDebugVarInfo((f'SETUP: Variable not found {var_id}', var_id))
@@ -139,22 +157,20 @@ class development(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
-        self.joint_group.Refresh()
-        self.output_group
         for var_id in variables:
             try:
                 if var_id == 'Axis':
-                    new_value = self.joint_positions.Item(0)
-                    # new_value = [round(x,3) for x in new_value]
+                    self.joint_group.Refresh()
+                    new_value = []
+                    for i in range(self.variables[var_id]['size']):
+                        val = self.joint_positions.Item(i+1)
+                        new_value.append(round(val,3))
                     res.append((var_id, new_value, VariableQuality.GOOD))
-                    continue
+
                 else:
-                    new_value = self.output_group(0).Value
-                    if new_value is not None:
-                        new_value = self.getValueFromString(self.variables[var_id]['datatype'], new_value)
-                        res.append((var_id, new_value, VariableQuality.GOOD))
-                        continue
-            except:
+                    new_value = self._connection.IOTypes(self.variables[var_id]['area']).Signals(self.variables[var_id]['port']).Value
+                    res.append((var_id, new_value, VariableQuality.GOOD))
+            except Exception as e:
                 res.append((var_id, self.variables[var_id]['value'], VariableQuality.BAD))
             
         return res
@@ -165,12 +181,10 @@ class development(driver):
         : param variables: List of tupples with variable ids and the values to be written (var_id, var_value). 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-
         res = []
-        # TODO: Possible improvement can be to send multiple at once
         for (var_id, new_value) in variables:
             try:
-                self.input_group(0).Value = new_value
+                self._connection.IOTypes(self.variables[var_id]['area']).Signals(self.variables[var_id]['port']).Value = new_value
                 res.append((var_id, new_value, VariableQuality.GOOD))
             except:
                 res.append((var_id, new_value, VariableQuality.BAD))
