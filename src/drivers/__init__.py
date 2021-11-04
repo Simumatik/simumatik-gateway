@@ -10,6 +10,7 @@ from .opcua_client.opcua_client import opcua_client
 from .s7protocol.s7protocol import s7protocol
 from .udp_generic.udp_generic import udp_generic
 from .universal_robots.universal_robots import universal_robots
+from .fanuc_roboguide.fanuc_roboguide import fanuc_roboguide
 
 # Dict relating drivers with datamodel definition
 # NOTE: Datamodel names will be updated to match drivers name
@@ -29,3 +30,4 @@ if platform.system() == "Windows":
     from .robodk.robodk import robodk
     registered_drivers.update({"abb_driver": (robotware,"1")})
     registered_drivers.update({"robodk_driver": (robodk, "1")})
+    registered_drivers.update({"fanuc_roboguide": (fanuc_roboguide, "1")})
