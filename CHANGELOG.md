@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 2.1.4 - 3/11/2021
+- Add driver for TwinCat ADS
+
 ## 2.1.0 - 23/06/2021
 - Add drivers multiplexing support (better performance)
 - Update sleeping times/logic (lower cpu use)

@@ -1,8 +1,9 @@
 numpy==1.20.2
-opcua==0.98.13
+opcua==0.98.12
 #cryptography >= 2.6.1
 SimpleWebSocketServer==0.1.1
 paho-mqtt==1.5.1
 #roslibpy
 pythonnet==2.5.2
 pywin32==302
+pyads==3.3.8
