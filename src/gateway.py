@@ -18,9 +18,7 @@
 import datetime
 from enum import Enum
 import json
-from multiprocessing import Pipe, Process
-import os
-import random
+from multiprocessing import Pipe
 import socket
 import sys
 from threading import Thread
@@ -40,13 +38,20 @@ logging.basicConfig(filename="gateway_logs.txt",
 logger = logging.getLogger('GATEWAY')
 logger.propagate = True
 logger.setLevel(level=logging.DEBUG)
-if ('debug' in sys.argv):
-    logger.disabled = False
-else:
-    logger.disabled = True
+
+logger.disabled = True
+launcher_version = None
+for arg in sys.argv[1:]:
+    if ('debug' == arg):
+        logger.disabled = False
+        logger.debug("Logger enabled")
+    else:
+        if len(arg.split("."))==3:
+            launcher_version = arg
+            logger.debug(f"launcher_version: {launcher_version}")
 
 # Version
-version = "2.1.3"
+version = "3.0.1"
 
 # Settings
 poll_time = 1 # seconds
@@ -238,7 +243,7 @@ class gateway():
                         # version command
                         elif (command == "version"):
                             # Notify client
-                            res_data = {"status": str(version)}
+                            res_data = {"status": str(version), "launcher": str(launcher_version)}
                     
                         # Not defined command
                         else:

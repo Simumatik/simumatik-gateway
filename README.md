@@ -26,15 +26,17 @@ The current dependencies only work up to Python 3.8
 
 Right now, the following drivers are supported in the Gateway:
 
-- RobotWare
+- RobotWare (ABB RobotStudio)
 - CPRog CRI
-- Development
 - MQTT client
 - OPCUA client
 - RoboDK
 - S7Protocol
 - UDP generic
 - Universal Robots
+- Micro800 HTTP (Rockwell Automation CCW)
+- Twincat ADS
+- Development
 
 ## Architecture
 
@@ -43,3 +45,14 @@ You can learn more about the Gateway design and structure on the [Architecture](
 ## Contributing
 
 Before opening an issue or PR, please read the content in the [Contributing](CONTRIBUTING.md) section.
+
+
+## Build
+
+It is possible to build an distributable package of the Gateway using pyinstaller library. To do so, simply run the next command:
+
+```Shell
+pyinstaller package.spec
+```
+
+The executable file and all additional files will be included inside the folder dist/gateway.
