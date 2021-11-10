@@ -40,7 +40,7 @@ logger.propagate = True
 logger.setLevel(level=logging.DEBUG)
 
 logger.disabled = True
-launcher_version = None
+launcher_version = "2.0.2"
 for arg in sys.argv[1:]:
     if ('debug' == arg):
         logger.disabled = False

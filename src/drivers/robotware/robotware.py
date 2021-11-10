@@ -17,12 +17,11 @@
 from multiprocessing import Pipe
 from typing import Optional
 
-from ..driver import driver, VariableOperation, VariableQuality
+from ..driver import driver, VariableQuality
 
 import sys
 import os
 import winreg
-from os import path
 
 # Import SDK
 ABB_SDK_FOUND = False

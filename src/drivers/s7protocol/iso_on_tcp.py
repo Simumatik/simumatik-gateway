@@ -16,7 +16,6 @@
 
 import struct
 from collections import namedtuple
-import logging
 from ..driver import VariableQuality, VariableDatatype
 
 

@@ -16,12 +16,14 @@
 
 from multiprocessing import Pipe
 from typing import Optional
+import logging
 
 from ..driver import driver, VariableQuality 
+
 try:
     import pyads
 except Exception as e:
-    print(f"Exception importing ADS library: {e}")
+    logging.warning(f"Exception importing ADS library: {e}")
     pass
 
 
