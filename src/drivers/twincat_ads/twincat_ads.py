@@ -18,7 +18,11 @@ from multiprocessing import Pipe
 from typing import Optional
 
 from ..driver import driver, VariableQuality 
-import pyads
+try:
+    import pyads
+except Exception as e:
+    print(f"Exception importing ADS library: {e}")
+    pass
 
 
 class twincat_ads(driver):
