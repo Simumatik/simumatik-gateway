@@ -40,15 +40,9 @@ logger.propagate = True
 logger.setLevel(level=logging.DEBUG)
 
 logger.disabled = True
-launcher_version = "2.0.2"
 for arg in sys.argv[1:]:
     if ('debug' == arg):
         logger.disabled = False
-        logger.debug("Logger enabled")
-    else:
-        if len(arg.split("."))==3:
-            launcher_version = arg
-            logger.debug(f"launcher_version: {launcher_version}")
 
 # Version
 version = "3.0.1"
@@ -243,7 +237,7 @@ class gateway():
                         # version command
                         elif (command == "version"):
                             # Notify client
-                            res_data = {"status": str(version), "launcher": str(launcher_version)}
+                            res_data = {"status": str(version)}
                     
                         # Not defined command
                         else:
