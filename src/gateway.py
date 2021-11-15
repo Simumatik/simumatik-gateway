@@ -31,7 +31,7 @@ from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 #Logging
 import logging
 FORMAT = '%(asctime)-15s %(levelname)s %(name)s: %(message)s'
-logging.basicConfig(filename="gateway_logs.txt",
+logging.basicConfig(filename="gateway.log",
                     filemode='w',
                     level=logging.ERROR, 
                     format=FORMAT)

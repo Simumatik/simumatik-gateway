@@ -52,7 +52,7 @@ Before opening an issue or PR, please read the content in the [Contributing](CON
 It is possible to build an distributable package of the Gateway using pyinstaller library. To do so, simply run the next command:
 
 ```Shell
-pyinstaller package.spec
+pyinstaller gateway_package.spec
 ```
 
 The executable file and all additional files will be included inside the folder dist/gateway.
