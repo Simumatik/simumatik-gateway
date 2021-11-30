@@ -20,7 +20,6 @@ import pythoncom, win32com.client
 
 from ..driver import driver, VariableQuality, VariableOperation, VariableDatatype
 
-FANUC_CLSID = '{6D7E3A01-9ECC-11D0-94D5-0020AF68F0A3}'
 # CONSTANTS
 frJointDisplayType = 0
 frJoint = 9
@@ -66,7 +65,7 @@ class fanuc_roboguide(driver):
         """
         try:
             pythoncom.CoInitialize()
-            self._connection = win32com.client.Dispatch(FANUC_CLSID)
+            self._connection = win32com.client.Dispatch("FRRobot.FRCRobot")
         except Exception as e:
             self.sendDebugInfo(f"RoboGuide COM Interface not found! {e}")
             return False
