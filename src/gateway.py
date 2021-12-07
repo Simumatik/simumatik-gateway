@@ -47,7 +47,7 @@ for arg in sys.argv[1:]:
         logger.disabled = False
 
 # Version
-version = "3.0.2"
+version = "3.0.3"
 
 # Settings
 poll_time = 1 # seconds
