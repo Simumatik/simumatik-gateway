@@ -101,16 +101,12 @@ class robotware(driver):
 
                 # Get controllers
                 controllers = scanner.GetControllers()
-                self.sendDebugInfo('SETUP: Driver ABB RobotWare Controllers found:{0}'.format(len(controllers)))
 
                 for controller in controllers:
                     # Check if there is a controller with same name or take the first one
                     if (str(controller.SystemName) == self.controller) or (self.controller == ""):
                         # Save name if not defined
                         if self.controller == '': self.controller = str(controller.SystemName)
-                        
-                        # Debug info
-                        self.sendDebugInfo('SETUP: Driver ABB RobotWare Connecting to -> {0}...'.format(self.controller))
                         
                         # Create controller
                         self._connection = ControllerFactory.CreateFrom(controller)
@@ -122,13 +118,13 @@ class robotware(driver):
                             # Done
                             return True
                         else:
-                            raise Exception('Driver ABB RobotWare cannot connect to -> {0}...'.format(self.controller))
+                            self.sendDebugInfo(f'Cannot connect to -> {self.controller}.')
                 else:
                     # Controller not found
-                    raise Exception('Driver ABB RobotWare Controller not found {0}.'.format(self.controller))
+                    self.sendDebugInfo(f'Controller not found {self.controller}.')
 
         except Exception as e:
-            self.sendDebugInfo('SETUP failed: Exception '+str(e))
+            self.sendDebugInfo('Exception '+str(e))
 
         return False
 

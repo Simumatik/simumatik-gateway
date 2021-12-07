@@ -67,7 +67,7 @@ class opcua_client(driver):
             self._connection.connect()
                     
         except Exception as e:
-            self.sendDebugInfo('SETUP failed: Exception '+str(e))
+            self.sendDebugInfo('Exception '+str(e))
             return False
 
         self.handler = SubHandler()

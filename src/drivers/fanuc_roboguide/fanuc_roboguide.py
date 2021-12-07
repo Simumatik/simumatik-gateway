@@ -75,7 +75,10 @@ class fanuc_roboguide(driver):
             self._connection.ConnectEx(HostName=self.ip, NoWait=False, NumRetries=1, Period=1)
             assert self._connection.IsConnected, f"Connection failed! Client not found at: {self.ip}"
         except Exception as e:
-            self.sendDebugInfo(e)
+            if e.__class__.__name__ == 'com_error':
+                self.sendDebugInfo(e.excepinfo[2])
+            else:
+                self.sendDebugInfo(e)
             return False
         self.sendDebugInfo(f"Connected to Host: {self._connection.HostName}")
 

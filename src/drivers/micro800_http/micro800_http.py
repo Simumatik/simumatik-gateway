@@ -64,6 +64,7 @@ class micro800_http(driver):
                 for var_data in json.loads(content):
                     self._output_vars.append(var_data['Name'])
             else:
+                self.sendDebugInfo('Output data not available.')
                 return False
 
             # Get available inputs
@@ -74,12 +75,13 @@ class micro800_http(driver):
                 for var_data in json.loads(content):
                     self._input_vars.append(var_data['Name'])
             else:
+                self.sendDebugInfo('Input data not available.')
                 return False
             
             return True
 
         except Exception as e:
-            self.sendDebugInfo('SETUP failed: Exception '+str(e))
+            self.sendDebugInfo('Exception '+str(e))
 
         return False
 

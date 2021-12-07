@@ -68,7 +68,7 @@ class mqtt_client(driver):
             self._connection.loop_start()
 
         except Exception as e:
-            self.sendDebugInfo(f"SETUP: Connection with {self.ip}:{self.port} cannot be stablished.")
+            self.sendDebugInfo(f"Connection with {self.ip}:{self.port} cannot be stablished.")
             return False
         
         return True

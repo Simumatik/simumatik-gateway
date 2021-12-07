@@ -75,17 +75,16 @@ class robodk(driver):
         
             self._connection = Robolink()
             if self._connection:
-                self.sendDebugInfo('SETUP: Driver RoboDK Scanning...')
                 self.robot = self._connection.Item(self.controller)
                 if self.robot:
                     if self.robot.Valid() and self.robot.Type() == ITEM_TYPE_ROBOT:
-                        self.sendDebugInfo(f'SETUP: Driver RoboDK Connected to {self.controller}...')
+                        self.sendDebugInfo(f'Driver RoboDK Connected to {self.controller}...')
                         return True
                 else:
                     self.sendDebugInfo(f'Item {self.controller} not found!')
 
         except Exception as e:
-            self.sendDebugInfo('SETUP failed: Exception '+str(e))
+            self.sendDebugInfo('Exception '+str(e))
         
         return False
 
