@@ -33,7 +33,7 @@ import logging
 import os
 LOCAL_FOLDER =  f"{os.path.expanduser('~')}/Simumatik"
 FORMAT = '%(asctime)-15s %(levelname)s %(name)s: %(message)s'
-logging.basicConfig(filename="{LOCAL_FOLDER}/gateway.log",
+logging.basicConfig(filename=f"{LOCAL_FOLDER}/gateway.log",
                     filemode='w',
                     level=logging.ERROR, 
                     format=FORMAT)
