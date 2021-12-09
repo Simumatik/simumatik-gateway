@@ -63,7 +63,6 @@ class robodk(driver):
             key = winreg.OpenKey(reg, r"SOFTWARE\RoboDK")
             robodk_path = winreg.QueryValueEx(key, "INSTDIR")[0] + "\Python"
             sys.path.append(robodk_path)
-            logging.getLogger('GATEWAY').info(f"Robodk API found: {robodk_path}")
         except Exception as e:
             self.sendDebugInfo(f"Robodk API not found!")
             return False
@@ -77,8 +76,12 @@ class robodk(driver):
                     if self.robot.Valid() and self.robot.Type() == ITEM_TYPE_ROBOT:
                         self.sendDebugInfo(f'Driver RoboDK Connected to {self.controller}...')
                         return True
+                    else:
+                        self.sendDebugInfo(f'Item {self.controller} not found!')
                 else:
-                    self.sendDebugInfo(f'Item {self.controller} not found!')
+                    self.sendDebugInfo(f'Controler not found!')
+            else:
+                self.sendDebugInfo(f'Connection with Robolink not possible.')
 
         except Exception as e:
             self.sendDebugInfo('Exception '+str(e))
