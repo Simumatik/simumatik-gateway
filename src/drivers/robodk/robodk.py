@@ -34,11 +34,11 @@ try:
 
         robodk_path = winreg.QueryValueEx(key, "INSTDIR")[0] + "\Python"
         sys.path.append(robodk_path) # Add path to system path
-        logging.getLogger('GATEWAY').debug(f"Robodk API found: {robodk_path}")
-        from robolink import Robolink, ITEM_TYPE_ROBOT
         ROBODK_SDK_FOUND = True
+        logging.getLogger('GATEWAY').info(f"Robodk API found: {robodk_path}")
 except:
-    pass
+    logging.getLogger('GATEWAY').error(f"Robodk API not found!")
+
 
 # Driver that connects to robodk
 class robodk(driver):
@@ -73,6 +73,7 @@ class robodk(driver):
             if not ROBODK_SDK_FOUND:
                 raise Exception('RoboDK SDK not found')
         
+            from robolink import Robolink, ITEM_TYPE_ROBOT
             self._connection = Robolink()
             if self._connection:
                 self.robot = self._connection.Item(self.controller)

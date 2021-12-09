@@ -12,4 +12,4 @@ logging.basicConfig(filename=f"{LOCAL_FOLDER}/gateway.log",
 
 logger = logging.getLogger('GATEWAY')
 logger.propagate = True
-logger.setLevel(level=logging.DEBUG)
+logger.setLevel(level=logging.INFO)
