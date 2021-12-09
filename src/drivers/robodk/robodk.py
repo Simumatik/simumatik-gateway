@@ -24,21 +24,6 @@ import sys
 import os
 import winreg
 
-# Import SDK
-ROBODK_SDK_FOUND = False
-
-try:
-    if os.name == 'nt':# Just try on windows
-        reg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
-        key = winreg.OpenKey(reg, r"SOFTWARE\RoboDK")
-
-        robodk_path = winreg.QueryValueEx(key, "INSTDIR")[0] + "\Python"
-        sys.path.append(robodk_path) # Add path to system path
-        ROBODK_SDK_FOUND = True
-        logging.getLogger('GATEWAY').info(f"Robodk API found: {robodk_path}")
-except:
-    logging.getLogger('GATEWAY').error(f"Robodk API not found!")
-
 
 # Driver that connects to robodk
 class robodk(driver):
@@ -69,10 +54,21 @@ class robodk(driver):
         
         : returns: True if connection stablished False if not
         """
+        if os.name != 'nt':
+            self.sendDebugInfo(f'Driver not supported in this OS')
+            return False
+
         try:
-            if not ROBODK_SDK_FOUND:
-                raise Exception('RoboDK SDK not found')
-        
+            reg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
+            key = winreg.OpenKey(reg, r"SOFTWARE\RoboDK")
+            robodk_path = winreg.QueryValueEx(key, "INSTDIR")[0] + "\Python"
+            sys.path.append(robodk_path)
+            logging.getLogger('GATEWAY').info(f"Robodk API found: {robodk_path}")
+        except Exception as e:
+            self.sendDebugInfo(f"Robodk API not found!")
+            return False
+
+        try:
             from robolink import Robolink, ITEM_TYPE_ROBOT
             self._connection = Robolink()
             if self._connection:
