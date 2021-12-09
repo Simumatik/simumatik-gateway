@@ -16,12 +16,12 @@
 
 from multiprocessing import Pipe
 from typing import Optional
+import logging
 
-from ..driver import driver, VariableOperation, VariableQuality
+from ..driver import driver, VariableQuality
 
 import sys
 import os
-from os import path
 import winreg
 
 # Import SDK
@@ -34,7 +34,7 @@ try:
 
         robodk_path = winreg.QueryValueEx(key, "INSTDIR")[0] + "\Python"
         sys.path.append(robodk_path) # Add path to system path
-
+        logging.getLogger('GATEWAY').debug(f"Robodk API found: {robodk_path}")
         from robolink import Robolink, ITEM_TYPE_ROBOT
         ROBODK_SDK_FOUND = True
 except:
