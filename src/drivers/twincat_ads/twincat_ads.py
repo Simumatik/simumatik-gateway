@@ -14,11 +14,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from ..driver import driver, VariableQuality 
+
 from multiprocessing import Pipe
 from typing import Optional
-import pyads
-
-from ..driver import driver, VariableQuality 
+    
 
 class twincat_ads(driver):
     '''
@@ -39,7 +39,7 @@ class twincat_ads(driver):
         driver.__init__(self, name, pipe)
         
         self.net_id = '192.168.0.1.1.1'
-        self.port = pyads.PORT_TC3PLC1
+        self.port = 851
 
 
     def connect(self) -> bool:
@@ -49,6 +49,7 @@ class twincat_ads(driver):
         """
         # Create connection
         try:
+            import pyads
             self._connection = pyads.Connection(self.net_id, self.port)
             self._connection.open()
         except Exception as e:
@@ -57,7 +58,7 @@ class twincat_ads(driver):
 
         # Check connection status.
         state = self._connection.read_state()
-        if state[0] == pyads.ADSSTATE_RUN:
+        if state[0] == 5:
             return True
         else:
             self.sendDebugInfo(f"Driver not connected, ADS state = {state[0]}") 

@@ -31,7 +31,7 @@ from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 
 
 # Version
-version = "3.0.7"
+version = "3.0.8"
 
 # Settings
 poll_time = 1 # seconds

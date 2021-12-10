@@ -54,6 +54,8 @@ class fanuc_roboguide(driver):
 
         # Parameters
         self.ip = '127.0.0.1'
+
+        # Internal variables
         self.joint_group = None
         self.joint_positions = None
 
