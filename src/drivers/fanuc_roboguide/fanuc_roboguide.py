@@ -16,32 +16,37 @@
 
 from multiprocessing import Pipe
 from typing import Optional
-import pythoncom, win32com.client
+import os
+import sys
 
 from ..driver import driver, VariableQuality, VariableOperation, VariableDatatype
 
-# CONSTANTS
-frJointDisplayType = 0
-frJoint = 9
-frDInType  = 1
-frDOutType = 2
-frAInType = 3
-frAOutType = 4
-frPLCInType = 6
-frPLCOutType = 7
-frRDInType = 8
-frRDOutType = 9
-frGPInType = 18
-frGPOutType = 19
+ROBOT_INTERFACE_FOUND = False
+try:
+    if os.name == 'nt':# Just try on windows
+        import clr
+        p = os.path.dirname(os.path.abspath(__file__))
+        sys.path.append(p)
+        clr.FindAssembly("RobotInterfaceDotNet")
+        clr.AddReference("RobotInterfaceDotNet")
+        from System import Array, Int16, Int32, Double, Byte
+        from FRRJIf import Core, FRIF_DATA_TYPE
+
+        ROBOT_INTERFACE_FOUND = True
+except:
+    pass
 
 class fanuc_roboguide(driver):
     '''
     Driver that can be used to connect with Roboguide. 
-    It makes use of the FANUC Robotics Controller Interface COM object. Requires the pywin32 library.
-    
+    It makes use of the FANUC Robot Interface. Requires the clr library and RobotInterfaceDotNet.dll.
+
     Parameters:
-    ip: str
+    hostname: str
         This parameter is used to define where the Roboguide instance is running. Default = "127.0.0.1"
+    
+    motion_group: int
+        This parameter is used to select the motion group nuimber
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None):
@@ -53,11 +58,8 @@ class fanuc_roboguide(driver):
         driver.__init__(self, name, pipe)
 
         # Parameters
-        self.ip = '127.0.0.1'
-
-        # Internal variables
-        self.joint_group = None
-        self.joint_positions = None
+        self.hostname = '127.0.0.1'
+        self.motion_group = 1
 
 
     def connect(self) -> bool:
@@ -66,35 +68,26 @@ class fanuc_roboguide(driver):
         : returns: True if connection stablished False if not
         """
         try:
-            pythoncom.CoInitialize()
-            self._connection = win32com.client.Dispatch("FRRobot.FRCRobot")
-        except Exception as e:
-            self.sendDebugInfo(f"RoboGuide COM Interface not found! {e}")
-            return False
-
-        # Connect
-        try:
-            self._connection.ConnectEx(HostName=self.ip, NoWait=False, NumRetries=1, Period=1)
-            assert self._connection.IsConnected, f"Connection failed! Client not found at: {self.ip}"
-        except Exception as e:
-            if e.__class__.__name__ == 'com_error':
-                self.sendDebugInfo(e.excepinfo[2])
+            self._connection = Core('shift-jis')
+            self._datatable = self._connection.get_DataTable()
+            self._curpos = self._datatable.AddCurPosUF(FRIF_DATA_TYPE.CURPOS, self.motion_group, 1)
+            if self._curpos.Valid:
+                if self._connection.Connect(self.hostname):
+                    return True
+                else:
+                    self.sendDebugInfo(f"Error connecting to host.")
             else:
-                self.sendDebugInfo(e)
-            return False
-        self.sendDebugInfo(f"Connected to Host: {self._connection.HostName}")
-
-        try:
-            # Add pointers
-            mobjCurPos = self._connection.CurPosition
-            assert mobjCurPos.NumGroups>0, f"Connection failed! Axis group not found"
-            self.joint_group = mobjCurPos.Group(1, frJointDisplayType)
-            self.joint_positions = self.joint_group.Formats(frJoint)
+                self.sendDebugInfo(f"Error getting current position")
         except Exception as e:
-            self.sendDebugInfo(e)
-            return False
+            self.sendDebugInfo(f"Robot Interface initialization error.")
+        
+        return False
 
-        return True
+
+    def disconnect(self):
+        """ Disconnect driver.
+        """
+        self._connection.Disconnect()
 
 
     def addVariables(self, variables: dict):
@@ -111,21 +104,13 @@ class fanuc_roboguide(driver):
                     continue
                 else:
                     if var_id[:2]=="DI" and var_data['datatype']==VariableDatatype.BOOL and var_data['operation']==VariableOperation.WRITE:
-                        var_data['area'] = frDInType
+                        var_data['area'] = "DI"
                     elif var_id[:2]=="DO" and var_data['datatype']==VariableDatatype.BOOL and var_data['operation']==VariableOperation.READ:
-                        var_data['area'] = frDOutType
-                    elif var_id[:2]=="RI" and var_data['datatype']==VariableDatatype.BOOL and var_data['operation']==VariableOperation.WRITE:
-                        var_data['area'] = frRDInType
-                    elif var_id[:2]=="RO" and var_data['datatype']==VariableDatatype.BOOL and var_data['operation']==VariableOperation.READ:
-                        var_data['area'] = frRDOutType
-                    elif var_id[:2]=="GI" and var_data['datatype'] in [VariableDatatype.BYTE,VariableDatatype.WORD] and var_data['operation']==VariableOperation.WRITE:
-                        var_data['area'] = frGPInType
-                    elif var_id[:2]=="GO" and var_data['datatype'] in [VariableDatatype.BYTE,VariableDatatype.WORD] and var_data['operation']==VariableOperation.READ:
-                        var_data['area'] = frGPOutType
-                    elif var_id[:2]=="AI" and var_data['datatype']==VariableDatatype.WORD and var_data['operation']==VariableOperation.WRITE:
-                        var_data['area'] = frAInType
-                    elif var_id[:2]=="AO" and var_data['datatype']==VariableDatatype.WORD and var_data['operation']==VariableOperation.READ:
-                        var_data['area'] = frAOutType
+                        var_data['area'] = "DO"
+                    elif var_id[:2]=="GI" and var_data['datatype'] in [VariableDatatype.BYTE,VariableDatatype.WORD,VariableDatatype.DWORD] and var_data['operation']==VariableOperation.WRITE:
+                        var_data['area'] = "GI"
+                    elif var_id[:2]=="GO" and var_data['datatype'] in [VariableDatatype.BYTE,VariableDatatype.WORD,VariableDatatype.DWORD] and var_data['operation']==VariableOperation.READ:
+                        var_data['area'] = "GO"
                     else:
                         self.sendDebugVarInfo((f'SETUP: Variable definition is wrong: {var_id}', var_id))
                         continue
@@ -135,9 +120,6 @@ class fanuc_roboguide(driver):
                     except:
                         self.sendDebugVarInfo((f'SETUP: Variable port number is wrong: {var_id}', var_id))
                         continue
-                    # Prepare input signals to be written (simulated)
-                    if var_data['operation']==VariableOperation.WRITE:
-                        self._connection.IOTypes(var_data['area']).Signals(var_data['port']).Simulate = True
                     var_data['value'] = None # Force first update
                     self.variables[var_id] = var_data
                     self.sendDebugVarInfo((f'SETUP: Variable found {var_id}', var_id))
@@ -156,21 +138,38 @@ class fanuc_roboguide(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
+        self._datatable.Refresh()
         for var_id in variables:
-            try:
-                if var_id == 'Axis':
-                    self.joint_group.Refresh()
+            size = self.variables[var_id]['size']
+            if var_id == 'Axis':
+                joints = self.createBuffer(Double, 9)
+                quality = self._curpos.GetValue(
+                    Array.CreateInstance(Double, 9), 
+                    Array.CreateInstance(Double, 7), 
+                    joints, 
+                    Int16(0), Int16(0), Int16(0), Int16(0)
+                    )
+                if quality[0]==True:
                     new_value = []
-                    for i in range(self.variables[var_id]['size']):
-                        val = self.joint_positions.Item(i+1)
-                        new_value.append(round(val,3))
+                    for i in range(size):
+                        new_value.append(round(joints[i], 3))
                     res.append((var_id, new_value, VariableQuality.GOOD))
-
                 else:
-                    new_value = self._connection.IOTypes(self.variables[var_id]['area']).Signals(self.variables[var_id]['port']).Value
+                    res.append((var_id, self.variables[var_id]['value'], VariableQuality.BAD))
+
+            else:
+                port = self.variables[var_id]['port']
+                if self.variables[var_id]['area'] == "DO":
+                    buff = self.createBuffer(Int16, size)
+                    (quality, read_value) = self._connection.ReadSDO(port, buff, size)
+                elif self.variables[var_id]['area'] == "GO":
+                    buff = self.createBuffer(Int32, size)
+                    (quality, read_value) = self._connection.ReadGO(port, buff, size)
+                if quality is True:
+                    new_value = self.readBuffer(read_value)
                     res.append((var_id, new_value, VariableQuality.GOOD))
-            except Exception as e:
-                res.append((var_id, self.variables[var_id]['value'], VariableQuality.BAD))
+                else:
+                    res.append((var_id, self.variables[var_id]['value'], VariableQuality.BAD))
             
         return res
 
@@ -182,10 +181,42 @@ class fanuc_roboguide(driver):
         """
         res = []
         for (var_id, new_value) in variables:
-            try:
-                self._connection.IOTypes(self.variables[var_id]['area']).Signals(self.variables[var_id]['port']).Value = new_value
+            size = self.variables[var_id]['size']
+            port = self.variables[var_id]['port']
+            if self.variables[var_id]['area'] == "DI":
+                buff = self.createBuffer(Int16, size)
+                self.writeBuffer(buff, new_value)
+                quality = self._connection.WriteSDI(port, buff, size)
+            else:
+                buff = self.createBuffer(Int32, size)
+                self.writeBuffer(buff, new_value)
+                quality = self._connection.WriteGI(port, buff, size)
+            if quality == True:
                 res.append((var_id, new_value, VariableQuality.GOOD))
-            except:
+            else:
                 res.append((var_id, new_value, VariableQuality.BAD))
                      
         return res
+    
+
+    def createBuffer(self, datatype, size):
+        return Array.CreateInstance(datatype, size)
+    
+
+    def writeBuffer(self, buffer, data):
+        if isinstance(data, list):
+            for i in range(len(data)):
+                buffer[i] = data[i]
+        else:
+            buffer[0] = data
+    
+
+    def readBuffer(self, buffer):
+        if buffer.Length>1:
+            return [buffer[i] for i in range(buffer.Length)]
+        elif buffer.Length==1:
+            return buffer[0]
+        else:
+            return 0
+                
+

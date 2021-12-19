@@ -24,14 +24,11 @@ from drivers.driver import VariableOperation, VariableDatatype
 
 # Define your I/O variables here
 VARIABLES = {
-    'DI1':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
-    'DO1':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
+    'Axis':{'datatype': VariableDatatype.FLOAT, 'size': 6, 'operation': VariableOperation.READ},
+    'DI10':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
+    'DO9':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
     'GI1':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
     'GO1':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
-    'AI1':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
-    'AO1':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
-    'RI1':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
-    'RO1':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
     }
 
 # Add your custom logic in this test.
@@ -42,11 +39,11 @@ if d.connect():
     counter = 0
     start = time.perf_counter()
     while (time.perf_counter()-start < 5):
-        res = d.writeVariables([('DI1', counter%2), ('GI1', counter), ('AI1', counter), ('RI1', counter%2)])
+        res = d.writeVariables([('GI1', counter), ('DI10', counter%2)])
         print(res)
-        print(d.readVariables(['DO1','GO1','AO1','RO1']))
-        #time.sleep(0.05)
+        print(d.readVariables(['Axis','GO1','DO9']))
         counter += 1
+        time.sleep(0.01)
 
     d.disconnect()
 else:
