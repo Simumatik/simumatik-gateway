@@ -29,7 +29,7 @@ try:
         sys.path.append(p)
         clr.FindAssembly("RobotInterfaceDotNet")
         clr.AddReference("RobotInterfaceDotNet")
-        from System import Array, Int16, Int32, Double, Byte
+        from System import Array, Int16, Int32, Double
         from FRRJIf import Core, FRIF_DATA_TYPE
 
         ROBOT_INTERFACE_FOUND = True
