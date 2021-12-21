@@ -11,6 +11,8 @@ from .s7protocol.s7protocol import s7protocol
 from .udp_generic.udp_generic import udp_generic
 from .universal_robots.universal_robots import universal_robots
 from .twincat_ads import twincat_ads
+from .development.sandbox import *
+from .s7protocol.iso_on_tcp import *
 
 # Dict relating drivers with datamodel definition
 # NOTE: Datamodel names will be updated to match drivers name
