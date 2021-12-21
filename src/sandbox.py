@@ -1,8 +1,8 @@
 from multiprocessing import shared_memory
 import numpy as np
 import time
-from ..s7protocol.iso_on_tcp import *
-from ..driver import VariableDatatype
+from drivers.s7protocol.iso_on_tcp import *
+from drivers.driver import VariableDatatype
 
 iolist ="""	IW0	InputWord	This is a comment
 	I2.0	InputBool1	This is a comment
