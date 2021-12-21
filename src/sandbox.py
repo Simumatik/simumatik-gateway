@@ -9,11 +9,11 @@ iolist ="""	IW0	InputWord	This is a comment
 	I2.1	InputBool2	This is a comment
 	QW4	OutputWord	This is a comment
 	Q6.0	OutputBool	This is a comment"""
-
+print("TF`?")
 #variable_mapping = [x.strip().split('\t') for x in iolist.split('\n')]
 variable_mapping = {x[1]:x[0] for x in [x.strip().split('\t') for x in iolist.split('\n')]}
 # variable_mapping = {x[1]:x[0][1:] for x in [x.strip().split('\t') for x in iolist.split('\n')]}
-print(variable_mapping)
+#print(variable_mapping)
 
 def adress_to_byte_bit(adr:str):
   type = ""
@@ -34,17 +34,17 @@ def adress_to_byte_bit(adr:str):
 
 new_dict = {}
 for key, value in variable_mapping.items():
-  
+  #print(key, value)
   if 'Word' in key:
     vdtype = VariableDatatype.WORD
   else:
     vdtype = VariableDatatype.BOOL
   
   #new_dict[key] = adress_to_byte_bit(value)
-  print(getAreaFromString(value, vdtype))
-  quit()
+  new_dict[key] = getAreaFromString(value, vdtype)
 
-print(new_dict)
+print("hello")
+#print(new_dict)
 quit()
 
 existing_shm = shared_memory.SharedMemory(name='SIMITShared Memory')
