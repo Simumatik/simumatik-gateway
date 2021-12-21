@@ -1,6 +1,6 @@
 import socket, sys
 
-SERVER_IP = 'localhost' if sys.argv[1] == 'test' else '192.168.0.10'
+SERVER_IP = '192.168.0.11'
 SERVER_PORT = 10940
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
