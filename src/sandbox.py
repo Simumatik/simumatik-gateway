@@ -9,7 +9,7 @@ iolist ="""	IW0	InputWord	This is a comment
 	I2.1	InputBool2	This is a comment
 	QW4	OutputWord	This is a comment
 	Q6.0	OutputBool	This is a comment"""
-print("TF`?")
+
 #variable_mapping = [x.strip().split('\t') for x in iolist.split('\n')]
 variable_mapping = {x[1]:x[0] for x in [x.strip().split('\t') for x in iolist.split('\n')]}
 # variable_mapping = {x[1]:x[0][1:] for x in [x.strip().split('\t') for x in iolist.split('\n')]}
@@ -42,10 +42,10 @@ for key, value in variable_mapping.items():
   
   #new_dict[key] = adress_to_byte_bit(value)
   new_dict[key] = getAreaFromString(value, vdtype)
+  print(new_dict[key])
 
-print("hello")
 #print(new_dict)
-quit()
+
 
 existing_shm = shared_memory.SharedMemory(name='SIMITShared Memory')
 c = np.ndarray((int(existing_shm.size/2),), dtype=np.int16, buffer=existing_shm.buf)
@@ -57,6 +57,10 @@ print(c[:8])
 
 while True:
   testinput = c[4]
+  if c[5] != 0:
+    c[7] = 1
+  else:
+    c[7] = 0
   #print(testinput, end="\r")
   print(c[:8], end="\r")
   testoutput = testinput + 1

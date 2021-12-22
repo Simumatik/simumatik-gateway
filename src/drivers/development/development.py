@@ -14,11 +14,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from multiprocessing import Pipe
+from multiprocessing import Pipe, shared_memory
+import numpy as np
 from typing import Optional
 
-from ..driver import driver
-
+from ..driver import VariableQuality, driver
+#from ..s7protocol.iso_on_tcp import (getAreaFromString, PDULengthRequest, PDUReadAreas, PDUWriteAreas, connectPLC)
 
 class development(driver):
     '''
@@ -38,7 +39,9 @@ class development(driver):
         driver.__init__(self, name, pipe)
 
         # Parameters
-        self.myparam = 3
+        self.SHM_name = "SIMITShared Memory"
+        self.header_length = 4
+        self.SHM_array = None
 
 
     def connect(self) -> bool:
@@ -46,13 +49,22 @@ class development(driver):
         
         : returns: True if connection stablished False if not
         """
+        try:
+            self._connection = shared_memory.SharedMemory(name=self.SHM_name)
+            self.SHM_array = np.ndarray((int(self._connection.size/2),), dtype=np.int16, buffer=self._connection.buf)
+        except Exception as e:
+            self.sendDebugInfo(f"SETUP: Connection with {self.SHM_name} cannot be established. ({e})")
+            return False
         return True
 
 
     def disconnect(self):
         """ Disconnect driver.
         """
-        pass
+        self._connection.close()
+        self.SHM_array = None
+
+
 
 
     def addVariables(self, variables: dict):
@@ -61,7 +73,36 @@ class development(driver):
         : param variables: Variables to add in a dict following the setup format. (See documentation) 
         
         """
-        pass
+        def adress_to_byte_bit(adr:str):
+            type = ""
+
+            # Get the type (I, IB, IW, ID, Q, QB, QW, QD, M, MB, MW, MD..)
+            if adr[:2].isalpha():
+                type = adr[:2]
+                adr = adr[2:]
+            elif adr[:1].isalpha():
+                type = adr[:1]
+                adr = adr[1:]
+
+            if '.' in adr:
+                adr = adr.split('.')
+                return {"type" : "bool", "byte" : int(adr[0]), "bit" : int(adr[1])}
+            else:
+                return {"type" : type, "byte" : int(adr[0])}
+
+        for var_id in list(variables.keys()):
+            var_data = dict(variables[var_id])
+
+            area = adress_to_byte_bit(var_id)
+            # area = getAreaFromString(var_id, var_data['datatype'])
+
+            if area is not None:
+                var_data['area'] = area
+                var_data['value'] = 0
+                self.variables[var_id] = var_data
+            else:
+                self.sendDebugVarInfo(('SETUP: Bad variable definition: {}'.format(var_id), var_id))
+
 
 
     def readVariables(self, variables: list) -> list:
@@ -69,7 +110,17 @@ class development(driver):
         : param variables: List of variable ids to be read. 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        return []
+        array = []
+        for var_id in variables:
+            array.append((var_id, self.variables[var_id]['area']))
+        
+        res = []
+        for var_id, area in array:
+            byte = self.header_length + area['byte'] 
+            value = int(self.SHM_array[int(byte/2)])
+            res.append((var_id, value, VariableQuality.GOOD))
+
+        return res
 
 
     def writeVariables(self, variables: list) -> list:
@@ -77,4 +128,15 @@ class development(driver):
         : param variables: List of tupples with variable ids and the values to be written (var_id, var_value). 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        return []
+        array = []
+        for (var_id, new_value) in variables:
+            array.append((var_id, self.variables[var_id]['area'], new_value))
+
+        res = []
+        for var_id, area, value in array:
+            byte = self.header_length + area['byte'] 
+            self.SHM_array[int(byte/2)] = new_value
+            res.append((var_id, value, VariableQuality.GOOD))
+
+        return res
+
