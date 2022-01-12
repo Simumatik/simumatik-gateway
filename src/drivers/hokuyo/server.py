@@ -1,6 +1,6 @@
 import socket, sys
 
-SERVER_IP = ''
+SERVER_IP = '0.0.0.0'
 SERVER_PORT = 10940
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -21,8 +21,11 @@ while True:
 
         # Receive the data in small chunks and retransmit it
         while True:
-            data = connection.recv(16)
-            print('received "%s"' % data)
+            try:
+                data = connection.recv(100)
+                print('received "%s"' % data)
+            except:
+                data = None
             if data:
                 print('sending data back to the client')
                 connection.sendall(data)
