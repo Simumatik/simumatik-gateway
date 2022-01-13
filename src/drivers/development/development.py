@@ -110,13 +110,9 @@ class development(driver):
         : param variables: List of variable ids to be read. 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        array = []
-        for var_id in variables:
-            array.append((var_id, self.variables[var_id]['area']))
-        
         res = []
-        for var_id, area in array:
-            byte = self.header_length + area['byte'] 
+        for var_id in variables:
+            byte = self.header_length + self.variables[var_id]['area']
             value = int(self.SHM_array[int(byte/2)])
             res.append((var_id, value, VariableQuality.GOOD))
 
@@ -128,15 +124,11 @@ class development(driver):
         : param variables: List of tupples with variable ids and the values to be written (var_id, var_value). 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        array = []
-        for (var_id, new_value) in variables:
-            array.append((var_id, self.variables[var_id]['area'], new_value))
-
         res = []
-        for var_id, area, value in array:
-            byte = self.header_length + area['byte'] 
-            self.SHM_array[int(byte/2)] = new_value
+        for (var_id, value) in variables:
+            byte = self.header_length + self.variables[var_id]['area']
+            self.SHM_array[int(byte/2)] = value
             res.append((var_id, value, VariableQuality.GOOD))
 
-        return res
+
 
