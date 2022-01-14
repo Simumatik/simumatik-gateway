@@ -16,10 +16,11 @@
 
 from multiprocessing import Pipe, shared_memory
 import numpy as np
+import struct
 from typing import Optional
 
-from ..driver import VariableQuality, driver
-#from ..s7protocol.iso_on_tcp import (getAreaFromString, PDULengthRequest, PDUReadAreas, PDUWriteAreas, connectPLC)
+from ..driver import VariableDatatype, VariableQuality, driver
+from ..s7protocol.iso_on_tcp import (getAreaFromString, PDULengthRequest, PDUReadAreas, PDUWriteAreas, connectPLC)
 
 class development(driver):
     '''
@@ -51,11 +52,12 @@ class development(driver):
         """
         try:
             self._connection = shared_memory.SharedMemory(name=self.SHM_name)
-            self.SHM_array = np.ndarray((int(self._connection.size/2),), dtype=np.int16, buffer=self._connection.buf)
+            self.SHM_array = np.ndarray(self._connection.size, dtype=np.uint8, buffer=self._connection.buf)
         except Exception as e:
             self.sendDebugInfo(f"SETUP: Connection with {self.SHM_name} cannot be established. ({e})")
             return False
-        return True
+        else:
+            return True
 
 
     def disconnect(self):
@@ -86,15 +88,14 @@ class development(driver):
 
             if '.' in adr:
                 adr = adr.split('.')
-                return {"type" : "bool", "byte" : int(adr[0]), "bit" : int(adr[1])}
+                return {"byte" : int(adr[0]), "bit" : int(adr[1])}
             else:
-                return {"type" : type, "byte" : int(adr[0])}
+                return {"byte" : int(adr[0])}
 
         for var_id in list(variables.keys()):
             var_data = dict(variables[var_id])
 
             area = adress_to_byte_bit(var_id)
-            # area = getAreaFromString(var_id, var_data['datatype'])
 
             if area is not None:
                 var_data['area'] = area
@@ -112,9 +113,29 @@ class development(driver):
         """
         res = []
         for var_id in variables:
-            byte = self.header_length + self.variables[var_id]['area']
-            value = int(self.SHM_array[int(byte/2)])
-            res.append((var_id, value, VariableQuality.GOOD))
+            byte_adress = self.header_length + self.variables[var_id]['area']['byte']
+            type = self.variables[var_id]['datatype']
+            try:
+                if type == VariableDatatype.WORD or type == VariableDatatype.INTEGER:
+                    # 2 bytes
+                    values = self.SHM_array[byte_adress:byte_adress+2] 
+                    
+                    
+                    packed = b''.join(values)
+                    value = struct.unpack('!H',packed)
+                    # value = struct.unpack(('I'), packed)
+                    # print(value)
+                elif type == VariableDatatype.FLOAT or type == VariableDatatype.DWORD:
+                    # 4 bytes
+                    value = struct.unpack('!h',values)
+                    value = b''.join(self.SHM_array[byte_adress:byte_adress+4])
+                else: 
+                    # 1 byte
+                    value = self.SHM_array[byte_adress]
+            except:
+                res.append((var_id, 0, VariableQuality.ERROR))
+            else:
+                res.append((var_id, value, VariableQuality.GOOD))
 
         return res
 
@@ -126,9 +147,15 @@ class development(driver):
         """
         res = []
         for (var_id, value) in variables:
-            byte = self.header_length + self.variables[var_id]['area']
-            self.SHM_array[int(byte/2)] = value
-            res.append((var_id, value, VariableQuality.GOOD))
+            byte_adress = self.header_length + self.variables[var_id]['area']['byte']
+            try:
+                self.SHM_array[byte_adress] = value
+            except:
+                res.append((var_id, value, VariableQuality.ERROR))
+            else:
+                res.append((var_id, value, VariableQuality.GOOD))
+
+        return res
 
 
 
