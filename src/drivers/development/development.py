@@ -17,7 +17,7 @@
 from multiprocessing import Pipe
 from typing import Optional
 
-from ..driver import driver
+from ..driver import driver, VariableQuality, VariableOperation, VariableDatatype
 
 
 class development(driver):
@@ -38,7 +38,7 @@ class development(driver):
         driver.__init__(self, name, pipe)
 
         # Parameters
-        self.myparam = 3
+        # self.myparam = 3
 
 
     def connect(self) -> bool:
@@ -48,6 +48,7 @@ class development(driver):
         """
         # Make sure to send a debug message if method returns False
         # self.sendDebugInfo('Error message here') 
+        self._connection = True
         return True
 
 
@@ -63,7 +64,16 @@ class development(driver):
         : param variables: Variables to add in a dict following the setup format. (See documentation) 
         
         """
-        pass
+        for var_id, var_data in variables.items():
+            try:
+                var_data['value'] = None # Force first update
+                self.variables[var_id] = var_data
+                self.sendDebugVarInfo((f'SETUP: Variable added {var_id}', var_id))
+                continue
+            except:
+                pass
+            
+            self.sendDebugVarInfo((f'SETUP: Variable not added {var_id}', var_id))
 
 
     def readVariables(self, variables: list) -> list:
@@ -71,7 +81,17 @@ class development(driver):
         : param variables: List of variable ids to be read. 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        return []
+        res = []
+        # try:
+        #     values = self._connection.
+        # except:
+        #     for var_id in variables:
+        #         res.append((var_id, None, VariableQuality.BAD))
+        # else:
+        #     for var_id in values:
+        #         res.append((var_id, values[var_id], VariableQuality.GOOD))
+
+        return res
 
 
     def writeVariables(self, variables: list) -> list:
@@ -79,4 +99,14 @@ class development(driver):
         : param variables: List of tupples with variable ids and the values to be written (var_id, var_value). 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        return []
+        res = []
+        # try:
+        #     self._connection.
+        # except:
+        #     for (var_id, var_value)  in variables: 
+        #         res.append((var_id, var_value, VariableQuality.BAD))
+        # else:
+        for (var_id, var_value)  in variables: 
+            res.append((var_id, var_value, VariableQuality.GOOD))
+        print(variables)
+        return res
