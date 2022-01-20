@@ -188,8 +188,16 @@ class driver(threading.Thread):
             if self.status == DriverStatus.RUNNING:
                 if not self._transmitVariables():
                     self.changeStatus(DriverStatus.ERROR)
+
+            self.loop()
+
             # Sleep
             time.sleep(self.sleep_time)
+
+    def loop(self):
+        """ Runs every iteration the driver is updated.
+        """
+        pass
 
                 
     def changeStatus(self, new_status:DriverStatus):
