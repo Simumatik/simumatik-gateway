@@ -42,7 +42,6 @@ def UAM_encode(decimal_list):
 def calc_crc(bytes):
     crc16 = fastcrc.crc16.kermit(bytes)
     ascii_crc = str(hex(crc16))[2:].upper()
-
     return ('0' * (4 - len(ascii_crc)) + ascii_crc).encode()
 
 class development(driver):
@@ -50,10 +49,12 @@ class development(driver):
     Driver that can be used for development. The driver can be used on a component just assigning the driver type "development".
     Feel free to add your code in the methods below.
     Parameters:
+    ip: str
+        Ip address to listen for commands on. Default = "0.0.0.0"
     port: int
         Port to listen for commands on. Default = 10940
     transmit_interval: float
-        Time in seconds to wait between transmitting data to client. Default = 10940
+        Time in seconds to wait between transmitting data to client. Default = 30ms
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None):
@@ -65,47 +66,16 @@ class development(driver):
         driver.__init__(self, name, pipe)
 
         # Parameters
+        self.ip = "0.0.0.0"
         self.port = 10940
         self.transmit_interval = 0.03
-        self.area_num = '06'
 
         # Internal
+        self.area_num = '06'
         self.last_transmit_time = 0
         self.data = [65534] * 1081
-        self.encoded_data = UAM_encode(self.data)
-
-    
-    def loop(self):
-        dt = time.perf_counter() - self.last_transmit_time
-        if dt > self.transmit_interval:
-            try:
-                # Receive commands
-                data = self._connection.recv(CMD_TOT_LEN)
-                s = struct.Struct(CMD_FORMAT)
-                
-                if len(data) == struct.calcsize(CMD_FORMAT):
-                    _, cmd_size, header, sub_header, crc, _ = s.unpack(data)
-
-                    if header + sub_header == b'AR01':
-                        # Transmit stored data
-                        # Build data from sensor readings
-                        msg_len = b'21FF'
-                        area_num = self.area_num.encode()
-                        timestamp = b'005A2F4F' # Seconds elapsed since detection in protection area
-                        data = self.encoded_data + b'0000'*1081 # Add intensity values
-                        UAM_msg = msg_len + b'AR01000' + area_num + b'00001111000000000000' + timestamp + b'00000000' + data
-                        UAM_crc = calc_crc(UAM_msg)
-                        UAM_msg = b'\x02' + UAM_msg + UAM_crc + b'\x03'
-                        self._connection.sendall(UAM_msg)
-
-            except Exception as e:
-                # Wait for a new connection
-                self.disconnect()
-                self.connect()
-                self.sendDebugInfo(e)
-            
-            finally:
-                self.last_transmit_time = time.perf_counter()
+        self._data_changed = True
+        self._client = None
 
 
     def connect(self) -> bool:
@@ -114,18 +84,15 @@ class development(driver):
         : returns: True if connection stablished False if not
         """
         try:
-            server_address = ("0.0.0.0", self.port)
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.bind(server_address)
-            sock.listen()
-            self.sendDebugInfo(f'Waiting for connection')
-            self._connection, self.client_address = sock.accept()
+            self._connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self._connection.bind((self.ip, self.port))
+            self._connection.listen()
+            self._connection.setblocking(False)
         except Exception as e:
-            print(e)
             self.sendDebugInfo(f'Could not connect: {e}') 
             return False
 
-        self.sendDebugInfo(f'Connected to: {self.client_address}') 
+        self.sendDebugInfo(f'Waiting for connection at {self.ip}:{self.port}')
         return True
 
 
@@ -133,11 +100,18 @@ class development(driver):
         """ Disconnect driver.
         """
         try:
-            self._connection.close()
+            if self._client:
+                self._client.close()
         except:
             pass
-        finally:
-            self._connection = None
+        self._client = None
+        
+        try:
+            if self._connection:
+                self._connection.close()
+        except:
+            pass
+        
 
 
     def addVariables(self, variables: dict):
@@ -174,12 +148,62 @@ class development(driver):
                 [first, last] = map(int, var_id.split('_'))
                 self.data = self.data[:first] + var_value + self.data[last:]
                 res.append((var_id, var_value, VariableQuality.GOOD))
+                self._data_changed = True
             except Exception as e:
                 res.append((var_id, var_value, VariableQuality.BAD))
                 self.sendDebugInfo(e)
     
-        # Encode new data, unless there is a pending transmit
-        if time.perf_counter() - self.last_transmit_time < 0.03:
-            self.encoded_data = UAM_encode(self.data)
-
         return res
+
+
+    def loop(self):
+        """ Runs every iteration while the driver active.
+        """
+        # Get new connections
+        if self._client is None:
+            try:
+                self._client, client_address = self._connection.accept()
+                self.sendDebugInfo(f'Connection stablished with: {client_address}')
+            except:
+                pass
+
+        # Process actual connections
+        else:
+            now = time.perf_counter()
+            dt = now - self.last_transmit_time
+            if dt > self.transmit_interval:
+                self.last_transmit_time = now
+
+                if self._data_changed:
+                    self.encoded_data = UAM_encode(self.data)
+                    self._data_changed = False
+                    
+                try:
+                    data = self._client.recv(CMD_TOT_LEN)
+                    assert len(data)>0
+                    response = self.process_telegram2(data)
+                    if response:
+                        self._client.sendall(response)
+
+                except:  
+                    self.sendDebugInfo(f'Connection Interrupted')
+                    self._client.close()
+                    self._client = None
+
+
+    def process_telegram(self, data):
+        s = struct.Struct(CMD_FORMAT)
+        if len(data) == struct.calcsize(CMD_FORMAT):
+            _, cmd_size, header, sub_header, crc, _ = s.unpack(data)
+            if header + sub_header == b'AR01':
+                # Transmit stored data
+                # Build data from sensor readings
+                msg_len = b'21FF'
+                area_num = self.area_num.encode()
+                timestamp = b'005A2F4F' # Seconds elapsed since detection in protection area
+                data = self.encoded_data + b'0000'*1081 # Add intensity values
+                UAM_msg = msg_len + b'AR01000' + area_num + b'00001111000000000000' + timestamp + b'00000000' + data
+                UAM_crc = calc_crc(UAM_msg)
+                UAM_msg = b'\x02' + UAM_msg + UAM_crc + b'\x03'
+                return UAM_msg
+        return None
