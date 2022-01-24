@@ -14,54 +14,46 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import enum
 from multiprocessing import Pipe
+from typing import Optional
 import socket
 import struct
 import time
 import fastcrc
-from typing import Optional
 
-from ..driver import driver, VariableQuality, VariableOperation, VariableDatatype
+from ..driver import driver, VariableQuality
 
 CMD_TOT_LEN = 14
 CMD_FORMAT = 'c 4s 2s 2s 4s c'
 
-STX = '\x02'
-ETX = '\x03'
-
-def UAM_decode(bytes):
-    string = bytes.decode()
-    decimal_res = []
-    for i in range(0, len(string), 4):
-        ascii = [ord(c) for c in string[i:i+4]]
-        ascii_d = [c-0x30 if c<0x40 else c-0x37 for c in ascii]
-        binary = ''.join([format(d, '04b') for d in ascii_d])
-        decimal_res.append(int(binary, 2))
-    return decimal_res
-
 def UAM_encode(decimal_list):
     ascii_str = ''
+    # Loop through distance values
     for decimal in decimal_list:
         if decimal < 0:
-            decimal = 65535
+            decimal = 65535 # 65535 for 'object not detected'
         binary = format(decimal, '016b')
         decimal = [int(binary[i:i+4], 2) for i in range(0, 16, 4)]
         ascii_d = [d+0x30 if d<10 else d+0x37 for d in decimal]
         ascii_str += ''.join([chr(a) for a in ascii_d])
+
     return ascii_str.encode()
 
 def calc_crc(bytes):
     crc16 = fastcrc.crc16.kermit(bytes)
-    return str(hex(crc16))[2:].upper().encode()
+    ascii_crc = str(hex(crc16))[2:].upper()
+
+    return ('0' * (4 - len(ascii_crc)) + ascii_crc).encode()
 
 class development(driver):
     '''
     Driver that can be used for development. The driver can be used on a component just assigning the driver type "development".
     Feel free to add your code in the methods below.
     Parameters:
-    myparam: int
-        This is just an example of a driver parameter. Default = 3
+    port: int
+        Port to listen for commands on. Default = 10940
+    transmit_interval: float
+        Time in seconds to wait between transmitting data to client. Default = 10940
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None):
@@ -74,43 +66,46 @@ class development(driver):
 
         # Parameters
         self.port = 10940
-        self.transmit_interval = 0.1
+        self.transmit_interval = 0.03
+        self.area_num = '06'
 
         # Internal
-        self._last_transmit_time = 0
-        self.data = [65534] * 1081 + [0] * 1081
+        self.last_transmit_time = 0
+        self.data = [65534] * 1081
         self.encoded_data = UAM_encode(self.data)
 
     
     def loop(self):
-        dt = time.perf_counter() - self._last_transmit_time
+        dt = time.perf_counter() - self.last_transmit_time
         if dt > self.transmit_interval:
-            self._last_transmit_time = time.perf_counter()
             try:
                 # Receive commands
                 data = self._connection.recv(CMD_TOT_LEN)
                 s = struct.Struct(CMD_FORMAT)
+                
+                if len(data) == struct.calcsize(CMD_FORMAT):
+                    _, cmd_size, header, sub_header, crc, _ = s.unpack(data)
 
-                _, cmd_size, header, sub_header, crc, _ = s.unpack(data)
-                # print(cmd_size, header, sub_header, crc)
+                    if header + sub_header == b'AR01':
+                        # Transmit stored data
+                        # Build data from sensor readings
+                        msg_len = b'21FF'
+                        area_num = self.area_num.encode()
+                        timestamp = b'005A2F4F' # Seconds elapsed since detection in protection area
+                        data = self.encoded_data + b'0000'*1081 # Add intensity values
+                        UAM_msg = msg_len + b'AR01000' + area_num + b'00001111000000000000' + timestamp + b'00000000' + data
+                        UAM_crc = calc_crc(UAM_msg)
+                        UAM_msg = b'\x02' + UAM_msg + UAM_crc + b'\x03'
+                        self._connection.sendall(UAM_msg)
 
-                if header + sub_header == b'AR01':
-                    # Transmit stored data
-                    # Build data from sensor readings
-                    msg_len = b'21FF'
-                    area_num = b'07'
-                    timestamp = b'005A2F4F'
-                    data = UAM_encode(self.data)
-                    print(len(data))
-                    UAM_msg = msg_len + b'AR01000' + area_num + b'11701111000000000000' + timestamp + b'00000000' + data
-                    UAM_crc = calc_crc(UAM_msg)
-                    UAM_msg = b'\x02' + UAM_msg + UAM_crc + b'\x03'
-                    self._connection.sendall(UAM_msg)
             except Exception as e:
+                # Wait for a new connection
                 self.disconnect()
                 self.connect()
-                print(e)
-        
+                self.sendDebugInfo(e)
+            
+            finally:
+                self.last_transmit_time = time.perf_counter()
 
 
     def connect(self) -> bool:
@@ -119,14 +114,18 @@ class development(driver):
         : returns: True if connection stablished False if not
         """
         try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             server_address = ("0.0.0.0", self.port)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.bind(server_address)
             sock.listen()
+            self.sendDebugInfo(f'Waiting for connection')
             self._connection, self.client_address = sock.accept()
         except Exception as e:
+            print(e)
             self.sendDebugInfo(f'Could not connect: {e}') 
             return False
+
+        self.sendDebugInfo(f'Connected to: {self.client_address}') 
         return True
 
 
@@ -137,6 +136,8 @@ class development(driver):
             self._connection.close()
         except:
             pass
+        finally:
+            self._connection = None
 
 
     def addVariables(self, variables: dict):
@@ -146,15 +147,8 @@ class development(driver):
         
         """
         for var_id, var_data in variables.items():
-            try:
-                var_data['value'] = None # Force first update
-                self.variables[var_id] = var_data
-                self.sendDebugVarInfo((f'SETUP: Variable added {var_id}', var_id))
-                continue
-            except:
-                pass
-            
-            self.sendDebugVarInfo((f'SETUP: Variable not added {var_id}', var_id))
+            var_data['value'] = None # Force first update
+            self.variables[var_id] = var_data
 
 
     def readVariables(self, variables: list) -> list:
@@ -163,14 +157,6 @@ class development(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
-        # try:
-        #     values = self._connection.
-        # except:
-        #     for var_id in variables:
-        #         res.append((var_id, None, VariableQuality.BAD))
-        # else:
-        #     for var_id in values:
-        #         res.append((var_id, values[var_id], VariableQuality.GOOD))
 
         return res
 
@@ -190,6 +176,10 @@ class development(driver):
                 res.append((var_id, var_value, VariableQuality.GOOD))
             except Exception as e:
                 res.append((var_id, var_value, VariableQuality.BAD))
-                print(e)
+                self.sendDebugInfo(e)
+    
+        # Encode new data, unless there is a pending transmit
+        if time.perf_counter() - self.last_transmit_time < 0.03:
+            self.encoded_data = UAM_encode(self.data)
 
         return res

@@ -186,10 +186,9 @@ class driver(threading.Thread):
 
             # Driver running
             if self.status == DriverStatus.RUNNING:
+                self.loop()
                 if not self._transmitVariables():
                     self.changeStatus(DriverStatus.ERROR)
-
-            self.loop()
 
             # Sleep
             time.sleep(self.sleep_time)
