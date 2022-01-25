@@ -23,8 +23,8 @@ import fastcrc
 
 from ..driver import driver, VariableQuality
 
-CMD_TOT_LEN = 14
 CMD_FORMAT = 'c 4s 2s 2s 4s c'
+CMD_TOT_LEN = struct.calcsize(CMD_FORMAT)
 
 def UAM_encode(decimal_list):
     ascii_str = ''
@@ -44,7 +44,7 @@ def calc_crc(bytes):
     ascii_crc = str(hex(crc16))[2:].upper()
     return ('0' * (4 - len(ascii_crc)) + ascii_crc).encode()
 
-class development(driver):
+class hokuyo(driver):
     '''
     Driver that can be used for development. The driver can be used on a component just assigning the driver type "development".
     Feel free to add your code in the methods below.
@@ -146,7 +146,7 @@ class development(driver):
                 continue
             try:
                 [first, last] = map(int, var_id.split('_'))
-                self.data = self.data[:first] + var_value + self.data[last:]
+                self.data = self.data[:first] + var_value + self.data[last+1:]
                 res.append((var_id, var_value, VariableQuality.GOOD))
                 self._data_changed = True
             except Exception as e:
@@ -193,7 +193,7 @@ class development(driver):
 
     def process_telegram(self, data):
         s = struct.Struct(CMD_FORMAT)
-        if len(data) == struct.calcsize(CMD_FORMAT):
+        if len(data) == CMD_TOT_LEN:
             _, cmd_size, header, sub_header, crc, _ = s.unpack(data)
             if header + sub_header == b'AR01':
                 # Transmit stored data
