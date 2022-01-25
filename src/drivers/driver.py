@@ -55,6 +55,7 @@ class VariableDatatype(str, Enum):
 class VariableOperation(str, Enum):
     READ = 'read'
     WRITE = 'write'
+    BOTH = 'both'
 
 class driver(threading.Thread):
     """
@@ -150,7 +151,6 @@ class driver(threading.Thread):
                                     self.changeStatus(DriverStatus.RUNNING)
                                 else:
                                     self.changeStatus(DriverStatus.ERROR)
-                                    self.sendDebugInfo('SETUP action failed! Setup not completed.')
                             else:
                                 self.sendDebugInfo('SETUP action failed! Actual status is not STANDBY.')
 
@@ -167,7 +167,7 @@ class driver(threading.Thread):
                                 if isinstance(data, dict):
                                     for var_name, var_value in data.items():
                                         if var_name in self.variables:
-                                            if self.variables[var_name]['operation'] == VariableOperation.WRITE:
+                                            if self.variables[var_name]['operation'] in [VariableOperation.WRITE, VariableOperation.BOTH]:
                                                 self.pending_updates.update({var_name:var_value})
                                             else:
                                                 self.sendDebugVarInfo(('UPDATE action failed! Variable defined operation is not write: ' + var_name, var_name))
@@ -329,7 +329,7 @@ class driver(threading.Thread):
 
                     # Loop all variables and set actual value to the pending writes if necessary
                     for var_id, var_data  in self.variables.items():
-                        if var_data['operation'] == VariableOperation.WRITE:
+                        if var_data['operation'] in [VariableOperation.WRITE, VariableOperation.BOTH]:
                             if var_id not in self.pending_updates:
                                 pending_writes.append((var_id, var_data['value']))
 
@@ -349,7 +349,7 @@ class driver(threading.Thread):
                 pending_reads = []
                 
                 for var_id, var_data  in self.variables.items():
-                    if var_data['operation'] == VariableOperation.READ:
+                    if var_data['operation'] in [VariableOperation.READ, VariableOperation.BOTH]:
                         pending_reads.append(var_id)
 
                 if pending_reads:

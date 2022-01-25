@@ -79,11 +79,10 @@ class udp_generic(driver):
                 if data.get("poll", None) is not None:
                     self._connection.settimeout(0)
                     self._last_recv_poll = sec_now
-                    self.changeStatus(DriverStatus.RUNNING)
                     return True
 
         except Exception as e:
-            self.sendDebugInfo(f'Exception while doSetup: {e}')
+            self.sendDebugInfo(f'Connection failed: {e}')
         
         return False
 

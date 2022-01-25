@@ -20,19 +20,23 @@ Finally, go to the Simumatik App and connect to the Gateway. You have more infor
 
 Keep in mind that some drivers will need a special setup-up to work. Don't forget to check their code for more information about dependencies.
 
+The current dependencies only work up to Python 3.8
+
 ## Drivers available
 
 Right now, the following drivers are supported in the Gateway:
 
-- RobotWare
+- RobotWare (ABB RobotStudio)
 - CPRog CRI
-- Development
 - MQTT client
 - OPCUA client
 - RoboDK
 - S7Protocol
 - UDP generic
 - Universal Robots
+- Micro800 HTTP (Rockwell Automation CCW)
+- Twincat ADS
+- Development
 
 ## Architecture
 
@@ -41,3 +45,14 @@ You can learn more about the Gateway design and structure on the [Architecture](
 ## Contributing
 
 Before opening an issue or PR, please read the content in the [Contributing](CONTRIBUTING.md) section.
+
+
+## Build
+
+It is possible to build an distributable package of the Gateway using pyinstaller library. To do so, simply run the next command:
+
+```Shell
+pyinstaller gateway_package.spec
+```
+
+The executable file and all additional files will be included inside the folder dist/gateway.

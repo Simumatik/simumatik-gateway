@@ -14,19 +14,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from ..driver import driver, VariableQuality 
+
 from multiprocessing import Pipe
 from typing import Optional
+    
 
-from ..driver import driver
-
-
-class development(driver):
+class twincat_ads(driver):
     '''
     Driver that can be used for development. The driver can be used on a component just assigning the driver type "development".
     Feel free to add your code in the methods below.
+
     Parameters:
-    myparam: int
-        This is just an example of a driver parameter. Default = 3
+    net_id  : String    : the Beckhoff twincat route to the PLC
+    port    : Int       : port to connect to
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None):
@@ -36,9 +37,9 @@ class development(driver):
         """
         # Inherit
         driver.__init__(self, name, pipe)
-
-        # Parameters
-        self.myparam = 3
+        
+        self.net_id = '192.168.0.1.1.1'
+        self.port = 851
 
 
     def connect(self) -> bool:
@@ -46,32 +47,59 @@ class development(driver):
         
         : returns: True if connection stablished False if not
         """
-        # Make sure to send a debug message if method returns False
-        # self.sendDebugInfo('Error message here') 
-        return True
+        # Create connection
+        try:
+            import pyads
+            self._connection = pyads.Connection(self.net_id, self.port)
+            self._connection.open()
+        except Exception as e:
+            self.sendDebugInfo(f"Connection with {self.net_id} cannot be stablished.")
+            return False
 
+        # Check connection status.
+        state = self._connection.read_state()
+        if state[0] == 5:
+            return True
+        else:
+            self.sendDebugInfo(f"Driver not connected, ADS state = {state[0]}") 
+            return False
 
     def disconnect(self):
         """ Disconnect driver.
         """
-        pass
+        if self._connection:
+            self._connection.close()
 
 
     def addVariables(self, variables: dict):
         """ Add variables to the driver. Correctly added variables will be added to internal dictionary 'variables'.
         Any error adding a variable should be communicated to the server using sendDebugInfo() method.
         : param variables: Variables to add in a dict following the setup format. (See documentation) 
-        
         """
-        pass
-
-
+        for var_id in list(variables.keys()):
+            var_data = dict(variables[var_id])
+            try:
+                var_data['value'] = self._connection.read_by_name(var_id)
+                self.variables[var_id] = var_data 
+            except Exception as e:
+                self.sendDebugInfo(f'SETUP: {e} \"{var_id}\"')
+                
     def readVariables(self, variables: list) -> list:
         """ Read given variable values. In case that the read is not possible or generates an error BAD quality should be returned.
         : param variables: List of variable ids to be read. 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        return []
+        res = []
+        try:
+            values = self._connection.read_list_by_name(variables)
+        except:
+            for var_id in variables:
+                res.append((var_id, None, VariableQuality.BAD))
+        else:
+            for var_id in values:
+                res.append((var_id, values[var_id], VariableQuality.GOOD))
+
+        return res
 
 
     def writeVariables(self, variables: list) -> list:
@@ -79,4 +107,16 @@ class development(driver):
         : param variables: List of tupples with variable ids and the values to be written (var_id, var_value). 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        return []
+        res = []
+        dictionary = {var_id:var_value for (var_id, var_value) in variables}    
+
+        try:
+            self._connection.write_list_by_name(dictionary)
+        except:
+            for (var_id, var_value)  in variables: 
+                res.append((var_id, var_value, VariableQuality.BAD))
+        else:
+            for (var_id, var_value)  in variables: 
+                res.append((var_id, var_value, VariableQuality.GOOD))
+
+        return res

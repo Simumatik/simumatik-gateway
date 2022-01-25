@@ -83,7 +83,7 @@ class cprog_cri(driver):
             return True
 
         except Exception as e:
-            self.sendDebugInfo('SETUP failed: Exception '+str(e))
+            self.sendDebugInfo('Exception '+str(e))
 
         return False
 

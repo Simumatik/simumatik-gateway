@@ -1,0 +1,5 @@
+numpy==1.20.2
+opcua==0.98.12
+SimpleWebSocketServer==0.1.1
+paho-mqtt==1.5.1
+pyads==3.3.8

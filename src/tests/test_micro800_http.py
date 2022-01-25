@@ -19,25 +19,25 @@ from os import path
 import time
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from drivers.development.development import development
+from drivers.micro800_http.micro800_http import micro800_http
 from drivers.driver import VariableOperation, VariableDatatype
 
-# Define your I/O variables here
 VARIABLES = {
-    'inputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
-    'outputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
+    '_IO_EM_DI_00':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
+    '_IO_EM_DO_00':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
     }
 
-# Add your custom logic in this test.
-d = development(None, 'test')
+d = micro800_http(None, 'test')
+d.port = '65173'
+
 if d.connect():
     d.addVariables(VARIABLES)
 
-    counter = 0
+    value = False
     while time.perf_counter() < 5:
-        d.writeVariables([('inputs', counter)])
-        print(d.readVariables(['outputs']))
+        d.writeVariables([('_IO_EM_DI_00', value)])
+        print(d.readVariables(['_IO_EM_DO_00']))
         time.sleep(0.1)
-        counter += 1
+        value = not value
 
     d.disconnect()

@@ -19,25 +19,33 @@ from os import path
 import time
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from drivers.development.development import development
+from drivers.fanuc_roboguide.fanuc_roboguide import fanuc_roboguide
 from drivers.driver import VariableOperation, VariableDatatype
 
 # Define your I/O variables here
 VARIABLES = {
-    'inputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
-    'outputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
+    'Axis':{'datatype': VariableDatatype.FLOAT, 'size': 6, 'operation': VariableOperation.READ},
+    'DI10':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
+    'DO9':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
+    'GI1':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
+    'GO1':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
     }
 
 # Add your custom logic in this test.
-d = development(None, 'test')
+d = fanuc_roboguide(None, 'test')
+d.port = 60008
 if d.connect():
     d.addVariables(VARIABLES)
 
     counter = 0
-    while time.perf_counter() < 5:
-        d.writeVariables([('inputs', counter)])
-        print(d.readVariables(['outputs']))
-        time.sleep(0.1)
+    start = time.perf_counter()
+    while (time.perf_counter()-start < 1):
+        res = d.writeVariables([('GI1', counter), ('DI10', counter%2)])
+        print(res)
+        print(d.readVariables(['Axis','GO1','DO9']))
         counter += 1
+        time.sleep(0.01)
 
     d.disconnect()
+else:
+    print("Connection failed!")
