@@ -20,6 +20,8 @@ TEST sqlite3 driver
 
 This test does not have any requirement.
 Just execute the script to create the generic driver and test the diferent actions against a SQLite database.
+You can use a DB browser to see the inputs value change and modify the output values.
+For the test DB Browser fo SQLite was used.
 '''
 
 import sys
@@ -45,7 +47,7 @@ cursor.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND nam
 if cursor.fetchone()[0] != 1:
     cursor.execute('''CREATE TABLE variables (name TEXT, value TEXT)''')		
     cursor.execute('''INSERT INTO variables (name, value) VALUES ('inputs', '0')''')		
-    cursor.execute('''INSERT INTO variables (name, value) VALUES ('outputs', '13')''')		
+    cursor.execute('''INSERT INTO variables (name, value) VALUES ('outputs', '11')''')		
 connection.commit()
 connection.close()
 
@@ -55,9 +57,9 @@ if d._setup({'parameters':{'address':ADDRESS}}):
 
     counter = 0
     start = time.perf_counter()
-    while time.perf_counter() < 5+start:
+    while time.perf_counter() < 50+start:
         d.writeVariables([('inputs', counter)])
-        #print(d.readVariables(['outputs']))
+        print(d.readVariables(['outputs']))
         time.sleep(0.1)
         counter += 1
 
