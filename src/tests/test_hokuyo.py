@@ -24,7 +24,6 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 from drivers.hokuyo.hokuyo import hokuyo
 from drivers.driver import VariableOperation, VariableDatatype
 
-# Define your I/O variables here
 VARIABLES = {
     '0_134': {'datatype': VariableDatatype.INTEGER, 'size': 135, 'operation': VariableOperation.WRITE},
     '135_269': {'datatype': VariableDatatype.INTEGER, 'size': 135, 'operation': VariableOperation.WRITE},
@@ -44,7 +43,6 @@ def f(t):
         y[x] = int(y[x])
     return y
 
-# Add your custom logic in this test.
 d = hokuyo(None, 'test')
 if d.connect():
     d.addVariables(VARIABLES)
@@ -56,12 +54,17 @@ if d.connect():
         if now - start_time > 10:
             break
 
+        # Simulate running the loop
         d.loop()
+        # Update sensor readings every 100 ms
         if now - last_update > 0.1:
             points = f(now - start_time)
+            # Write the new points separated into 8 variables
+            updated_vars = []
             for var_id in VARIABLES:
                 [first, last] = map(int, var_id.split('_'))
-                d.writeVariables([(var_id, points[first:last+1])])
+                updated_vars.append((var_id, points[first:last+1]))
+            d.writeVariables(updated_vars)
             last_update = now
         
         time.sleep(1e-3)

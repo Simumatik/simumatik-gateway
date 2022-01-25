@@ -488,7 +488,6 @@ class gateway():
                 "DRIVER": id
             }
             self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
-            
 
     def send_var_info(self, driver_id, var_info, target_var_id):
         (driver, _) = self.drivers[driver_id]

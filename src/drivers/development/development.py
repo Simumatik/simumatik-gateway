@@ -46,6 +46,8 @@ class development(driver):
         
         : returns: True if connection stablished False if not
         """
+        # Make sure to send a debug message if method returns False
+        # self.sendDebugInfo('Error message here') 
         return True
 
 
