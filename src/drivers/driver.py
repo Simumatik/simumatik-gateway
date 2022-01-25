@@ -151,7 +151,6 @@ class driver(threading.Thread):
                                     self.changeStatus(DriverStatus.RUNNING)
                                 else:
                                     self.changeStatus(DriverStatus.ERROR)
-                                    self.sendDebugInfo('SETUP action failed! Setup not completed.')
                             else:
                                 self.sendDebugInfo('SETUP action failed! Actual status is not STANDBY.')
 

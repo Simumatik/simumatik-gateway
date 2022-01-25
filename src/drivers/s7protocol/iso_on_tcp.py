@@ -16,7 +16,6 @@
 
 import struct
 from collections import namedtuple
-import logging
 from ..driver import VariableQuality, VariableDatatype
 
 
@@ -126,7 +125,7 @@ def PDUReadAreas(socket, PDU_id, areas = []):
                     # Result data is OK
                     res, typelength, length = struct.unpack('!BBH',reply.Data[point:point+4])
                     if res == DATA_OK:
-                        if typelength == 4: # Length in Bits
+                        if typelength in [4,5]: # Length in Bits
                             length >>= 3
                         elif typelength in [3,9]: # Length in Bytes
                             pass

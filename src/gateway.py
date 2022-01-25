@@ -15,14 +15,13 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # Python functions
+import globals
+import logging
 import datetime
 from enum import Enum
 import json
-from multiprocessing import Pipe, Process
-import os
-import random
+from multiprocessing import Pipe
 import socket
-import sys
 from threading import Thread
 import time
 
@@ -30,29 +29,16 @@ import time
 from drivers import *
 from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 
-#Logging
-import logging
-FORMAT = '%(asctime)-15s %(levelname)s %(name)s: %(message)s'
-logging.basicConfig(filename="gateway_logs.txt",
-                    filemode='w',
-                    level=logging.ERROR, 
-                    format=FORMAT)
-logger = logging.getLogger('GATEWAY')
-logger.propagate = True
-logger.setLevel(level=logging.DEBUG)
-if ('debug' in sys.argv):
-    logger.disabled = False
-else:
-    logger.disabled = True
 
 # Version
-version = "2.1.3"
+version = "3.0.9"
 
 # Settings
 poll_time = 1 # seconds
 
 # Global
 WebSocketConnections = []
+logger = logging.getLogger('GATEWAY')
 
 # Gateway WebSocket Server
 class WebSocket_server(WebSocket):
