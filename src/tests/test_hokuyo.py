@@ -23,7 +23,7 @@ import numpy as np
 
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from drivers.hokuyo.hokuyo import hokuyo
+from drivers.hokuyo_uam.hokuyo_uam import hokuyo_uam
 from drivers.driver import VariableOperation, VariableDatatype
 
 """ Test client to communicate with driver"""
@@ -75,7 +75,7 @@ def f(t):
     return y
 
 
-d = hokuyo(None, 'test')
+d = hokuyo_uam(None, 'test')
 if d.connect():
     d.addVariables(VARIABLES)
 

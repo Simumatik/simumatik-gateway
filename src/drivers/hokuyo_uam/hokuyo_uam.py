@@ -44,7 +44,7 @@ def calc_crc(bytes):
     ascii_crc = str(hex(crc16))[2:].upper()
     return ('0' * (4 - len(ascii_crc)) + ascii_crc).encode()
 
-class hokuyo(driver):
+class hokuyo_uam(driver):
     '''
     Driver that can be used for development. The driver can be used on a component just assigning the driver type "development".
     Feel free to add your code in the methods below.
