@@ -33,12 +33,13 @@ VARIABLES = {
 
 # Add your custom logic in this test.
 d = fanuc_roboguide(None, 'test')
+d.port = 60008
 if d.connect():
     d.addVariables(VARIABLES)
 
     counter = 0
     start = time.perf_counter()
-    while (time.perf_counter()-start < 5):
+    while (time.perf_counter()-start < 1):
         res = d.writeVariables([('GI1', counter), ('DI10', counter%2)])
         print(res)
         print(d.readVariables(['Axis','GO1','DO9']))

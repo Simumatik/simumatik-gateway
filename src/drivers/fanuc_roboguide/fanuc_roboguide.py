@@ -60,6 +60,7 @@ class fanuc_roboguide(driver):
         # Parameters
         self.hostname = '127.0.0.1'
         self.motion_group = 1
+        self.port = None
 
 
     def connect(self) -> bool:
@@ -69,6 +70,8 @@ class fanuc_roboguide(driver):
         """
         try:
             self._connection = Core('shift-jis')
+            if self.port:
+                self._connection.PortNumber = self.port
             self._datatable = self._connection.get_DataTable()
             self._curpos = self._datatable.AddCurPosUF(FRIF_DATA_TYPE.CURPOS, self.motion_group, 1)
             if self._curpos.Valid:
