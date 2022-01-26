@@ -84,7 +84,7 @@ def adress_to_area(vaddress:str, big_endian:bool, vdtype:VariableDatatype):
 
 class simit(driver):
     '''
-    Driver that can be used for simit
+    Driver that can be used to connect with simit using shared memory.
     Parameters:
         SHM_name : Name of the shared memory
         big_endian : True if big endian, else little endian
@@ -131,7 +131,6 @@ class simit(driver):
         self.bytes = b''
 
 
-
     def addVariables(self, variables: dict):
         """ Add variables to the driver. Correctly added variables will be added to internal dictionary 'variables'.
         Any error adding a variable should be communicated to the server using sendDebugInfo() method.
@@ -152,7 +151,6 @@ class simit(driver):
                 self.variables[var_id] = var_data
             else:
                 self.sendDebugVarInfo(('SETUP: Bad variable definition: {}'.format(var_id), var_id))
-
 
 
     def readVariables(self, variables: list) -> list:
