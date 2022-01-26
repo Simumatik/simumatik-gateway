@@ -21,15 +21,15 @@ registered_drivers = {
   "cprog_cri": (cprog_cri, "1"),
   "development": (development,"1"),
   "hokuyo_uam": (hokuyo_uam,"1"),
+  "micro800_http": (micro800_http, "1"),
   "mqtt_client": (mqtt_client,"1"),
   "opcua_client": (opcua_client, "1"),
   "s7protocol": (s7protocol, "1"),
-  "udp_driver": (udp_generic,"1"),
-  "ur_driver": (universal_robots, "1"),
-  "micro800_http": (micro800_http, "1"),
-  "twincat_ads" : (twincat_ads, "1"),
   "simit" : (simit, "1"),
   "sqlite3_conn" : (sqlite3_conn, "1"),
+  "twincat_ads" : (twincat_ads, "1"),
+  "udp_driver": (udp_generic,"1"),
+  "ur_driver": (universal_robots, "1"), # TODO: Fix. Name is different to retrocompatibility
 }
 
 if platform.system() == "Windows":
