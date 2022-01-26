@@ -157,7 +157,7 @@ class hokuyo_uam(driver):
 
 
     def loop(self):
-        """ Runs every iteration while the driver active.
+        """ Runs every iteration while the driver is active. Only use if strictly necessary.
         """
         # Get new connections
         if self._client is None:

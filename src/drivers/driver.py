@@ -197,7 +197,7 @@ class driver(threading.Thread):
 
 
     def loop(self):
-        """ Runs every iteration while the driver active.
+        """ Runs every iteration while the driver is active. Only use if strictly necessary.
         """
         pass
 
