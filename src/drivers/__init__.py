@@ -4,7 +4,7 @@ from .driver import driver, DriverActions, DriverStatus
 
 from .cprog_cri.cprog_cri import cprog_cri
 from .development.development import development
-from .fanuc_roboguide.fanuc_roboguide import fanuc_roboguide
+from .hokuyo_uam.hokuyo_uam import hokuyo_uam
 from .micro800_http.micro800_http import micro800_http
 from .mqtt_client.mqtt_client import mqtt_client
 from .opcua_client.opcua_client import opcua_client
@@ -20,6 +20,7 @@ from .universal_robots.universal_robots import universal_robots
 registered_drivers = {
   "cprog_cri": (cprog_cri, "1"),
   "development": (development,"1"),
+  "hokuyo_uam": (hokuyo_uam,"1"),
   "mqtt_client": (mqtt_client,"1"),
   "opcua_client": (opcua_client, "1"),
   "s7protocol": (s7protocol, "1"),
@@ -32,8 +33,9 @@ registered_drivers = {
 }
 
 if platform.system() == "Windows":
+    from .fanuc_roboguide.fanuc_roboguide import fanuc_roboguide
     from .robotware.robotware import robotware
     from .robodk.robodk import robodk
-    registered_drivers.update({"abb_driver": (robotware,"1")})
-    registered_drivers.update({"robodk_driver": (robodk, "1")})
     registered_drivers.update({"fanuc_roboguide": (fanuc_roboguide, "1")})
+    registered_drivers.update({"abb_driver": (robotware,"1")}) # TODO: Fix. Name is different to retrocompatibility
+    registered_drivers.update({"robodk_driver": (robodk, "1")}) # TODO: Fix. name is different to retrocompatibility

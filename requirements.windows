@@ -5,3 +5,4 @@ paho-mqtt==1.5.1
 pythonnet==2.5.2
 pywin32==302
 pyads==3.3.8
+fastcrc==0.1.1

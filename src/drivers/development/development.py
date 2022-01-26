@@ -57,6 +57,12 @@ class development(driver):
         pass
 
 
+    def loop(self):
+        """ Runs every iteration while the driver is active. Only use if strictly necessary.
+        """
+        pass
+
+
     def addVariables(self, variables: dict):
         """ Add variables to the driver. Correctly added variables will be added to internal dictionary 'variables'.
         Any error adding a variable should be communicated to the server using sendDebugInfo() method.
