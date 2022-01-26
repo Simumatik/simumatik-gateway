@@ -67,7 +67,7 @@ class s7protocol(driver):
             self._connection.settimeout(2)
             self._connection.connect((self.ip, 102))
         except Exception as e:
-            self.sendDebugInfo(f"SETUP: Connection with {self.ip} cannot be stablished.")
+            self.sendDebugInfo(f"Socket connection with {self.ip} cannot be stablished.")
             return False
 
         if connectPLC(self._connection, rack=self.rack, slot=self.slot):
@@ -75,10 +75,9 @@ class s7protocol(driver):
             PDULength = PDULengthRequest(self._connection, self.PDU_COUNTER)
             if (self.MaxPDULength > PDULength): self.MaxPDULength = PDULength
             self.sendDebugInfo("New PDU Max length set to: "+str(self.MaxPDULength))
-            self.sendDebugInfo("SETUP: Driver connected.")
             return True
 
-        self.sendDebugInfo("SETUP: Driver not connected!")
+        self.sendDebugInfo(f"S7 Connection with PLC cannot be stablished.")
         return False
 
 

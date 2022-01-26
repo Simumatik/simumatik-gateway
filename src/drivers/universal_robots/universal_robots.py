@@ -66,10 +66,10 @@ class universal_robots(driver):
         try:
             self._connection = rtde.RTDE(self.host, self.port)
             self._connection.connect()
-            self.sendDebugInfo(f'SETUP: Driver UR Connected to {self.host}')
+            self.sendDebugInfo(f'Driver UR Connected to {self.host}')
             return True
         except Exception as e:
-            self.sendDebugInfo('SETUP failed: Exception '+str(e))
+            self.sendDebugInfo('Exception: '+str(e))
         
         return False
 

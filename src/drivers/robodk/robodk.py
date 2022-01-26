@@ -16,29 +16,14 @@
 
 from multiprocessing import Pipe
 from typing import Optional
+import logging
 
-from ..driver import driver, VariableOperation, VariableQuality
+from ..driver import driver, VariableQuality
 
 import sys
 import os
-from os import path
 import winreg
 
-# Import SDK
-ROBODK_SDK_FOUND = False
-
-try:
-    if os.name == 'nt':# Just try on windows
-        reg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
-        key = winreg.OpenKey(reg, r"SOFTWARE\RoboDK")
-
-        robodk_path = winreg.QueryValueEx(key, "INSTDIR")[0] + "\Python"
-        sys.path.append(robodk_path) # Add path to system path
-
-        from robolink import Robolink, ITEM_TYPE_ROBOT
-        ROBODK_SDK_FOUND = True
-except:
-    pass
 
 # Driver that connects to robodk
 class robodk(driver):
@@ -69,23 +54,37 @@ class robodk(driver):
         
         : returns: True if connection stablished False if not
         """
+        if os.name != 'nt':
+            self.sendDebugInfo(f'Driver not supported in this OS')
+            return False
+
         try:
-            if not ROBODK_SDK_FOUND:
-                raise Exception('RoboDK SDK not found')
-        
+            reg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
+            key = winreg.OpenKey(reg, r"SOFTWARE\RoboDK")
+            robodk_path = winreg.QueryValueEx(key, "INSTDIR")[0] + "\Python"
+            sys.path.append(robodk_path)
+        except Exception as e:
+            self.sendDebugInfo(f"Robodk API not found!")
+            return False
+
+        try:
+            from robolink import Robolink, ITEM_TYPE_ROBOT
             self._connection = Robolink()
             if self._connection:
-                self.sendDebugInfo('SETUP: Driver RoboDK Scanning...')
                 self.robot = self._connection.Item(self.controller)
                 if self.robot:
                     if self.robot.Valid() and self.robot.Type() == ITEM_TYPE_ROBOT:
-                        self.sendDebugInfo(f'SETUP: Driver RoboDK Connected to {self.controller}...')
+                        self.sendDebugInfo(f'Driver RoboDK Connected to {self.controller}...')
                         return True
+                    else:
+                        self.sendDebugInfo(f'Item {self.controller} not found!')
                 else:
-                    self.sendDebugInfo(f'Item {self.controller} not found!')
+                    self.sendDebugInfo(f'Controler not found!')
+            else:
+                self.sendDebugInfo(f'Connection with Robolink not possible.')
 
         except Exception as e:
-            self.sendDebugInfo('SETUP failed: Exception '+str(e))
+            self.sendDebugInfo('Exception '+str(e))
         
         return False
 
