@@ -3,16 +3,17 @@ import platform
 from .driver import driver, DriverActions, DriverStatus
 
 from .cprog_cri.cprog_cri import cprog_cri
-from .micro800_http.micro800_http import micro800_http
 from .development.development import development
+from .fanuc_roboguide.fanuc_roboguide import fanuc_roboguide
+from .micro800_http.micro800_http import micro800_http
 from .mqtt_client.mqtt_client import mqtt_client
 from .opcua_client.opcua_client import opcua_client
 from .s7protocol.s7protocol import s7protocol
+from .simit import simit
+from .sqlite3_conn import sqlite3_conn
+from .twincat_ads import twincat_ads
 from .udp_generic.udp_generic import udp_generic
 from .universal_robots.universal_robots import universal_robots
-from .fanuc_roboguide.fanuc_roboguide import fanuc_roboguide
-from .twincat_ads import twincat_ads
-from .sqlite3_conn import sqlite3_conn
 
 # Dict relating drivers with datamodel definition
 # NOTE: Datamodel names will be updated to match drivers name
@@ -26,6 +27,7 @@ registered_drivers = {
   "ur_driver": (universal_robots, "1"),
   "micro800_http": (micro800_http, "1"),
   "twincat_ads" : (twincat_ads, "1"),
+  "simit" : (simit, "1"),
   "sqlite3_conn" : (sqlite3_conn, "1"),
 }
 
