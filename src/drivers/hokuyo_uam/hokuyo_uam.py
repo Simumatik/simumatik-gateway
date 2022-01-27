@@ -146,6 +146,7 @@ class hokuyo_uam(driver):
                 continue
             try:
                 [first, last] = map(int, var_id.split('_'))
+                assert (last-first) == len(var_value), "Variable length is not correct"
                 self.data = self.data[:first] + var_value + self.data[last+1:]
                 res.append((var_id, var_value, VariableQuality.GOOD))
                 self._data_changed = True
