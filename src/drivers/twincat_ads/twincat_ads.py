@@ -79,7 +79,7 @@ class twincat_ads(driver):
         for var_id in list(variables.keys()):
             var_data = dict(variables[var_id])
             try:
-                var_data['value'] = self._connection.read_by_name(var_id)
+                var_data['value'] = None
                 self.variables[var_id] = var_data 
             except Exception as e:
                 self.sendDebugInfo(f'SETUP: {e} \"{var_id}\"')
