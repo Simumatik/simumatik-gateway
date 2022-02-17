@@ -6,3 +6,4 @@ pythonnet==2.5.2
 pywin32==302
 pyads==3.3.8
 fastcrc==0.1.1
+pycomm3==1.2.6

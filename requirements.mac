@@ -4,3 +4,4 @@ SimpleWebSocketServer==0.1.1
 paho-mqtt==1.5.1
 pyads==3.3.8
 fastcrc=0.1.1
+pycomm3==1.2.6
