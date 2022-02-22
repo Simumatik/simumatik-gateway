@@ -16,7 +16,7 @@
 
 from multiprocessing import Pipe
 from typing import Optional
-import logging
+from logs import logger
 
 from ..driver import driver, VariableQuality
 
@@ -63,6 +63,7 @@ class robodk(driver):
             key = winreg.OpenKey(reg, r"SOFTWARE\RoboDK")
             robodk_path = winreg.QueryValueEx(key, "INSTDIR")[0] + "\Python"
             sys.path.append(robodk_path)
+            logger.info(f"Robodk API found: {robodk_path}")
         except Exception as e:
             self.sendDebugInfo(f"Robodk API not found!")
             return False

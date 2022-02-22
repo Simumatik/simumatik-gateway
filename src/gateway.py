@@ -15,8 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # Python functions
-import globals
-import logging
+from logs import logger
 import datetime
 from enum import Enum
 import json
@@ -31,14 +30,13 @@ from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 
 
 # Version
-version = "3.1.2"
+version = "3.1.3"
 
 # Settings
 poll_time = 1 # seconds
 
 # Global
 WebSocketConnections = []
-logger = logging.getLogger('GATEWAY')
 
 # Gateway WebSocket Server
 class WebSocket_server(WebSocket):

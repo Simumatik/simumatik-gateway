@@ -22,8 +22,8 @@ from typing import Optional
 
 class twincat_ads(driver):
     '''
-    Driver that can be used for development. The driver can be used on a component just assigning the driver type "development".
-    Feel free to add your code in the methods below.
+    Driver to communicate with Beckhof TwinCAT plcs using the ADS protocol, and the
+    python library pyads. 
 
     Parameters:
     net_id  : String    : the Beckhoff twincat route to the PLC
