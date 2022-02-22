@@ -24,9 +24,28 @@ import sys
 import os
 import winreg
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from robolink import Robolink, ITEM_TYPE_ROBOT
+
+"""
+ROBODK_API_FOUND = False
+
+try:
+    if os.name == 'nt':
+        reg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
+        key = winreg.OpenKey(reg, r"SOFTWARE\RoboDK")
+        robodk_path = winreg.QueryValueEx(key, "INSTDIR")[0] + "\Python"
+        sys.path.append(robodk_path)
+        logger.info(f"Robodk API found: {robodk_path}")
+        import robolink
+        ROBODK_API_FOUND = True
+except Exception as e:
+    logger.error(f"Robodk API not found! {e}")
+"""
+
 
 # Driver that connects to robodk
-class robodk(driver):
+class robodk_api(driver):
     '''
     This driver uses the RoboDK API to connect to a robot controller. It is based on the Robodk API (https://robodk.com/offline-programming).
     
@@ -54,23 +73,8 @@ class robodk(driver):
         
         : returns: True if connection stablished False if not
         """
-        if os.name != 'nt':
-            self.sendDebugInfo(f'Driver not supported in this OS')
-            return False
-
         try:
-            reg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
-            key = winreg.OpenKey(reg, r"SOFTWARE\RoboDK")
-            robodk_path = winreg.QueryValueEx(key, "INSTDIR")[0] + "\Python"
-            sys.path.append(robodk_path)
-            logger.info(f"Robodk API found: {robodk_path}")
-        except Exception as e:
-            self.sendDebugInfo(f"Robodk API not found!")
-            logger.error(f"Robodk API not found!")
-            return False
-
-        try:
-            from robolink import Robolink, ITEM_TYPE_ROBOT
+            #assert ROBODK_API_FOUND, "RoboDK API is not available."
             self._connection = Robolink()
             if self._connection:
                 self.robot = self._connection.Item(self.controller)

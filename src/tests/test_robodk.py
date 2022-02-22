@@ -28,7 +28,7 @@ from os import path
 import time
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from drivers.robodk.robodk import robodk
+from drivers.robodk_api.robodk_api import robodk_api
 from drivers.driver import VariableOperation, VariableDatatype
 
 VARIABLES = {
@@ -37,7 +37,7 @@ VARIABLES = {
     'outputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
     }
 
-d = robodk('test', None)
+d = robodk_api('test', None)
 d.controller = "robot"
 if d.connect():
     d.addVariables(VARIABLES)
