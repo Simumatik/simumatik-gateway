@@ -66,6 +66,7 @@ class robodk(driver):
             logger.info(f"Robodk API found: {robodk_path}")
         except Exception as e:
             self.sendDebugInfo(f"Robodk API not found!")
+            logger.error(f"Robodk API not found!")
             return False
 
         try:

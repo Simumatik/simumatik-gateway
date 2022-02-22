@@ -30,7 +30,7 @@ from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 
 
 # Version
-version = "3.1.3"
+version = "3.1.4"
 
 # Settings
 poll_time = 1 # seconds
