@@ -2,6 +2,7 @@ import platform
 
 from .driver import driver, DriverActions, DriverStatus
 
+from .allenbradley_logix.allenbradley_logix import allenbradley_logix
 from .cprog_cri.cprog_cri import cprog_cri
 from .development.development import development
 from .hokuyo_uam.hokuyo_uam import hokuyo_uam
@@ -18,6 +19,7 @@ from .universal_robots.universal_robots import universal_robots
 # Dict relating drivers with datamodel definition
 # NOTE: Datamodel names will be updated to match drivers name
 registered_drivers = {
+  "allenbradley_logix": (allenbradley_logix, "1"),
   "cprog_cri": (cprog_cri, "1"),
   "development": (development,"1"),
   "hokuyo_uam": (hokuyo_uam,"1"),
