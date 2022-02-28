@@ -79,10 +79,11 @@ class twincat_ads(driver):
         for var_id in list(variables.keys()):
             var_data = dict(variables[var_id])
             try:
-                var_data['value'] = None
+                var_data['value'] = self._connection.read_by_name(var_id)
                 self.variables[var_id] = var_data 
             except Exception as e:
                 self.sendDebugInfo(f'SETUP: {e} \"{var_id}\"')
+                
                 
     def readVariables(self, variables: list) -> list:
         """ Read given variable values. In case that the read is not possible or generates an error BAD quality should be returned.
@@ -92,9 +93,10 @@ class twincat_ads(driver):
         res = []
         try:
             values = self._connection.read_list_by_name(variables)
-        except:
+        except Exception as e:
             for var_id in variables:
                 res.append((var_id, None, VariableQuality.BAD))
+            self.sendDebugInfo(f'readVariables exception: {e}')
         else:
             for var_id in values:
                 res.append((var_id, values[var_id], VariableQuality.GOOD))
