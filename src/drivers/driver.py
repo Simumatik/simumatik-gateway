@@ -64,6 +64,7 @@ class driver(threading.Thread):
 
     rpi: int
         Requested Packet Interval (in ms), how often variables are read and write. Default = 50
+        Set rpi to 0 to continuously read and write variables
     
     force_write: float
         Used to periodically (in sec) re-write variables. Default = 1
@@ -86,7 +87,6 @@ class driver(threading.Thread):
         self.name = name
         self.pipe = pipe
         self._connection = None
-        self.sleep_time = 5e-3
         self.last_read = time.perf_counter() # last read package sent
         self.last_write = time.perf_counter() # last write package sent
         self.last_forced_write = time.perf_counter() # last read package sent
@@ -193,7 +193,8 @@ class driver(threading.Thread):
             self.loop()
 
             # Sleep
-            time.sleep(self.sleep_time)
+            if self.rpi > 0:
+                time.sleep(self.rpi*5e-4) # Sleep 1/2 rpi in seconds
 
 
     def loop(self):
