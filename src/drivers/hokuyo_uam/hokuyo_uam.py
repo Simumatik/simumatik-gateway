@@ -27,16 +27,14 @@ from ..driver import driver, VariableQuality
 CMD_FORMAT = 'c 4s 2s 2s 4s c'
 CMD_TOT_LEN = struct.calcsize(CMD_FORMAT)
 
-def UAM_encode(decimal_list):
+def UAM_encode(decimal_list, format_str='!H'):
     ascii_str = ''
-    # Loop through distance values
     for decimal in decimal_list:
+        # Value -1 from component means nothing is detected
         if decimal < 0:
             decimal = 65535 # 65535 for 'object not detected'
-        binary = format(decimal, '016b')
-        decimal = [int(binary[i:i+4], 2) for i in range(0, 16, 4)]
-        ascii_d = [d+0x30 if d<10 else d+0x37 for d in decimal]
-        ascii_str += ''.join([chr(a) for a in ascii_d])
+        hex_val = struct.pack(format_str, decimal)
+        ascii_str += str(hex_val.hex()).upper()
 
     return ascii_str.encode()
 
@@ -144,22 +142,16 @@ class hokuyo_uam(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
-        data_changed = False
         for (var_id, var_value)  in variables: 
             if var_value is not None:
                 [first, last] = map(int, var_id.split('_'))
                 if (last-first)+1 == len(var_value):                   
                     self.data[first:last+1] = np.asarray(var_value, np.int16)
                     res.append((var_id, var_value, VariableQuality.GOOD))
-                    data_changed = True
                 else:
                     res.append((var_id, var_value, VariableQuality.BAD))
                     self.sendDebugInfo(f'Bad variable data: {var_id}')
-    
         
-        if data_changed:
-            self.encoded_data = UAM_encode(self.data)
-                    
         return res
 
 
@@ -184,8 +176,10 @@ class hokuyo_uam(driver):
 
                     # AR01 request response
                     if header + sub_header == b'AR01':
-                        self._client.sendall(self.AR01_telegram())
                         self.last_transmit_time = time.perf_counter()
+                        self.encoded_data = UAM_encode(self.data)
+                        self._client.sendall(self.AR01_telegram())
+                        
             except:  
                 pass
             
@@ -196,8 +190,10 @@ class hokuyo_uam(driver):
                 self._client = None
 
 
-    def AR01_telegram(self, data):
+    def AR01_telegram(self):
         # Build data from sensor readings
-        timestamp = b'005A2F4F' # Seconds elapsed since detection in protection area
+        time_ms = int(time.perf_counter()*1000) # Seconds elapsed since detection in protection area
+        timestamp = UAM_encode([time_ms], format_str="!I")
         UAM_msg = b'21FFAR01000' + self.area_num.encode() + b'00001111000000000000' + timestamp + b'00000000' + self.encoded_data + self.intensity_data
-        return b'\x02' + UAM_msg + calc_crc(UAM_msg) + b'\x03'
+        res = b'\x02' + UAM_msg + calc_crc(UAM_msg) + b'\x03'
+        return res
