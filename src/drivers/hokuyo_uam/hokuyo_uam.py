@@ -181,6 +181,8 @@ class hokuyo_uam(driver):
             if (time.perf_counter()-self.last_transmit_time) >= self.transmit_interval:
                 # AR01 request response
                 if self.pending_request == b'AR01':
+                    # Scanner sends 1080 values, copy last value to 1081
+                    self.data[-1] = self.data[-2]
                     self.encoded_data = UAM_encode(self.data)
                     self._client.sendall(self.AR01_telegram())
 
