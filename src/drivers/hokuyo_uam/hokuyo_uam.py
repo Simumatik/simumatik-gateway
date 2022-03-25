@@ -53,7 +53,7 @@ class hokuyo_uam(driver):
     port: int
         Port to listen for commands on. Default = 10940
     transmit_interval: float
-        Time in seconds to detect connection loss. Default = 30ms
+        Time in seconds to detect connection loss. Default = 0.03s
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None):
@@ -75,6 +75,7 @@ class hokuyo_uam(driver):
         self.area_num = '06'
         self.intensity_data = b'0000'*(self.data_size+1) # Constant for now
         self.last_transmit_time = 0
+        self.pending_request = None
         self.data = np.full((self.data_size+1), 65535) # Initialize to nothing detected
         self._client = None
 
@@ -173,15 +174,19 @@ class hokuyo_uam(driver):
                 request = self._client.recv(CMD_TOT_LEN)
                 if len(request) == CMD_TOT_LEN:
                     _, _, header, sub_header, _, _ = struct.Struct(CMD_FORMAT).unpack(request)
-
-                    # AR01 request response
-                    if header + sub_header == b'AR01':
-                        self.last_transmit_time = time.perf_counter()
-                        self.encoded_data = UAM_encode(self.data)
-                        self._client.sendall(self.AR01_telegram())
-                        
+                    self.pending_request = header + sub_header
             except:  
                 pass
+            
+            if (time.perf_counter()-self.last_transmit_time) >= self.transmit_interval:
+                # AR01 request response
+                if self.pending_request == b'AR01':
+                    self.encoded_data = UAM_encode(self.data)
+                    self._client.sendall(self.AR01_telegram())
+
+                self.last_transmit_time = time.perf_counter()
+                self.pending_request = None
+
             
             # Check connection lost
             if (time.perf_counter() - self.last_transmit_time) > self.transmit_interval * 4:
