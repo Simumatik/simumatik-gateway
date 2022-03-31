@@ -20,22 +20,21 @@ import socket
 import struct
 import time
 import fastcrc
+import numpy as np
 
 from ..driver import driver, VariableQuality
 
 CMD_FORMAT = 'c 4s 2s 2s 4s c'
 CMD_TOT_LEN = struct.calcsize(CMD_FORMAT)
 
-def UAM_encode(decimal_list):
+def UAM_encode(decimal_list, format_str='!H'):
     ascii_str = ''
-    # Loop through distance values
     for decimal in decimal_list:
+        # Value -1 from component means nothing is detected
         if decimal < 0:
             decimal = 65535 # 65535 for 'object not detected'
-        binary = format(decimal, '016b')
-        decimal = [int(binary[i:i+4], 2) for i in range(0, 16, 4)]
-        ascii_d = [d+0x30 if d<10 else d+0x37 for d in decimal]
-        ascii_str += ''.join([chr(a) for a in ascii_d])
+        hex_val = struct.pack(format_str, decimal)
+        ascii_str += str(hex_val.hex()).upper()
 
     return ascii_str.encode()
 
@@ -54,7 +53,7 @@ class hokuyo_uam(driver):
     port: int
         Port to listen for commands on. Default = 10940
     transmit_interval: float
-        Time in seconds to wait between transmitting data to client. Default = 30ms
+        Time in seconds to detect connection loss. Default = 0.03s
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None):
@@ -66,15 +65,18 @@ class hokuyo_uam(driver):
         driver.__init__(self, name, pipe)
 
         # Parameters
+        self.force_write = 0 # No need to force, this driver writes on demand
         self.ip = "0.0.0.0"
         self.port = 10940
         self.transmit_interval = 0.03
+        self.data_size = 1080 # Probably could be used as parameter
 
         # Internal
         self.area_num = '06'
+        self.intensity_data = b'0000'*(self.data_size+1) # Constant for now
         self.last_transmit_time = 0
-        self.data = [65534] * 1081
-        self._data_changed = True
+        self.pending_request = None
+        self.data = np.full((self.data_size+1), 65535) # Initialize to nothing detected
         self._client = None
 
 
@@ -142,18 +144,15 @@ class hokuyo_uam(driver):
         """
         res = []
         for (var_id, var_value)  in variables: 
-            if var_value == None or len(var_value)<100:
-                continue
-            try:
+            if var_value is not None:
                 [first, last] = map(int, var_id.split('_'))
-                assert (last-first)+1 == len(var_value), "Variable length is not correct"
-                self.data = self.data[:first] + var_value + self.data[last+1:]
-                res.append((var_id, var_value, VariableQuality.GOOD))
-                self._data_changed = True
-            except Exception as e:
-                res.append((var_id, var_value, VariableQuality.BAD))
-                self.sendDebugInfo(e)
-    
+                if (last-first)+1 == len(var_value):                   
+                    self.data[first:last+1] = np.asarray(var_value, np.int16)
+                    res.append((var_id, var_value, VariableQuality.GOOD))
+                else:
+                    res.append((var_id, var_value, VariableQuality.BAD))
+                    self.sendDebugInfo(f'Bad variable data: {var_id}')
+        
         return res
 
 
@@ -170,41 +169,38 @@ class hokuyo_uam(driver):
 
         # Process actual connections
         else:
-            now = time.perf_counter()
-            dt = now - self.last_transmit_time
-            if dt > self.transmit_interval:
-                self.last_transmit_time = now
-
-                if self._data_changed:
+            # Check new request
+            try:
+                request = self._client.recv(CMD_TOT_LEN)
+                if len(request) == CMD_TOT_LEN:
+                    _, _, header, sub_header, _, _ = struct.Struct(CMD_FORMAT).unpack(request)
+                    self.pending_request = header + sub_header
+            except:  
+                pass
+            
+            if (time.perf_counter()-self.last_transmit_time) >= self.transmit_interval:
+                # AR01 request response
+                if self.pending_request == b'AR01':
+                    # Scanner sends 1080 values, copy last value to 1081
+                    self.data[-1] = self.data[-2]
                     self.encoded_data = UAM_encode(self.data)
-                    self._data_changed = False
-                    
-                try:
-                    data = self._client.recv(CMD_TOT_LEN)
-                    assert len(data)>0
-                    response = self.process_telegram(data)
-                    if response:
-                        self._client.sendall(response)
+                    self._client.sendall(self.AR01_telegram())
 
-                except:  
-                    self.sendDebugInfo(f'Connection Interrupted')
-                    self._client.close()
-                    self._client = None
+                self.last_transmit_time = time.perf_counter()
+                self.pending_request = None
+
+            
+            # Check connection lost
+            if (time.perf_counter() - self.last_transmit_time) > self.transmit_interval * 4:
+                self.sendDebugInfo(f'Connection Interrupted')
+                self._client.close()
+                self._client = None
 
 
-    def process_telegram(self, data):
-        s = struct.Struct(CMD_FORMAT)
-        if len(data) == CMD_TOT_LEN:
-            _, cmd_size, header, sub_header, crc, _ = s.unpack(data)
-            if header + sub_header == b'AR01':
-                # Transmit stored data
-                # Build data from sensor readings
-                msg_len = b'21FF'
-                area_num = self.area_num.encode()
-                timestamp = b'005A2F4F' # Seconds elapsed since detection in protection area
-                data = self.encoded_data + b'0000'*1081 # Add intensity values
-                UAM_msg = msg_len + b'AR01000' + area_num + b'00001111000000000000' + timestamp + b'00000000' + data
-                UAM_crc = calc_crc(UAM_msg)
-                UAM_msg = b'\x02' + UAM_msg + UAM_crc + b'\x03'
-                return UAM_msg
-        return None
+    def AR01_telegram(self):
+        # Build data from sensor readings
+        time_ms = int(time.perf_counter()*1000) # Seconds elapsed since detection in protection area
+        timestamp = UAM_encode([time_ms], format_str="!I")
+        UAM_msg = b'21FFAR01000' + self.area_num.encode() + b'00001111000000000000' + timestamp + b'00000000' + self.encoded_data + self.intensity_data
+        res = b'\x02' + UAM_msg + calc_crc(UAM_msg) + b'\x03'
+        return res

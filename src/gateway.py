@@ -30,7 +30,7 @@ from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 
 
 # Version
-version = "3.1.5"
+version = "3.2.1"
 
 # Settings
 poll_time = 1 # seconds
@@ -234,10 +234,11 @@ class gateway():
 
             # Driver running
             if self.status == GatewayStatus.CONNECTED:
-                self.doRun() 
-
+                self.doRun()
+            
             # Sleep
-            time.sleep(5e-3)
+            else:
+                time.sleep(1e-3)
     
 
     def close(self):
@@ -322,6 +323,9 @@ class gateway():
 
     def doRun(self):
         """ Executed while gateway is connected."""
+        # Flag if sleep is needed
+        needs_sleep = True
+
         # Send polling message within the interval
         if (time.time()-self.last_poll_sent) >= poll_time:
             try:
@@ -331,11 +335,12 @@ class gateway():
                 }
                 self.udp_socket.sendto(json.dumps(polling_request).encode('utf8'), self.server_address)
                 self.last_poll_sent = time.time()
+                needs_sleep = False
             except:
                 self.status = GatewayStatus.ERROR
                 self.error_msg = 'Exception sending polling telegram'
                 logger.error(self.error_msg)
-                return 0 # No need of sleep if an error
+                return
 
         # Check incomming telegrams
         try:
@@ -351,6 +356,7 @@ class gateway():
                     self.do_driver_update(request_json)
                 elif ('POLLING' in request_json):
                     self.last_poll_received = time.time()
+                needs_sleep = False
         except:
             # No data received
             pass
@@ -360,7 +366,7 @@ class gateway():
             self.status = GatewayStatus.ERROR
             self.error_msg = "Polling msg was not received on time"
             logger.error(self.error_msg)
-            return 0 # No need of sleep if an error
+            return
 
         # Check updates from drivers
         try:
@@ -381,12 +387,17 @@ class gateway():
                             (var_data, var_id) = data
                             self.send_var_info(driver_id, var_data, var_id)
                             logger.debug('Driver {} debug info: {}'.format(driver_id, data))
+                        needs_sleep = False
 
         except Exception as e:
             self.status = GatewayStatus.ERROR
             self.error_msg = 'Exception during run: '+str(e)
             logger.error(self.error_msg)
-            return 0 # No need of sleep if an error
+            return
+        
+        # Sleep only if nothing received or sent
+        if needs_sleep:
+            time.sleep(1e-3)
 
     def do_driver_delete(self, request_json):
         request_id = request_json["ID"]
