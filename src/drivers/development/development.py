@@ -18,15 +18,15 @@ from multiprocessing import Pipe
 from typing import Optional
 
 from ..driver import driver
-
+import OpenOPC
 
 class development(driver):
     '''
     Driver that can be used for development. The driver can be used on a component just assigning the driver type "development".
     Feel free to add your code in the methods below.
     Parameters:
-    myparam: int
-        This is just an example of a driver parameter. Default = 3
+    server: string
+        This is the server name of the OPC DA Server
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None):
@@ -38,7 +38,8 @@ class development(driver):
         driver.__init__(self, name, pipe)
 
         # Parameters
-        self.myparam = 3
+        self.server = 'Matrikon.OPC.Simulation.1'
+        self.opc = None
 
 
     def connect(self) -> bool:
@@ -48,13 +49,21 @@ class development(driver):
         """
         # Make sure to send a debug message if method returns False
         # self.sendDebugInfo('Error message here') 
-        return True
+
+        self.opc = OpenOPC.client()
+        try:
+            self.opc.connect(self.server)
+        except:
+            self.sendDebugInfo("Could not connect to OPC DA server.")
+            return False
+        else:
+            return True
 
 
     def disconnect(self):
         """ Disconnect driver.
         """
-        pass
+        self.opc.close()
 
 
     def loop(self):
