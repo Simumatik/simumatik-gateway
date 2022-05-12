@@ -24,20 +24,25 @@ from drivers.driver import VariableOperation, VariableDatatype
 
 # Define your I/O variables here
 VARIABLES = {
-    'inputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
-    'outputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
+    'GP2.bool':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
+    'GP2.int':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
+    'GP2.wint':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
     }
 
 # Add your custom logic in this test.
 d = development(None, 'test')
+d.server = 'Matrikon.OPC.Simulation.1'
 if d.connect():
     d.addVariables(VARIABLES)
 
+
+
     counter = 0
     while time.perf_counter() < 5:
-        d.writeVariables([('inputs', counter)])
-        print(d.readVariables(['outputs']))
-        time.sleep(0.1)
-        counter += 1
+         d.writeVariables([('GP2.wint', counter)])
+
+         print(d.readVariables(['GP2.int', "GP2.bool"]))
+         time.sleep(0.1)
+         counter += 1
 
     d.disconnect()
