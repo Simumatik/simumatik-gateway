@@ -56,28 +56,45 @@ from drivers.opcua_client.opcua_client import opcua_client
 from drivers.driver import VariableOperation, VariableDatatype
 
 VARIABLES = {
-    'ns=4;s=|var|CODESYS Control Win V3 x64.Application.GVL.inputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
-    'ns=4;s=|var|CODESYS Control Win V3 x64.Application.GVL.outputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
-    'ns=4;s=|var|CODESYS Control Win V3 x64.Application.GVL.inputReal':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.WRITE},
-    'ns=4;s=|var|CODESYS Control Win V3 x64.Application.GVL.outputReal':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.READ},
-    }
-
+    'ByteIn':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
+    'ByteOut':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
+    'BoolIn':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
+    'BoolOut':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
+    'WordIn':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
+    'WordOut':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
+    'IntIn':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
+    'IntOut':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
+    'DWordIn':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.WRITE},
+    'DWordOut':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.READ},
+    'DIntIn':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
+    'DIntOut':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
+    'RealIn':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.WRITE},
+    'RealOut':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.READ},
+}
 d = opcua_client(None, 'test')
 if d.connect():
     d.addVariables(VARIABLES)
 
     counter = 0
-    while time.perf_counter() < 5:
-        d.writeVariables([('ns=4;s=|var|CODESYS Control Win V3 x64.Application.GVL.inputs', counter)])
-        print(d.readVariables(['ns=4;s=|var|CODESYS Control Win V3 x64.Application.GVL.outputs']))
-        time.sleep(0.1)
-        counter += 1
+    while counter < 5:
+        d.writeVariables([('ByteIn', counter)])
+        d.writeVariables([('BoolIn', counter%2)])
+        d.writeVariables([('WordIn', counter)])
+        d.writeVariables([('IntIn', -counter)])
+        d.writeVariables([('DWordIn', counter)])
+        d.writeVariables([('DIntIn', -16*counter)])
+        d.writeVariables([('RealIn', 3.1415*counter)])
 
-    counter = 0.0
-    while time.perf_counter() < 10:
-        d.writeVariables([('ns=4;s=|var|CODESYS Control Win V3 x64.Application.GVL.inputReal', counter)])
-        print(d.readVariables(['ns=4;s=|var|CODESYS Control Win V3 x64.Application.GVL.outputReal']))
-        time.sleep(0.1)
-        counter += 1.1
+        time.sleep(1)
+
+        print(d.readVariables(['ByteOut']))
+        print(d.readVariables(['BoolOut']))
+        print(d.readVariables(['WordOut']))
+        print(d.readVariables(['IntOut']))
+        print(d.readVariables(['DWordOut']))
+        print(d.readVariables(['DIntOut']))
+        print(d.readVariables(['RealOut']))
+
+        counter += 1
 
     d.disconnect()
