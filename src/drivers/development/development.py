@@ -17,10 +17,12 @@
 from multiprocessing import Pipe
 from typing import Optional
 
-from ..driver import driver
+from ..driver import VariableQuality, driver
+
 import OpenOPC
 import pywintypes # To avoid timeout error
 pywintypes.datetime=pywintypes.TimeType
+
 class development(driver):
     '''
     Driver that can be used for development. The driver can be used on a component just assigning the driver type "development".
@@ -40,7 +42,6 @@ class development(driver):
 
         # Parameters
         self.server = 'Matrikon.OPC.Simulation.1'
-        self.opc = None
 
 
     def connect(self) -> bool:
@@ -51,20 +52,26 @@ class development(driver):
         # Make sure to send a debug message if method returns False
         # self.sendDebugInfo('Error message here') 
 
-        self.opc = OpenOPC.client()
-        try:
-            self.opc.connect(self.server)
-        except:
-            self.sendDebugInfo("Could not connect to OPC DA server.")
-            return False
+        self._connection = OpenOPC.client()
+
+        if self.server in self._connection.servers():
+            try:
+                self._connection.connect(self.server)
+            except:
+                self.sendDebugInfo("Could not connect to OPC DA server.")
+                return False
+            else:
+                return True
         else:
-            return True
+            self.sendDebugInfo(f'OPC DA server "{self.server}" not found.')
+            return False
 
 
     def disconnect(self):
         """ Disconnect driver.
         """
-        self.opc.close()
+        if self._connection is not None:
+            self._connection.close()
 
 
     def loop(self):
@@ -79,7 +86,15 @@ class development(driver):
         : param variables: Variables to add in a dict following the setup format. (See documentation) 
         
         """
-        pass
+        for var_id in list(variables.keys()):
+            var_data = dict(variables[var_id])
+            try:
+                var_data['value'] = self._connection[var_id]
+            except Exception as e:
+                self.sendDebugInfo(f'SETUP: {e} \"{var_id}\"')
+            else:
+                self.variables[var_id] = var_data 
+
 
 
     def readVariables(self, variables: list) -> list:
@@ -87,7 +102,20 @@ class development(driver):
         : param variables: List of variable ids to be read. 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        return []
+        res = []
+        for var_id in variables:
+            try:
+                value, quality, time = self._connection.read(var_id)    
+            except Exception as e:
+                res.append((var_id, None, VariableQuality.ERROR))
+                self.sendDebugVarInfo(f'readVariables exception: {e}')
+            else:
+                if quality == 'Good':
+                    res.append(var_id, value, VariableQuality.GOOD)
+                else:
+                    res.append(var_id, value, VariableQuality.BAD)
+
+        return res
 
 
     def writeVariables(self, variables: list) -> list:
@@ -95,4 +123,18 @@ class development(driver):
         : param variables: List of tupples with variable ids and the values to be written (var_id, var_value). 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        return []
+        res = []
+
+        for (var_id, var_value) in variables:
+            try:
+                write_result = self._connection.write((var_id, var_value))
+            except Exception as e:
+                res.append((var_id, None, VariableQuality.ERROR))
+                self.sendDebugVarInfo(f'writeVariables exception: {e}')
+            else:
+                if write_result == "Success":
+                    res.append(var_id, var_value, VariableQuality.GOOD)
+                else:
+                    res.append(var_id, var_value, VariableQuality.BAD)
+        
+        return res
