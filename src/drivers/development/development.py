@@ -111,9 +111,9 @@ class development(driver):
                 self.sendDebugVarInfo(f'readVariables exception: {e}')
             else:
                 if quality == 'Good':
-                    res.append(var_id, value, VariableQuality.GOOD)
+                    res.append((var_id, value, VariableQuality.GOOD))
                 else:
-                    res.append(var_id, value, VariableQuality.BAD)
+                    res.append((var_id, value, VariableQuality.BAD))
 
         return res
 
@@ -133,8 +133,8 @@ class development(driver):
                 self.sendDebugVarInfo(f'writeVariables exception: {e}')
             else:
                 if write_result == "Success":
-                    res.append(var_id, var_value, VariableQuality.GOOD)
+                    res.append((var_id, var_value, VariableQuality.GOOD))
                 else:
-                    res.append(var_id, var_value, VariableQuality.BAD)
+                    res.append((var_id, var_value, VariableQuality.BAD))
         
         return res
