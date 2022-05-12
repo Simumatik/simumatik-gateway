@@ -19,7 +19,8 @@ from typing import Optional
 
 from ..driver import driver
 import OpenOPC
-
+import pywintypes # To avoid timeout error
+pywintypes.datetime=pywintypes.TimeType
 class development(driver):
     '''
     Driver that can be used for development. The driver can be used on a component just assigning the driver type "development".
