@@ -56,8 +56,10 @@ from drivers.opcua_client.opcua_client import opcua_client
 from drivers.driver import VariableOperation, VariableDatatype
 
 VARIABLES = {
-    'inputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
-    'outputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
+    'ns=4;s=|var|CODESYS Control Win V3 x64.Application.GVL.inputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
+    'ns=4;s=|var|CODESYS Control Win V3 x64.Application.GVL.outputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
+    'ns=4;s=|var|CODESYS Control Win V3 x64.Application.GVL.inputReal':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.WRITE},
+    'ns=4;s=|var|CODESYS Control Win V3 x64.Application.GVL.outputReal':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.READ},
     }
 
 d = opcua_client(None, 'test')
@@ -66,9 +68,16 @@ if d.connect():
 
     counter = 0
     while time.perf_counter() < 5:
-        d.writeVariables([('inputs', counter)])
-        print(d.readVariables(['outputs']))
+        d.writeVariables([('ns=4;s=|var|CODESYS Control Win V3 x64.Application.GVL.inputs', counter)])
+        print(d.readVariables(['ns=4;s=|var|CODESYS Control Win V3 x64.Application.GVL.outputs']))
         time.sleep(0.1)
         counter += 1
+
+    counter = 0.0
+    while time.perf_counter() < 10:
+        d.writeVariables([('ns=4;s=|var|CODESYS Control Win V3 x64.Application.GVL.inputReal', counter)])
+        print(d.readVariables(['ns=4;s=|var|CODESYS Control Win V3 x64.Application.GVL.outputReal']))
+        time.sleep(0.1)
+        counter += 1.1
 
     d.disconnect()
