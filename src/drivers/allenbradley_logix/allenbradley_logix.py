@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from ..driver import driver, VariableQuality 
+from ..driver import driver, VariableQuality, VariableDatatype
 
 from multiprocessing import Pipe
 from typing import Optional
@@ -77,6 +77,7 @@ class allenbradley_logix(driver):
         for var_id in list(variables.keys()):
             var_data = dict(variables[var_id])
             try:
+                var_data['logix_data_type'] = self._connection.get_tag_info(var_id)['data_type_name']
                 var_data['value'] = None
                 self.variables[var_id] = var_data 
             except Exception as e:
@@ -109,6 +110,20 @@ class allenbradley_logix(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
+
+        # Mismatch if value is defined as BYTE (or Word) in simumatik and SINT (or Int) in RSLogix 5000
+        for count, (var_id, var_value) in enumerate(variables):
+            if self.variables[var_id]['logix_data_type'] == 'SINT' and self.variables[var_id]['datatype'] == VariableDatatype.BYTE:
+                while var_value > 127: 
+                    var_value -= 255
+                
+                variables[count] = (var_id, var_value)
+
+            if self.variables[var_id]['logix_data_type'] == 'INT' and self.variables[var_id]['datatype'] == VariableDatatype.WORD:
+                while var_value > 32767: 
+                    var_value -= 65536
+                
+                variables[count] = (var_id, var_value)
 
         try:
             values = self._connection.write(*variables)

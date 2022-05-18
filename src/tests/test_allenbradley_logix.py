@@ -46,17 +46,17 @@ if d.connect():
     d.addVariables(VARIABLES)
 
     counter = 0
-    while time.perf_counter() < 5:
+    while time.perf_counter() < 100:
         d.writeVariables([
             ('inputs_BOOL', counter%2),
-            ('inputs_BYTE', counter%255),
+            ('inputs_BYTE', counter),
             ('inputs_WORD', counter),
             ('inputs_DWORD', counter*2),
             ('inputs_INT', counter*6),
             ('inputs_FLOAT', counter*2.3),
             ])
         d.readVariables(['outputs_BOOL', 'outputs_BYTE', 'outputs_WORD', 'outputs_DWORD', 'outputs_INT', 'outputs_FLOAT'])
-        #time.sleep(0.1)
+        time.sleep(0.1)
         counter += 1
 
     d.disconnect()
