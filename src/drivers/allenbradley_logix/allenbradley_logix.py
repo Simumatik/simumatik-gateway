@@ -115,7 +115,7 @@ class allenbradley_logix(driver):
         for count, (var_id, var_value) in enumerate(variables):
             if self.variables[var_id]['logix_data_type'] == 'SINT' and self.variables[var_id]['datatype'] == VariableDatatype.BYTE:
                 while var_value > 127: 
-                    var_value -= 255
+                    var_value -= 256
                 
                 variables[count] = (var_id, var_value)
 
