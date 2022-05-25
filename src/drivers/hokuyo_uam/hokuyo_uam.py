@@ -19,7 +19,7 @@ from typing import Optional
 import socket
 import struct
 import time
-import fastcrc
+from crccheck.crc import Crc16Kermit
 import numpy as np
 
 from ..driver import driver, VariableQuality
@@ -39,7 +39,7 @@ def UAM_encode(decimal_list, format_str='!H'):
     return ascii_str.encode()
 
 def calc_crc(bytes):
-    crc16 = fastcrc.crc16.kermit(bytes)
+    crc16 = Crc16Kermit.calc(bytes)
     ascii_crc = str(hex(crc16))[2:].upper()
     return ('0' * (4 - len(ascii_crc)) + ascii_crc).encode()
 
