@@ -19,8 +19,6 @@ from typing import Optional
 import socket
 import struct
 import time
-#import fastcrc
-#import crc16
 from crccheck.crc import Crc16Kermit
 import numpy as np
 
