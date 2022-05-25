@@ -36,8 +36,10 @@ registered_drivers = {
 
 if platform.system() == "Windows":
     from .fanuc_roboguide.fanuc_roboguide import fanuc_roboguide
+    from .opcda_client.opcda_client import opcda_client
     from .robotware.robotware import robotware
     from .robodk_api.robodk_api import robodk_api
+    registered_drivers.update({"opcda_client": (opcda_client, "1")})
     registered_drivers.update({"fanuc_roboguide": (fanuc_roboguide, "1")})
     registered_drivers.update({"abb_driver": (robotware,"1")}) # TODO: Fix. Name is different to retrocompatibility
     registered_drivers.update({"robodk_driver": (robodk_api, "1")}) # TODO: Fix. name is different to retrocompatibility
