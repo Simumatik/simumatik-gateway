@@ -25,8 +25,7 @@ pywintypes.datetime=pywintypes.TimeType
 
 class opcda_client(driver):
     '''
-    Driver that can be used for development. The driver can be used on a component just assigning the driver type "development".
-    Feel free to add your code in the methods below.
+    Driver that can be used to connect to OPC-DA (Classic) servers. The functionality is similar to the newer OPCDA, but will work just in Windows because it makes use of COM objects.
     Parameters:
     server: string
         This is the server name of the OPC DA Server
