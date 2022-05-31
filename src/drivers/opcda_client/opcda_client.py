@@ -17,15 +17,19 @@
 from multiprocessing import Pipe
 from typing import Optional
 
-from ..driver import VariableQuality, driver
+from ..driver import VariableOperation, VariableQuality, driver
+import win32com.client
+import win32com.server.util
+import pythoncom
 
-import OpenOPC
-import pywintypes # To avoid timeout error
-pywintypes.datetime=pywintypes.TimeType
+OPC_CLASS = 'OPC.Automation;RSI.OPCAutomation;Matrikon.OPC.Automation;Graybox.OPC.DAWrapper;HSCOPC.Automation'
+OPC_CLIENT = 'Simumatik'
+SOURCE_CACHE = 1
+SOURCE_DEVICE = 2
 
 class opcda_client(driver):
     '''
-    Driver that can be used to connect to OPC-DA (Classic) servers. The functionality is similar to the newer OPCDA, but will work just in Windows because it makes use of COM objects.
+    Driver that can be used to connect to OPC-DA (Classic) servers. The functionality is similar to the newer OPCUA, but will work just in Windows because it makes use of COM objects.
     Parameters:
     server: string
         This is the server name of the OPC DA Server
@@ -42,41 +46,60 @@ class opcda_client(driver):
         # Parameters
         self.server = 'Matrikon.OPC.Simulation.1'
 
+        # Internal
+        self.read_group = None
+        self.write_group = None
+        self.handle_num = 0
+
 
     def connect(self) -> bool:
         """ Connect driver.
         
-        : returns: True if connection stablished False if not
+        : returns: True if connection established False if not
         """
-        # Make sure to send a debug message if method returns False
-        # self.sendDebugInfo('Error message here') 
+        pythoncom.CoInitialize()
 
-        self._connection = OpenOPC.client()
-
-        if self.server in self._connection.servers():
+        self._connection = None
+        for c in OPC_CLASS.split(';'):
             try:
-                self._connection.connect(self.server)
+                self._connection = win32com.client.gencache.EnsureDispatch(c, 0)
+                break
             except:
-                self.sendDebugInfo("Could not connect to OPC DA server.")
-                return False
-            else:
-                return True
-        else:
-            self.sendDebugInfo(f'OPC DA server "{self.server}" not found.')
+                pass
+            
+        if self._connection is None:
+            self.sendDebugInfo("Could not get OPC COM object.")
+            return False
+        
+        try:
+            self._connection.Connect(self.server, 'localhost')
+            self._connection.ClientName = OPC_CLIENT
+
+            # Only SYNC read and write, that is, no Update rate at server side.
+            self._connection.OPCGroups.DefaultGroupUpdateRate = -1 
+
+            # Create a group for reading variables (outputs)
+            self.read_group = self._connection.OPCGroups.Add('READ')
+            self.read_group.IsSubscribed = 0
+            self.read_group.IsActive = 1
+
+            # Create a group for writing variables (inputs)
+            self.write_group = self._connection.OPCGroups.Add('WRITE')
+            self.write_group.IsSubscribed = 0
+            self.write_group.IsActive = 1
+            return True
+        except Exception as e:
+            self.sendDebugInfo(f"Could not connect to OPC DA server: {self.server}")
             return False
 
 
     def disconnect(self):
-        """ Disconnect driver.
+        """ Clean up groups and disconnect client.
         """
         if self._connection is not None:
-            self._connection.close()
-
-
-    def loop(self):
-        """ Runs every iteration while the driver is active. Only use if strictly necessary.
-        """
-        pass
+            self._connection.OPCGroups.Remove('WRITE')
+            self._connection.OPCGroups.Remove('READ')
+            self._connection.Disconnect()
 
 
     def addVariables(self, variables: dict):
@@ -85,15 +108,23 @@ class opcda_client(driver):
         : param variables: Variables to add in a dict following the setup format. (See documentation) 
         
         """
-        for var_id in list(variables.keys()):
-            var_data = dict(variables[var_id])
-            try:
-                var_data['value'] = self._connection[var_id]
-            except Exception as e:
-                self.sendDebugInfo(f'SETUP: {e} \"{var_id}\"')
-            else:
-                self.variables[var_id] = var_data 
+        for var_id, var_data in variables.items():
+            # Add client handle to variables dict
+            self.handle_num += 1
+            variables[var_id]['client_handle'] = self.handle_num
 
+            # Add variables to the read/write groups
+            if var_data['operation'] == VariableOperation.READ:
+                server_handles, errors = self.read_group.OPCItems.AddItems(1, [0,var_id], [0,self.handle_num])
+            else:
+                server_handles, errors = self.write_group.OPCItems.AddItems(1, [0,var_id], [0,self.handle_num])
+            if errors[0] == 0:
+                variables[var_id]['server_handle'] = server_handles[0]
+                if var_data['operation'] == VariableOperation.READ:
+                    variables[var_id]['value'] = self.defaultVariableValue(variables[var_id]['datatype'], variables[var_id]['size'])
+                self.variables[var_id] = variables[var_id]
+            else:
+                self.sendDebugVarInfo((f"Variable not found: {var_id}!", var_id))
 
 
     def readVariables(self, variables: list) -> list:
@@ -102,17 +133,21 @@ class opcda_client(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
+        names = []
+        handles = []
         for var_id in variables:
-            try:
-                value, quality, time = self._connection.read(var_id)    
-            except Exception as e:
-                res.append((var_id, None, VariableQuality.ERROR))
-                self.sendDebugVarInfo(f'readVariables exception: {e}')
-            else:
-                if quality == 'Good':
-                    res.append((var_id, value, VariableQuality.GOOD))
+            # Only read variables that have been added successfully
+            if var_id in self.variables:
+                handles.append(self.variables[var_id]['server_handle'])
+                names.append(var_id)
+        if handles:
+            values, errors, qualities, timestamps = self.read_group.SyncRead(SOURCE_DEVICE, len(handles), [0]+handles)
+            for i, error in enumerate(errors):
+                if error == 0:
+                    res.append((names[i], values[i], VariableQuality.GOOD))
                 else:
-                    res.append((var_id, value, VariableQuality.BAD))
+                    self.sendDebugVarInfo((f"Variable {names[i]} read error! {self._connection.GetErrorString(error)}", names[i]))
+                    res.append((names[i], values[i], VariableQuality.BAD))
 
         return res
 
@@ -123,17 +158,22 @@ class opcda_client(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
-
-        for (var_id, var_value) in variables:
-            try:
-                write_result = self._connection.write((var_id, var_value))
-            except Exception as e:
-                res.append((var_id, None, VariableQuality.ERROR))
-                self.sendDebugVarInfo(f'writeVariables exception: {e}')
-            else:
-                if write_result == "Success":
-                    res.append((var_id, var_value, VariableQuality.GOOD))
+        names = []
+        handles = []
+        values = []
+        for (var_id, value) in variables:
+            # Only write variables that have been added successfully
+            if var_id in self.variables:
+                names.append(var_id)
+                values.append(value)
+                handles.append(self.variables[var_id]['server_handle'])
+        if handles:
+            errors = self.write_group.SyncWrite(len(handles), [0]+handles, [0]+values)
+            for i, error in enumerate(errors):
+                if error == 0:
+                    res.append((names[i], values[i], VariableQuality.GOOD))
                 else:
-                    res.append((var_id, var_value, VariableQuality.BAD))
+                    self.sendDebugVarInfo((f"Variable {names[i]} write error! {self._connection.GetErrorString(error)}", names[i]))
+                    res.append((names[i], values[i], VariableQuality.BAD))
         
         return res
