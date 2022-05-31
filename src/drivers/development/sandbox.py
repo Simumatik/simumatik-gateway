@@ -1,34 +1,38 @@
-# import win32com.client
-# prosim = win32com.client.Dispatch("S7wspsmx.S7ProSim.1")
-# prosim.Connect() # Connect to Plcsim
-# print ("PLCSIM status: " + prosim.GetState())
-# print("MW0 = " + str(prosim.ReadFlagValue(0, 0, win32com.client.constants.S7_Word, None)))
-# prosim.Disconnect()
-
-# from wrappertest2 import *
-
-# prosim = SimProjE()
-# print(prosim.ConnectionExists())
-# #print(prosim.GetNodeCount())
-# #prosim.Continue()
-# #prosim.SetScanMode(constants.ContinuousScan);     
-# print ("PLCSIM status: " + prosim.GetState())
-# prosim.Disconnect()
-
 import clr
 import os
 import sys
-
+import time
 
 p = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(p)
 
 clr.FindAssembly("IsoToS7online")
 clr.AddReference("IsoToS7online")
-
 from IsoOnTcp import IsoToS7online
 
-server = IsoToS7online(True)
+clr.AddReference('System.Net')
+from System.Net import IPAddress
 
 
-print("reached here")
+NAME = "PLC#001"
+NETWORKIPADRESS = IPAddress.Parse("192.168.1.192")
+PLCSIMIPADRESS = IPAddress.Parse("192.168.1.250")
+RACK = 0
+SLOT = 2
+ENABLETSAPCHECK = False
+
+server = IsoToS7online(ENABLETSAPCHECK)
+print("reached 1")
+
+try:
+    server.start(NAME, NETWORKIPADRESS, PLCSIMIPADRESS, RACK, SLOT)
+except Exception as e:
+    print(f"Except! {e}")
+else:
+    print("server started")
+
+time.sleep(120)
+
+
+server.Dispose()
+print("reached 3")
