@@ -23,17 +23,21 @@ from drivers.matlab_udp.matlab_udp import matlab_udp
 from drivers.driver import VariableOperation, VariableDatatype
 
 VARIABLES = {
-    'Out1':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.WRITE},
-    'In1':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.READ},
+    'Out1':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
+    'In1':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.READ}
     }
 
 d = matlab_udp(None, 'test')
+
 if d.connect():
     d.addVariables(VARIABLES)
 
     counter = 0
+
     while time.perf_counter() < 5:
         d.writeVariables([('Out1', counter)])
+        print(('Out1', counter))
+        d.loop()
         print(d.readVariables(['In1']))
         time.sleep(0.1)
         counter += 1
