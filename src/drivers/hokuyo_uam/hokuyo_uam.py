@@ -83,7 +83,7 @@ class hokuyo_uam(driver):
     def connect(self) -> bool:
         """ Connect driver.
         
-        : returns: True if connection stablished False if not
+        : returns: True if connection established False if not
         """
         try:
             self._connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -163,7 +163,7 @@ class hokuyo_uam(driver):
         if self._client is None:
             try:
                 self._client, client_address = self._connection.accept()
-                self.sendDebugInfo(f'Connection stablished with: {client_address}')
+                self.sendDebugInfo(f'Connection established with: {client_address}')
             except:
                 pass
 

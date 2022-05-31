@@ -45,7 +45,7 @@ class twincat_ads(driver):
     def connect(self) -> bool:
         """ Connect driver.
         
-        : returns: True if connection stablished False if not
+        : returns: True if connection established False if not
         """
         # Create connection
         try:
@@ -53,7 +53,7 @@ class twincat_ads(driver):
             self._connection = pyads.Connection(self.net_id, self.port)
             self._connection.open()
         except Exception as e:
-            self.sendDebugInfo(f"Connection with {self.net_id} cannot be stablished.")
+            self.sendDebugInfo(f"Connection with {self.net_id} cannot be established.")
             return False
 
         # Check connection status.

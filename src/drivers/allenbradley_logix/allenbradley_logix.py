@@ -44,14 +44,14 @@ class allenbradley_logix(driver):
     def connect(self) -> bool:
         """ Connect driver.
         
-        : returns: True if connection stablished False if not
+        : returns: True if connection established False if not
         """
         # Create connection
         try:
             self._connection = LogixDriver(self.ip)
             self._connection.open()
         except Exception as e:
-            self.sendDebugInfo(f"Connection with {self.ip} cannot be stablished.")
+            self.sendDebugInfo(f"Connection with {self.ip} cannot be established.")
             return False
 
         # Check connection status.

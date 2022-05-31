@@ -56,7 +56,7 @@ class mqtt_client(driver):
     def connect(self) -> bool:
         """ Connect driver.
         
-        : returns: True if connection stablished False if not
+        : returns: True if connection established False if not
         """
         try:
             self.port = int(self.port)
@@ -68,7 +68,7 @@ class mqtt_client(driver):
             self._connection.loop_start()
 
         except Exception as e:
-            self.sendDebugInfo(f"Connection with {self.ip}:{self.port} cannot be stablished.")
+            self.sendDebugInfo(f"Connection with {self.ip}:{self.port} cannot be established.")
             return False
         
         return True
