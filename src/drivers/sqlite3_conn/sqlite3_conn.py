@@ -56,7 +56,7 @@ class sqlite3_conn(driver):
     def connect(self) -> bool:
         """ Connect driver.
         
-        : returns: True if connection stablished False if not
+        : returns: True if connection established False if not
         """
         try:
             self._connection = sqlite3.connect(self.address)
@@ -81,7 +81,7 @@ class sqlite3_conn(driver):
             self._connection.commit()
 
         except Exception as e:
-            self.sendDebugInfo(f"SETUP: Connection with {self.address} cannot be stablished.")
+            self.sendDebugInfo(f"SETUP: Connection with {self.address} cannot be established.")
             return False
         
         return True

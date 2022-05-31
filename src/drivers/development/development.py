@@ -44,7 +44,7 @@ class development(driver):
     def connect(self) -> bool:
         """ Connect driver.
         
-        : returns: True if connection stablished False if not
+        : returns: True if connection established False if not
         """
         # Make sure to send a debug message if method returns False
         # self.sendDebugInfo('Error message here') 

@@ -61,7 +61,7 @@ class universal_robots(driver):
     def connect(self) -> bool:
         """ Connect driver.
         
-        : returns: True if connection stablished False if not
+        : returns: True if connection established False if not
         """
         try:
             self._connection = rtde.RTDE(self.host, self.port)

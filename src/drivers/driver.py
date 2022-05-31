@@ -440,7 +440,7 @@ class driver(threading.Thread):
     def connect(self) -> bool:
         """ Connect driver.
         
-        : returns: True if connection stablished False if not
+        : returns: True if connection established False if not
         """
         return True
 
