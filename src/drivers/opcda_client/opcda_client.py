@@ -20,7 +20,12 @@ from typing import Optional
 from ..driver import VariableOperation, VariableQuality, driver
 import win32com.client
 import win32com.server.util
+import win32event
 import pythoncom
+import pywintypes
+pywintypes.datetime = pywintypes.TimeType
+#vt = dict([(pythoncom.__dict__[vtype], vtype) for vtype in pythoncom.__dict__.keys() if vtype[:2] == "VT"])
+
 
 OPC_CLASS = 'OPC.Automation;RSI.OPCAutomation;Matrikon.OPC.Automation;Graybox.OPC.DAWrapper;HSCOPC.Automation'
 OPC_CLIENT = 'Simumatik'
@@ -62,7 +67,7 @@ class opcda_client(driver):
         self._connection = None
         for c in OPC_CLASS.split(';'):
             try:
-                self._connection = win32com.client.gencache.EnsureDispatch(c, 0)
+                self._connection = win32com.client.Dispatch(c, 0)
                 break
             except:
                 pass
@@ -96,6 +101,8 @@ class opcda_client(driver):
     def disconnect(self):
         """ Clean up groups and disconnect client.
         """
+        pythoncom.CoInitialize()
+
         if self._connection is not None:
             self._connection.OPCGroups.Remove('WRITE')
             self._connection.OPCGroups.Remove('READ')
@@ -108,23 +115,29 @@ class opcda_client(driver):
         : param variables: Variables to add in a dict following the setup format. (See documentation) 
         
         """
+        pythoncom.CoInitialize()
+
         for var_id, var_data in variables.items():
             # Add client handle to variables dict
             self.handle_num += 1
             variables[var_id]['client_handle'] = self.handle_num
 
-            # Add variables to the read/write groups
-            if var_data['operation'] == VariableOperation.READ:
-                server_handles, errors = self.read_group.OPCItems.AddItems(1, [0,var_id], [0,self.handle_num])
-            else:
-                server_handles, errors = self.write_group.OPCItems.AddItems(1, [0,var_id], [0,self.handle_num])
-            if errors[0] == 0:
-                variables[var_id]['server_handle'] = server_handles[0]
+            try:
+                # Add variables to the read/write groups
                 if var_data['operation'] == VariableOperation.READ:
-                    variables[var_id]['value'] = self.defaultVariableValue(variables[var_id]['datatype'], variables[var_id]['size'])
-                self.variables[var_id] = variables[var_id]
-            else:
-                self.sendDebugVarInfo((f"Variable not found: {var_id}!", var_id))
+                    server_handles, errors = self.read_group.OPCItems.AddItems(1, [0,var_id], [0,self.handle_num])
+                else:
+                    server_handles, errors = self.write_group.OPCItems.AddItems(1, [0,var_id], [0,self.handle_num])
+                if errors[0] == 0:
+                    variables[var_id]['server_handle'] = server_handles[0]
+                    if var_data['operation'] == VariableOperation.READ:
+                        variables[var_id]['value'] = self.defaultVariableValue(variables[var_id]['datatype'], variables[var_id]['size'])
+                    self.variables[var_id] = variables[var_id]
+                else:
+                    self.sendDebugVarInfo((f"Variable not found: {var_id}!", var_id))
+            except Exception as e:
+                self.sendDebugInfo(f'exception adding variable {var_id}: {e}')
+
 
 
     def readVariables(self, variables: list) -> list:
@@ -132,6 +145,8 @@ class opcda_client(driver):
         : param variables: List of variable ids to be read. 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
+        pythoncom.CoInitialize()
+
         res = []
         names = []
         handles = []
@@ -141,13 +156,16 @@ class opcda_client(driver):
                 handles.append(self.variables[var_id]['server_handle'])
                 names.append(var_id)
         if handles:
-            values, errors, qualities, timestamps = self.read_group.SyncRead(SOURCE_DEVICE, len(handles), [0]+handles)
-            for i, error in enumerate(errors):
-                if error == 0:
-                    res.append((names[i], values[i], VariableQuality.GOOD))
-                else:
-                    self.sendDebugVarInfo((f"Variable {names[i]} read error! {self._connection.GetErrorString(error)}", names[i]))
-                    res.append((names[i], values[i], VariableQuality.BAD))
+            try:
+                values, errors, qualities, timestamps = self.read_group.SyncRead(SOURCE_DEVICE, len(handles), [0]+handles)
+                for i, error in enumerate(errors):
+                    if error == 0:
+                        res.append((names[i], values[i], VariableQuality.GOOD))
+                    else:
+                        self.sendDebugVarInfo((f"Variable {names[i]} read error! {self._connection.GetErrorString(error)}", names[i]))
+                        res.append((names[i], values[i], VariableQuality.BAD))
+            except Exception as e:
+                self.sendDebugInfo(f'exception reading variable values: {e}, {names}, {handles}')
 
         return res
 
@@ -157,6 +175,8 @@ class opcda_client(driver):
         : param variables: List of tupples with variable ids and the values to be written (var_id, var_value). 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
+        pythoncom.CoInitialize()
+
         res = []
         names = []
         handles = []
@@ -168,12 +188,15 @@ class opcda_client(driver):
                 values.append(value)
                 handles.append(self.variables[var_id]['server_handle'])
         if handles:
-            errors = self.write_group.SyncWrite(len(handles), [0]+handles, [0]+values)
-            for i, error in enumerate(errors):
-                if error == 0:
-                    res.append((names[i], values[i], VariableQuality.GOOD))
-                else:
-                    self.sendDebugVarInfo((f"Variable {names[i]} write error! {self._connection.GetErrorString(error)}", names[i]))
-                    res.append((names[i], values[i], VariableQuality.BAD))
+            try:
+                errors = self.write_group.SyncWrite(len(handles), [0]+handles, [0]+values)
+                for i, error in enumerate(errors):
+                    if error == 0:
+                        res.append((names[i], values[i], VariableQuality.GOOD))
+                    else:
+                        self.sendDebugVarInfo((f"Variable {names[i]} write error! {self._connection.GetErrorString(error)}", names[i]))
+                        res.append((names[i], values[i], VariableQuality.BAD))
+            except Exception as e:
+                self.sendDebugInfo(f'exception reading variable values: {e}')
         
         return res
