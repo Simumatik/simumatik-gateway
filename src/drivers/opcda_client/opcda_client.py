@@ -22,15 +22,21 @@ import win32com.client
 import win32com.server.util
 import win32event
 import pythoncom
-import pywintypes
-pywintypes.datetime = pywintypes.TimeType
-#vt = dict([(pythoncom.__dict__[vtype], vtype) for vtype in pythoncom.__dict__.keys() if vtype[:2] == "VT"])
 
 
-OPC_CLASS = 'OPC.Automation;RSI.OPCAutomation;Matrikon.OPC.Automation;Graybox.OPC.DAWrapper;HSCOPC.Automation'
+OPC_CLASS = 'Graybox.OPC.DAWrapper.1;OPC.Automation;RSI.OPCAutomation;Matrikon.OPC.Automation.1;HSCOPC.Automation'
 OPC_CLIENT = 'Simumatik'
 SOURCE_CACHE = 1
 SOURCE_DEVICE = 2
+
+class GroupEvents:
+    def __init__(self):
+        self.callback_data = {} 
+        
+    def OnDataChange(self, TransactionID, NumItems, ClientHandles, ItemValues, Qualities, TimeStamps):
+        for i in range(NumItems):
+            self.callback_data[ClientHandles[i]] = ItemValues[i]
+
 
 class opcda_client(driver):
     '''
@@ -38,6 +44,9 @@ class opcda_client(driver):
     Parameters:
     server: string
         This is the server name of the OPC DA Server
+    
+    async_connection: bool
+        This variable can be set to true to use async reading (subscription). Default = False
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None):
@@ -50,11 +59,16 @@ class opcda_client(driver):
 
         # Parameters
         self.server = 'Matrikon.OPC.Simulation.1'
+        self.async_connection = False
 
         # Internal
         self.read_group = None
         self.write_group = None
         self.handle_num = 0
+
+        # Async connection
+        self._tx_id = 1
+        self._event = None
 
 
     def connect(self) -> bool:
@@ -64,34 +78,50 @@ class opcda_client(driver):
         """
         pythoncom.CoInitialize()
 
+        ''' Rows below are copied from OpenOPC'''
         self._connection = None
         for c in OPC_CLASS.split(';'):
             try:
                 self._connection = win32com.client.Dispatch(c, 0)
                 break
-            except:
+            except Exception as e:
                 pass
-            
+        
+        if self.async_connection:
+            self._event = win32event.CreateEvent(None,0,0,None)
+
         if self._connection is None:
             self.sendDebugInfo("Could not get OPC COM object.")
             return False
         
         try:
+            servers = self._connection.GetOPCServers('localhost')
+            self.sendDebugInfo(f"Available servers: {servers}")
+
             self._connection.Connect(self.server, 'localhost')
             self._connection.ClientName = OPC_CLIENT
 
             # Only SYNC read and write, that is, no Update rate at server side.
-            self._connection.OPCGroups.DefaultGroupUpdateRate = -1 
+            if self.async_connection:
+                self._connection.OPCGroups.DefaultGroupUpdateRate = self.rpi 
+            else:
+                self._connection.OPCGroups.DefaultGroupUpdateRate = -1
 
             # Create a group for reading variables (outputs)
             self.read_group = self._connection.OPCGroups.Add('READ')
-            self.read_group.IsSubscribed = 0
+            if self.async_connection:
+                self.read_group.IsSubscribed = 1
+                self.read_callback = win32com.client.WithEvents(self.read_group, GroupEvents)
+            else:
+                self.read_group.IsSubscribed = 0
             self.read_group.IsActive = 1
 
             # Create a group for writing variables (inputs)
             self.write_group = self._connection.OPCGroups.Add('WRITE')
             self.write_group.IsSubscribed = 0
             self.write_group.IsActive = 1
+
+            self.sendDebugInfo(f"{c} Connected to OPC DA server: {self.server}")
             return True
         except Exception as e:
             self.sendDebugInfo(f"Could not connect to OPC DA server: {self.server}")
@@ -101,8 +131,6 @@ class opcda_client(driver):
     def disconnect(self):
         """ Clean up groups and disconnect client.
         """
-        pythoncom.CoInitialize()
-
         if self._connection is not None:
             self._connection.OPCGroups.Remove('WRITE')
             self._connection.OPCGroups.Remove('READ')
@@ -115,8 +143,6 @@ class opcda_client(driver):
         : param variables: Variables to add in a dict following the setup format. (See documentation) 
         
         """
-        pythoncom.CoInitialize()
-
         for var_id, var_data in variables.items():
             # Add client handle to variables dict
             self.handle_num += 1
@@ -126,6 +152,9 @@ class opcda_client(driver):
                 # Add variables to the read/write groups
                 if var_data['operation'] == VariableOperation.READ:
                     server_handles, errors = self.read_group.OPCItems.AddItems(1, [0,var_id], [0,self.handle_num])
+                    if self.async_connection:
+                        self._tx_id = self._tx_id+1 if self._tx_id< 0xFFFF else 0
+                        self.read_group.AsyncRefresh(SOURCE_DEVICE, self._tx_id)       
                 else:
                     server_handles, errors = self.write_group.OPCItems.AddItems(1, [0,var_id], [0,self.handle_num])
                 if errors[0] == 0:
@@ -145,27 +174,36 @@ class opcda_client(driver):
         : param variables: List of variable ids to be read. 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        pythoncom.CoInitialize()
-
         res = []
-        names = []
-        handles = []
-        for var_id in variables:
-            # Only read variables that have been added successfully
-            if var_id in self.variables:
-                handles.append(self.variables[var_id]['server_handle'])
-                names.append(var_id)
-        if handles:
-            try:
-                values, errors, qualities, timestamps = self.read_group.SyncRead(SOURCE_DEVICE, len(handles), [0]+handles)
-                for i, error in enumerate(errors):
-                    if error == 0:
-                        res.append((names[i], values[i], VariableQuality.GOOD))
-                    else:
-                        self.sendDebugVarInfo((f"Variable {names[i]} read error! {self._connection.GetErrorString(error)}", names[i]))
-                        res.append((names[i], values[i], VariableQuality.BAD))
-            except Exception as e:
-                self.sendDebugInfo(f'exception reading variable values: {e}, {names}, {handles}')
+
+        if self.async_connection:      
+            for var_id in variables:
+                ch = self.variables[var_id]['client_handle']
+                if ch in self.read_callback.callback_data:
+                    res.append((var_id, self.read_callback.callback_data[ch], VariableQuality.GOOD))
+                else:
+                    res.append((var_id, self.variables[var_id]['value'], VariableQuality.BAD))
+                    self.read_callback.callback_data[ch] = self.variables[var_id]['value']
+
+        else:
+            names = []
+            handles = []
+            for var_id in variables:
+                # Only read variables that have been added successfully
+                if var_id in self.variables:
+                    handles.append(self.variables[var_id]['server_handle'])
+                    names.append(var_id)
+            if handles:
+                try:
+                    values, errors, _, _ = self.read_group.SyncRead(SOURCE_DEVICE, len(handles), [0]+handles)
+                    for i, error in enumerate(errors):
+                        if error == 0:
+                            res.append((names[i], values[i], VariableQuality.GOOD))
+                        else:
+                            self.sendDebugVarInfo((f"Variable {names[i]} read error! {self._connection.GetErrorString(error)}", names[i]))
+                            res.append((names[i], values[i], VariableQuality.BAD))
+                except Exception as e:
+                    self.sendDebugInfo(f'exception reading variable values: {e}, {names}, {handles}')
 
         return res
 
@@ -175,8 +213,6 @@ class opcda_client(driver):
         : param variables: List of tupples with variable ids and the values to be written (var_id, var_value). 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        pythoncom.CoInitialize()
-
         res = []
         names = []
         handles = []
@@ -197,6 +233,6 @@ class opcda_client(driver):
                         self.sendDebugVarInfo((f"Variable {names[i]} write error! {self._connection.GetErrorString(error)}", names[i]))
                         res.append((names[i], values[i], VariableQuality.BAD))
             except Exception as e:
-                self.sendDebugInfo(f'exception reading variable values: {e}')
+                self.sendDebugInfo(f'exception reading variable values: {e}, {names}, {handles}')
         
         return res
