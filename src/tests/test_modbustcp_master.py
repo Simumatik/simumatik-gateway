@@ -34,11 +34,12 @@ VARIABLES = {
     }
 
 d = modbustcp_master(None, 'test')
-d.host = '192.168.0.233'
+d.host = 'localhost'
 d.port = 502
 
 if d.connect():
     res = d.addVariables(VARIABLES)
+    print(d.variables)
 
     counter = 0
     start = time.perf_counter()
