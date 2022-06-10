@@ -30,12 +30,12 @@ class modbustcp_master(driver):
 
     Uses the library pyModbusTCP.
 
-    | Register Numbers  | Type          | Function Code | Name                                  | Data Type | Example Value |
-    |-------------------|---------------|---------------|---------------------------------------|-----------|---------------|
-    | 1-9999            | Read-Write	| 1	            | Status/Coil (State controls)	        | bool      | 0 or 1        |
-    | 10001-19999       | Read-Only	    | 2	            | Input Contact (State information)	    | bool      | 0 or 1        |
-    | 30001-39999       | Read-Only	    | 4	            | Input Registers (Numerical values)    | int, word | 0 to 32767    |
-    | 40001-49999       | Read-Write	| 3	            | Holding Registers (Numerical values)  | int, word | 0 to 32767    |
+    | Register Numbers  | Type          | Address | Name                                  | Data Type  | Example Value |
+    |-------------------|---------------|---------|---------------------------------------|------------|---------------|
+    | 1-9999            | Read-Write	| %IX	  | Status/Coil (State controls)	      | bool       | 0 or 1        |
+    | 10001-19999       | Read-Only	    | %QX	  | Input Contact (State information)	  | bool       | 0 or 1        |
+    | 30001-39999       | Read-Only	    | %QW	  | Input Registers (Numerical values)    | uint, word | 0 to 32767    |
+    | 40001-49999       | Read-Write	| %IW	  | Holding Registers (Numerical values)  | uint, word | 0 to 32767    |
 
     Parameters:
     host            : String    : the slave ip address, default 127.0.0.1
