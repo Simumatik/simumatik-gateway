@@ -160,6 +160,8 @@ class opcda_client(driver):
                 if errors[0] == 0:
                     variables[var_id]['server_handle'] = server_handles[0]
                     if var_data['operation'] == VariableOperation.READ:
+                        variables[var_id]['value'] = None # Force first update
+                    else:
                         variables[var_id]['value'] = self.defaultVariableValue(variables[var_id]['datatype'], variables[var_id]['size'])
                     self.variables[var_id] = variables[var_id]
                 else:
