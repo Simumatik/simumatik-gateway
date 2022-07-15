@@ -30,7 +30,7 @@ from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 
 
 # Version
-version = "3.3.1"
+version = "3.3.4"
 
 # Settings
 poll_time = 1 # seconds
@@ -182,7 +182,7 @@ class gateway():
                                     res_data = {"status": "connected", "ip": self.server_address[0]}
                                 else:
                                     # Notify client
-                                    res_data = {"status": "error", "message": "Connection with ip " + self.server_address[0] + " cannot be stablished"}
+                                    res_data = {"status": "error", "message": "Connection with ip " + self.server_address[0] + " cannot be established"}
                             else:
                                 res_data = {"status": "error", "message": "Gateway status is not STANDBY"}
 

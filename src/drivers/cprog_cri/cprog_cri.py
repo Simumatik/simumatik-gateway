@@ -66,7 +66,7 @@ class cprog_cri(driver):
     def connect(self) -> bool:
         """ Connect driver.
         
-        : returns: True if connection stablished False if not
+        : returns: True if connection established False if not
         """
         # Force rpi to max 50ms, CPROG updates are every 100ms
         self.rpi = min(50, self.rpi) 

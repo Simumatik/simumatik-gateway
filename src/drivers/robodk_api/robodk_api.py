@@ -71,7 +71,7 @@ class robodk_api(driver):
     def connect(self) -> bool:
         """ Connect driver.
         
-        : returns: True if connection stablished False if not
+        : returns: True if connection established False if not
         """
         try:
             #assert ROBODK_API_FOUND, "RoboDK API is not available."
