@@ -54,8 +54,8 @@ class matlab_udp(driver):
         self.port = 8400
         self.polling = 1
         self.max_size = 1024
-        self.has_received = True
-        self.write_json = "{}"
+        self.has_received = False
+        self.variables_to_send = {}
 
 
     def connect(self) -> bool:
@@ -77,6 +77,7 @@ class matlab_udp(driver):
             data, address = self._connection.recvfrom(self.max_size)
             if (data != None and address == (self.ip, int(self.port))):
                 self.has_received = True
+                self.variables_to_write.clear()
                 self._connection.settimeout(0)
                 self._last_recv_poll = sec_now
                 return True
@@ -157,7 +158,7 @@ class matlab_udp(driver):
 
         if _send_data:
             try:
-                self.write_json = json.dumps(_send_data)
+                self.variables_to_send.update(_send_data)
                 for (var_id, new_value) in variables:
                     res.append((var_id, new_value, VariableQuality.GOOD))
             except:
@@ -169,6 +170,7 @@ class matlab_udp(driver):
     def loop(self):
         """ Runs every iteration while the driver is active."""
         if self.has_received and self._connection:
-            self._connection.sendto(self.write_json.encode('utf8'), (self.ip, int(self.port)))
+            self._connection.sendto(json.dumps(self.write_json).encode('utf8'), (self.ip, self.port))
+            self.variables_to_send.clear()
             self.has_received = False
         
