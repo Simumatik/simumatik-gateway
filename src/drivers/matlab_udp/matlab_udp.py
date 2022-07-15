@@ -77,7 +77,7 @@ class matlab_udp(driver):
             data, address = self._connection.recvfrom(self.max_size)
             if (data != None and address == (self.ip, int(self.port))):
                 self.has_received = True
-                self.variables_to_write.clear()
+                self.variables_to_send.clear()
                 self._connection.settimeout(0)
                 self._last_recv_poll = sec_now
                 return True
