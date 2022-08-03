@@ -343,23 +343,26 @@ class gateway():
                 return
 
         # Check incomming telegrams
+        cont = 0
         try:
-            data, address = self.udp_socket.recvfrom(4096)
-            # Process data if data received and address is valid 
-            if (data != None and address == self.server_address):
-                request_json = json.loads(data.decode('utf-8'))
-                if ('SETUP' in request_json):
-                    self.do_driver_setup(request_json)
-                elif ('DELETE' in request_json):
-                    self.do_driver_delete(request_json)
-                elif ('UPDATE' in request_json):
-                    self.do_driver_update(request_json)
-                elif ('POLLING' in request_json):
-                    self.last_poll_received = time.time()
-                needs_sleep = False
+            while (True):
+                data, address = self.udp_socket.recvfrom(4096)
+                cont += 1
+                # Process data if data received and address is valid 
+                if (data != None and address == self.server_address):
+                    request_json = json.loads(data.decode('utf-8'))
+                    if ('SETUP' in request_json):
+                        self.do_driver_setup(request_json)
+                    elif ('DELETE' in request_json):
+                        self.do_driver_delete(request_json)
+                    elif ('UPDATE' in request_json):
+                        self.do_driver_update(request_json)
+                    elif ('POLLING' in request_json):
+                        self.last_poll_received = time.time()
+                    needs_sleep = False
         except:
             # No data received
-            pass
+            if cont>0: print(cont)
 
         # Check receiving poll messages
         if (time.time()-self.last_poll_received)>(4*poll_time):
