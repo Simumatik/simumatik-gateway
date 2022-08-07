@@ -73,54 +73,79 @@ The Simumatik Server requests drivers creation/removal on-demand to the Gateway.
 
 ### Commands
 
-- **SETUP**: Create a new driver. This message contains the driver type and the setup data, explained more in detail below.
+- **REGISTER**: . This message is sent by the Gateway just after the connection is done contains the driver handle, type and the setup data, explained more in detail below.
+
+    Gateway request:
+    ```json
+    {"ID": "<msg_id>", "COMMAND": "REGISTER", "DATA": {
+                                                    "SERVER_KEY": "server key obtained from the user",
+                                                    "GATEWAY": {
+                                                        "HEARTBEAT": "<heartbeat>", 
+                                                        "VERSION": "<version>"
+                                                        },
+                                                    "DRIVERS": ["<driver_type>"],
+                                                    }}
+    ```
+    Server response:
+    ```json
+    {"ID": "<request_msg_id>", "COMMAND": "REGISTER", "DATA": "SUCCESS / FAILED"}
+    ```
+
+- **SETUP**: Create a new driver. This message contains the driver handle, type and the setup data, explained more in detail below.
 
     Server request:
     ```json
-    {"ID": "<msg_id>", "SETUP": "<setup_data>"}
+    {"ID": "<msg_id>", "COMMAND": "SETUP", "DATA": {"<driver_handle>": {"DRIVER": "<driver_type>", "SETUP": "<setup_data>"}}}
     ```
     Gateway response:
     ```json
-    {"ID": "<request_msg_id>", "SETUP": "Success / Failed", "DRIVER": "<driver_id_>"}
+    {"ID": "<request_msg_id>", "COMMAND": "SETUP", "DATA": {"driver_handle": "SUCCESS / FAILED"}}
     ```
 
-- **DELETE**: Remove a driver based on its ID. A general clean-up can be down by specifing "all" instead.
+- **CLEAN**: Remove all drivers.
 
     Server request:
     ```json
-    {"ID": "<msg_id>", "DRIVER": "<driver_id> / all"}
+    {"ID": "<msg_id>", "COMMAND": "CLEAN", "DATA": "None"}
     ```
     Gateway response:
     ```json
-    {"ID": "<request_msg_id>", "DRIVER": "<driver_id> / all", "DELETE": "Success / Failed"}
-    ```
-
-- **UPDATE**: Update a driver I/O data. It uses the unique driver ID assigned on creation and a dict with the vars names and new value.
-
-    Server/Gateway request:
-    ```json
-    {"ID": "<msg_id>", "DRIVER": "<driver_id>", "UPDATE": {"<var_name>" : "<var_data>"}}
+    {"ID": "<request_msg_id>", "COMMAND": "CLEAN", "DATA": "SUCCESS / FAILED"}
     ```
 
 - **POLLING**: This is just a signal to update the polling timestamp. If no messages are detected in a time period, the connection is automatically closed.
 
     Server/Gateway request:
     ```json
-    {"ID": "<msg_id>", "POLLING": ""}
+    {"ID": "<msg_id>", "COMMAND": "POLLING", "DATA": {"LAST_PROC_UPDATE": "<last proccessed UPDATE telegram id>"}
+    ```
+
+- **UPDATE**: Update a driver I/O data. It uses the unique variable handle assigned on setup and a dict with the var handle and new value.
+
+    Server/Gateway request:
+    ```json
+    {"ID": "<msg_id>", "COMMAND": "UPDATE", "DATA": {"<var_handle>" : "<var_value>"}}
     ```
 
 - **STATUS**: If a driver's status changes, the Gateway will notify the server.
 
     Gateway request:
     ```json
-    {"ID": "<msg_id>", "DRIVER": "<driver_id>", "STATUS": "<driver_status>"}
+    {"ID": "<msg_id>", "COMMAND": "STATUS", "DATA": {"<driver_handle>":"<driver_status>"}}
     ```
 
 - **INFO**: If a driver displays some debug msg using `self.sendDebugInfo`, the Gateway will notify the server.
 
     Gateway request:
     ```json
-    {"ID": "<msg_id>", "DRIVER": "<driver_id>", "INFO": "<driver_info>"}
+    {"ID": "<msg_id>", "COMMAND": "INFO", "DATA": {"<driver_handle>":"<driver_info>"}}
+    ```
+
+- **VAR_INFO**: If a driver displays some debug msg using `self.sendDebugVarInfo`, the Gateway will notify the server.
+
+    Gateway request:
+    ```json
+    {"ID": "<msg_id>", "COMMAND": "VAR_INFO", "DATA": {"<var_handle>":"<driver_info>"}}
     ```
 # Driver
 

@@ -126,7 +126,6 @@ class mqtt_client(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
-        # TODO: Possible improvement can be to send multiple at once
         for (var_id, new_value) in variables:
             try:
                 self._connection.publish(var_id, new_value)

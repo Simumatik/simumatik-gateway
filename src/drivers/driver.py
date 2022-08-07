@@ -86,14 +86,11 @@ class driver(threading.Thread):
         # Initialize
         self.name = name
         self.pipe = pipe
+        self.handles = []
         self._connection = None
         self.last_read = time.perf_counter() # last read package sent
         self.last_write = time.perf_counter() # last write package sent
         self.last_forced_write = time.perf_counter() # last read package sent
-
-        # Aliases
-        self.aliases = {}
-        self.aliases_counter = 0
         
         # Driver internal data
         self.variables = {} # Dictionary to store variable data (definition and additional data specific to each driver)
@@ -103,20 +100,7 @@ class driver(threading.Thread):
             self.changeStatus(DriverStatus.EXIT)
         else:
             self.changeStatus(DriverStatus.STANDBY)
-
-
-    def create_new_driver_alias(self):
-        ''' Provides a new driver alias id.'''
-        alias = f"{self.name}.{self.aliases_counter}"
-        self.aliases[alias] = []
-        self.aliases_counter += 1
-        return alias
     
-
-    def get_aliases(self):
-        ''' Returns a list with driver aliases.'''
-        return list(self.aliases.keys())
-
 
     def run(self):
         """ Run loop."""
@@ -156,9 +140,8 @@ class driver(threading.Thread):
 
                         # Action ADD VARIABLES
                         elif action == DriverActions.ADD_VARIABLES:
-                            alias_id, data = data.popitem()
                             if self.status == DriverStatus.RUNNING: 
-                                if not self._addVariables(data, alias_id):
+                                if not self._addVariables(data):
                                     self.sendDebugInfo('ADD_VARIABLES action failed!')
 
                         # Action UPDATE
@@ -246,25 +229,21 @@ class driver(threading.Thread):
         """
         try:
             if self.pipe:
-                # Send {handle:value} data instead of {var_name:value}
-                update_data = {}
-                for var_name, value in data.items():
-                    update_data[self.variables[var_name]["handle"]] = value
-                self.pipe.send(json.dumps({DriverActions.UPDATE: update_data}))
+                self.pipe.send(json.dumps({DriverActions.UPDATE: data}))
         except:
             pass
 
 
-    def _setup(self, setup_data: dict) -> bool:
+    def _setup(self, param_data: dict) -> bool:
         """ Executed to setup the driver. This method calls the specific driver connect(). Variables need to be add with the ADD VARIABLES action. 
 
-        :param setup_data: Setup specific data including parameters and variables. (See documentation)
+        :param param_data: Setup specific data including parameters. (See documentation)
 
         :returns: True if setup is completed or False if not
         """
         try:
-            if setup_data:
-                self.__dict__.update(setup_data['parameters'])
+            if param_data:
+                self.__dict__.update(param_data)
                 return self.connect()
                 
         except Exception as e:
@@ -273,14 +252,13 @@ class driver(threading.Thread):
         return False
 
 
-    def checkSetupCompatible(self, setup_data: dict) -> bool:
-        """ Tells if the provided Setup data is compatible with the actual driver. 
+    def checkSetupCompatible(self, param_data: dict) -> bool:
+        """ Tells if the provided parameter data is compatible with the actual driver. 
 
-        :param setup_data: Setup specific data including parameters and variables. (See documentation)
+        :param param_data: Setup specific data including parameters. (See documentation)
 
         :returns: True if setup_data is compatible or False if not
         """
-        param_data = setup_data.get('parameters', None)
         if param_data:
             for key, value in param_data.items():
                 if self.__dict__[key] != value:
@@ -291,7 +269,7 @@ class driver(threading.Thread):
             return True
         
 
-    def _addVariables(self, variable_data: dict, alias: str) -> bool:
+    def _addVariables(self, variable_data: dict) -> bool:
         """ Executed when setup is already done but new variables want to be added. 
 
         :param variable_data: Variable specific data. (See documentation)
@@ -299,9 +277,8 @@ class driver(threading.Thread):
         :returns: True if variables are added or False if not
         """
         try:
-            if variable_data is not None and self._connection is not None and alias in self.aliases:
+            if variable_data is not None and self._connection is not None:
                 self.addVariables(variable_data)
-                self.aliases[alias] += list(variable_data.keys())
                 return True
                 
         except Exception as e:

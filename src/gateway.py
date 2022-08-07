@@ -31,6 +31,8 @@ from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 
 # Version
 version = "4.0.1"
+MAX_TELEGRAM_LENGTH = 2**13 # (8K)
+MAX_UPDATES_PER_TELEGRAM = 100
 
 # Settings
 poll_time = 1 # seconds
@@ -93,32 +95,46 @@ class gateway():
         self.message_id = 0
         self.last_poll_sent = 0
         self.last_poll_received = 0
+        self.last_processed_update = 0
         # Emulation
         self.emulation_running = False
         # Drivers
-        self.drivers = {}
+        self.drivers = {} # {driver_object: pipe}
+        self.handles = {} # {handle: (var_name, driver_object)}
+        self.variables = {} # {driver_object: {var_name: [handles]}}
+        self.driver_statuses = {} # {driver_handle: status}
+        self.driver_infos = {} # {driver_handle: info}
         self.status = GatewayStatus.STANDBY
         self.error_msg = ''
         
+
     def get_datetime(self):
         ''' returns actual date and time as string.'''
         t = datetime.datetime.now()
         return t.strftime('%Y-%m-%d %H:%M:%S,%f')[:-3]
 
+
     def get_new_message_id(self):
         ''' Provides a new message id.'''
-        self.message_id += 1
+        if self.message_id > 1e4:
+            self.message_id = 1
+        else:
+            self.message_id += 1
         return self.message_id
-    
-    def get_new_driver_id(self):
-        ''' Provides a new driver id.'''
-        id = 1
-        while True:
-            if f"driver_{id}" not in self.drivers:
-                return f"driver_{id}"
-            else:
-                id += 1
-            
+
+
+    def clean_drivers(self):
+        """ Close all drivers."""
+        self.handles = {}
+        self.variables = {}
+        self.driver_statuses = {}
+        self.driver_infos = {}
+        while self.drivers:
+            driver_object, pipe = self.drivers.popitem()
+            logger.debug('Cleaning driver: {}'.format(driver_object.name))
+            pipe.send(json.dumps({DriverActions.EXIT: None}))
+
+
     def run(self, ip:str='127.0.0.1', port:int=2323):
         ''' Main loop'''
 
@@ -142,96 +158,11 @@ class gateway():
         # Loop
         logger.debug("SimumatikGateway " + version + " ready...")
         while self.status != GatewayStatus.EXIT:
-
-            #------------------------------
             # Websocket interface
-            #------------------------------
-            # Loop connections
-            for connection in WebSocketConnections:
-                # Check if there is a message to process
-                while connection.msg_queue:
-                    # Get message data
-                    try:
-                        msg = json.loads(connection.msg_queue.pop())
-                    except:
-                        continue
-
-                    if 'request' in msg:
-                        req = msg['request']
-                        # Get command
-                        command = req['command']
-                        # Set response
-                        res_data = ''
-                        # connect command 
-                        if (command == "connect"):
-                            # Check arguments
-                            if ('data' in req and 'url' in req['data']):
-                                self.server_address = (req['data']['url'], 4844)
-                            else:
-                                self.server_address = ('127.0.0.1', 4844)
-                            # Check gateway status
-                            if self.status == GatewayStatus.STANDBY:
-                                # Try to connect
-                                self.doConnect()
-                                if self.status == GatewayStatus.CONNECTED:
-                                    # Notify client
-                                    res_data = {"status": "connected", "ip": self.server_address[0]}
-                                else:
-                                    # Notify client
-                                    res_data = {"status": "error", "message": "Connection with ip " + self.server_address[0] + " cannot be established"}
-                            else:
-                                res_data = {"status": "error", "message": "Gateway status is not STANDBY"}
-
-                        # disconnect command 
-                        elif (command == "disconnect"):
-                            # Check gateway status
-                            if self.status == GatewayStatus.CONNECTED:
-                                # Do cleanup
-                                self.doCleanup()
-                                self.status = GatewayStatus.STANDBY
-                                # Notify client
-                                res_data = {"status": "disconnected"}
-                            else:
-                                res_data = {"status": "error", "message": "Gateway status is not CONNECTED"}
-
-                        # reset command 
-                        elif (command == "reset"):
-                            # Check gateway status
-                            if self.status == GatewayStatus.ERROR:
-                                # Do cleanup
-                                self.doCleanup()
-                                self.status = GatewayStatus.STANDBY
-                                self.error_msg = ''
-                                # Notify client
-                                res_data = {"status": "reset"}
-                            else:
-                                res_data = {"status": "error", "message": "Gateway status is not ERROR"}
-
-                        # status command 
-                        elif (command == "status"):
-                            # Notify client
-                            if self.status == GatewayStatus.ERROR:
-                                 res_data = {"status": "error", "message": str(self.error_msg), "ip": self.server_address[0] if self.server_address != None else ""}
-                            else:
-                                res_data = {"status": str(GatewayStatus(self.status).name), "ip": self.server_address[0] if self.server_address != None else ""}
-
-                        # version command
-                        elif (command == "version"):
-                            # Notify client
-                            res_data = {"status": str(version)}
-                    
-                        # Not defined command
-                        else:
-                            res_data = {"status": "Unknown command"}
-
-                        # Send response
-                        connection.sendMessage(json.dumps({"response": {"id": req["id"], "command": command, "data": res_data}}))
-                        logger.debug('Response sent: {}'.format(json.dumps({"response": {"id": req["id"], "command": command, "data": res_data}})))
-
+            self.doWebsocketInterface()
             # Driver running
             if self.status == GatewayStatus.CONNECTED:
                 self.doRun()
-            
             # Sleep
             else:
                 time.sleep(1e-3)
@@ -242,36 +173,34 @@ class gateway():
         self.status = GatewayStatus.EXIT
 
 
+    def send_message(self, id:int, command:str, data:dict=None):
+        msg = {"ID": id, "COMMAND":command}
+        if data is not None:
+            msg.update({"DATA": data})
+        self.udp_socket.sendto(json.dumps(msg).encode('utf8'), self.server_address)
+
+
     def doConnect(self):
         """ Executed to connect the gateway to the server."""
         try:
             # Create UDP socket
             self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            #self.udp_socket.bind(('127.0.0.1', 4844))
-            self.udp_socket.settimeout(poll_time*4)
-
             # Get implemented driver list
             drivers_list = {}
             for driver_name, (_, driver_version) in registered_drivers.items():
                 drivers_list.update({driver_name:{'version':driver_version}})
-
-            # Generate request telegram
-            register_id = self.get_new_message_id()
-            register_request = {
-                "ID": register_id,
-                "REGISTER": {
-                    "server_key": 'server key obtained from the user',
-                    "gateway": {
-                        "version": version,
-                        "heartbeat": poll_time,
+            # Send REGISTER message
+            self.send_message(
+                id=0, 
+                command="REGISTER",
+                data={
+                    "SERVER_KEY": 'server key obtained from the user',
+                    "GATEWAY": {
+                        "VERSION": version,
+                        "HEARTBEAT": poll_time,
                     },
-                    "drivers": drivers_list
-                }
-            }
-
-            # Send register request
-            self.udp_socket.sendto(json.dumps(register_request).encode('utf8'), self.server_address)
-
+                    "DRIVERS": drivers_list
+                })
         except Exception as e:
             self.doCleanup()
             self.status = GatewayStatus.ERROR
@@ -280,20 +209,19 @@ class gateway():
             raise Exception(self.error_msg)
 
         # Get response before defined timeout (4 x poll_time)
+        self.udp_socket.settimeout(poll_time*4)
         try:
-            data, address = self.udp_socket.recvfrom(4096)
+            data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
             if data != None and address == self.server_address:
                 response_json = json.loads(data.decode('utf-8'))
-                if response_json["ID"] == register_id:
-                    # Connection succeded
-                    if (response_json["REGISTER"] == 'Success'):
-                        # From now on, no timeout is set in the socket
-                        self.udp_socket.setblocking(0)
-                        self.last_poll_sent = time.time()
-                        self.last_poll_received = time.time()
-                        self.status = GatewayStatus.CONNECTED
-                        logger.debug("Gateway connected")
-                        return
+                if response_json.get("COMMAND", "") == "REGISTER" and response_json.get("DATA", 'FAILED') == 'SUCCESS':
+                    # From now on, no timeout is set in the socket
+                    self.udp_socket.setblocking(0)
+                    self.last_poll_sent = time.time()
+                    self.last_poll_received = time.time()
+                    self.status = GatewayStatus.CONNECTED
+                    logger.debug("Gateway connected")
+                    return
                 else:
                     logger.debug("Datagram id or ip does not match")
         except Exception as e:
@@ -325,11 +253,7 @@ class gateway():
         # Send polling message within the interval
         if (time.time()-self.last_poll_sent) >= poll_time:
             try:
-                polling_request = {
-                    "ID": self.get_new_message_id(),
-                    "POLLING": 'null'
-                }
-                self.udp_socket.sendto(json.dumps(polling_request).encode('utf8'), self.server_address)
+                self.send_message(id=self.get_new_message_id(), command="POLLING", data={"LAST_PROC_UPDATE": self.last_processed_update})
                 self.last_poll_sent = time.time()
                 needs_sleep = False
             except:
@@ -340,17 +264,23 @@ class gateway():
 
         # Check incomming telegrams
         try:
-            data, address = self.udp_socket.recvfrom(4096)
+            data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
             # Process data if data received and address is valid 
             if (data != None and address == self.server_address):
                 request_json = json.loads(data.decode('utf-8'))
-                if ('SETUP' in request_json):
-                    self.do_driver_setup(request_json)
-                elif ('DELETE' in request_json):
-                    self.do_driver_delete(request_json)
-                elif ('UPDATES' in request_json):
-                    self.do_driver_updates(request_json)
-                elif ('POLLING' in request_json):
+                telegram_id = request_json.get("ID")
+                telegram_command = request_json.get("COMMAND", '')
+                telegram_data = request_json.get("DATA", None)
+                if 'SETUP' == telegram_command:
+                    result = self.do_driver_setup(telegram_data)
+                    self.send_message(id=telegram_id, command='SETUP', data=result)
+                elif 'CLEAN' == telegram_command:
+                    self.clean_drivers()
+                    self.send_message(id=telegram_id, command='CLEAN', data='SUCCESS')
+                elif 'UPDATE' == telegram_command:
+                    self.last_processed_update = telegram_id
+                    res = self.do_driver_updates(telegram_data)
+                elif 'POLLING' == telegram_command:
                     self.last_poll_received = time.time()
                 needs_sleep = False
         except:
@@ -367,26 +297,52 @@ class gateway():
         # Check updates from drivers
         try:
             updates = {}
-            for driver_id, (driver, pipe)  in self.drivers.items():
-                if driver.is_alive() and pipe:
+            var_info = {}
+            for driver_object, pipe in self.drivers.items():
+                if driver_object.is_alive() and pipe:
                     while pipe.poll():
                         action, data = json.loads(pipe.recv()).popitem()
+                        
                         if action == DriverActions.UPDATE:
-                            for var_name
-                            updates.update(data)
-                            logger.debug('Driver {} output data updated: {}'.format(driver_id, data))
+                            logger.debug(f'Driver {driver_object.name} output data updated: {data}')
+                            for var_name, var_value in data.items():
+                                for handle in self.variables[driver_object][var_name]:
+                                    updates[handle] = var_value
+                            
                         elif action == DriverActions.STATUS:
-                            self.send_driver_status(driver_id, data)
-                            logger.debug('Driver {} status changed: {}'.format(driver_id, data))
+                            logger.debug(f'Driver {driver_object.name} status changed: {data}')
+                            for driver_handle in driver_object.handles:
+                                self.driver_statuses[driver_handle] = data                            
+
                         elif action == DriverActions.INFO:
-                            self.send_driver_info(driver_id, data)
-                            logger.debug('Driver {} debug info: {}'.format(driver_id, data))
+                            logger.debug(f'Driver {driver_object.name} debug info: {data}')
+                            for driver_handle in driver_object.handles:
+                                self.driver_infos[driver_handle] = data
+
                         elif action == DriverActions.VAR_INFO:
-                            (var_data, var_id) = data
-                            self.send_var_info(driver_id, var_data, var_id)
-                            logger.debug('Driver {} debug info: {}'.format(driver_id, data))
+                            (var_data, var_name) = data
+                            logger.debug(f'Driver {driver_object.name} variable {var_name} debug info: {data}')
+                            for handle in self.variables[driver_object][var_name]:
+                                var_info[handle] = var_data
+                            
                         needs_sleep = False
-            self.send_driver_updates(updates)
+
+            # Send telegrams
+            update_slice = {}
+            while updates:
+                (key, value) = updates.popitem()
+                update_slice[key] = value
+                if len(update_slice)>=MAX_UPDATES_PER_TELEGRAM or len(updates)==0:                
+                    self.send_message(id=self.get_new_message_id(), command="UPDATE", data=update_slice)
+                    update_slice = {}
+            if self.driver_statuses: 
+                self.send_message(id=self.get_new_message_id(), command="STATUS", data=self.driver_statuses)
+                self.driver_statuses = {}
+            if self.driver_infos: 
+                self.send_message(id=self.get_new_message_id(), command="INFO", data=self.driver_infos)
+                self.driver_infos = {}
+            if var_info: 
+                self.send_message(id=self.get_new_message_id(), command="VAR_INFO", data=var_info)
 
         except Exception as e:
             self.status = GatewayStatus.ERROR
@@ -398,227 +354,179 @@ class gateway():
         if needs_sleep:
             time.sleep(1e-3)
 
-    def do_driver_delete(self, request_json):
-        request_id = request_json["ID"]
-        driver_id = request_json['DRIVER']
-        if (driver_id == 'all'):
-            self.clean_drivers()
-            response_json = {   
-                "ID": request_id,
-                "DELETE": 'Success',
-                "DRIVER": 'all'
-            }
-        elif driver_id in self.drivers:
-            try:
-                (driver, pipe) = self.drivers.pop(driver_id)
-                self.clean_driver(driver_id, driver, pipe)
-                response_json = {   
-                    "ID": request_id,
-                    "DELETE": 'Success',
-                    "DRIVER": driver_id
-                }
-            except:
-                response_json = {   
-                    "ID": request_id,
-                    "DELETE": 'Failed',
-                    "DRIVER": driver_id
-                }
-                logger.debug("Driver " + driver_id + " not found")
-        else:
-            # Check driver aliases
-            for parent_driver_id, (driver, _) in self.drivers.items():
-                if driver_id in driver.aliases:
-                    driver.aliases.pop(driver_id)
-                    # Check if the driver is "empty"
-                    if len(driver.aliases) == 0:
-                        try:
-                            (driver, pipe) = self.drivers.pop(parent_driver_id)
-                            self.clean_driver(parent_driver_id, driver, pipe)
-                        except:
-                            logger.debug("Driver " + driver_id + " couldn't be cleaned")
 
-                    response_json = {   
-                        "ID": request_id,
-                        "DELETE": 'Success',
-                        "DRIVER": driver_id
-                    }
-                    break
+    def do_driver_setup(self, telegram_data)->dict:
+        res = {}
+        for driver_handle, driver_data in telegram_data.items():
+            driver_type = driver_data["DRIVER"]
+            driver_class, _ = registered_drivers[driver_type]
+            setup_data = driver_data["SETUP"]
+            parameter_data = setup_data.get("parameters", None)
+            variable_data = setup_data.get("variables", None)
+
+            # Check if requested driver type is registered
+            if driver_type not in registered_drivers:
+                res[driver_handle] = "Failed"                
             else:
-                response_json = {   
-                    "ID": request_id,
-                    "DELETE": 'Failed',
-                    "DRIVER": driver_id
-                }
-                logger.debug("Driver " + driver_id + " not found")
+                # Check if compatible driver already exists
+                for driver_object, pipe in self.drivers.items():
+                    if driver_object.__class__ == driver_class:
+                        logger.info(f"Previous driver {driver_object.name} ({driver_object.__class__}) found for {driver_class}")
+                        if driver_object.checkSetupCompatible(parameter_data):
+                            logger.info(f"Driver {driver_object.name} is compatible")
+                            driver_object.handles.append(driver_handle)
+                            # Fill up handle and variable dicts
+                            if variable_data:
+                                self.process_variables(driver_object, variable_data)
+                                pipe.send(json.dumps({DriverActions.ADD_VARIABLES: variable_data}))
+                            # Make sure we send status update
+                            if driver_object.status == DriverStatus.RUNNING:
+                                self.driver_statuses[driver_handle] = "RUNNING"
 
-        self.udp_socket.sendto(json.dumps(response_json).encode('utf8'), self.server_address)
-        logger.info(f"Driver {driver_id} deleted")
-        
+                            res[driver_handle] = "SUCCESS"
+                            break
+                        else:
+                            logger.info(f"Previous driver {driver_object.name} NOT COMPATIBLE")
 
-    def send_driver_updates(self, data):
-        update_msg = {   
-            "ID": self.get_new_message_id(),
-            "UPDATES": data
-        }
-        self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
+                else:
+                    # Create new driver
+                    pipe, driver_pipe = Pipe()
+                    driver_object = driver_class(driver_handle, driver_pipe)
+                    driver_object.setDaemon(True)
+                    driver_object.start()
+                    self.drivers[driver_object] = pipe
+                    driver_object.handles.append(driver_handle)
+                    # Set-up driver and add variables as alias
+                    pipe.send(json.dumps({DriverActions.SETUP: parameter_data}))
+                    if variable_data:
+                        self.process_variables(driver_object, variable_data)
+                        pipe.send(json.dumps({DriverActions.ADD_VARIABLES: variable_data}))
+                    logger.info(f'New {driver_type} driver: {driver_object.name}')        
+                    res[driver_handle] = "SUCCESS"
+        return res
 
-
-    def send_driver_update(self, driver_id, driver_data):
-        (driver, _) = self.drivers[driver_id]
-        
-        updates = {}
-        for var_id, var_value in driver_data.items():
-            for alias_id, var_ids in driver.aliases.items():
-                if var_id in var_ids:
-                    if alias_id not in updates: 
-                        updates[alias_id] = {}
-                    updates[alias_id][var_id] = var_value
-        
-        for id, data in updates.items():
-            update_msg = {   
-                "ID": self.get_new_message_id(),
-                "UPDATE": data,
-                "DRIVER": id
-            }
-            self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
-
-
-    def send_driver_status(self, driver_id, driver_status):
-        (driver, _) = self.drivers[driver_id]
-
-        for id in driver.get_aliases():
-            update_msg = {   
-                "ID": self.get_new_message_id(),
-                "STATUS": driver_status,
-                "DRIVER": id
-            }
-            self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
-        
-
-    def send_driver_info(self, driver_id, driver_info):
-        (driver, _) = self.drivers[driver_id]
-
-        for id in driver.get_aliases():
-            update_msg = {   
-                "ID": self.get_new_message_id(),
-                "INFO": driver_info,
-                "DRIVER": id
-            }
-            self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
-
-    def send_var_info(self, driver_id, var_info, target_var_id):
-        (driver, _) = self.drivers[driver_id]
-        
-        updates = []
-        for alias_id, var_ids in driver.aliases.items():
-            if target_var_id in var_ids:
-                if alias_id not in updates: 
-                    updates.append(alias_id)
-        
-        for id in updates:
-            update_msg = {   
-                "ID": self.get_new_message_id(),
-                "INFO": var_info,
-                "DRIVER": id
-            }
-            self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
-
-    def do_driver_setup(self, request_json):
-        # TODO: Fill up alias and variable dicts
-        driver_type = request_json["DRIVER"]
-        driver_class, _ = registered_drivers[driver_type]
-
-        # registered requested
-        if driver_type not in registered_drivers:
-            # Wrong driver type requested
-            response_json = {   
-                "ID": request_json["ID"],
-                "SETUP": "Failed",
-                "DRIVER": None
-            }
-            self.udp_socket.sendto(json.dumps(response_json).encode('utf8'), self.server_address)
-            
-        else:
-            # Check if compatible driver already exists
-            for existing_driver_id, (driver, pipe) in self.drivers.items():
-                if driver.__class__ == driver_class:
-                    logger.info(f"Previous driver {existing_driver_id} ({driver.__class__}) found for {driver_class}")
-                    if driver.checkSetupCompatible(request_json["SETUP"]):
-                        logger.info(f"Driver {existing_driver_id} is compatible")
-                        driver_id = driver.create_new_driver_alias()
-                        logger.info(f"New alias {driver_id} created")
-                        # Send response
-                        response_json = {   
-                            "ID": request_json["ID"],
-                            "SETUP": "Success",
-                            "DRIVER": driver_id
-                        }
-                        self.udp_socket.sendto(json.dumps(response_json).encode('utf8'), self.server_address)
-
-                        pipe.send(json.dumps({DriverActions.ADD_VARIABLES:{driver_id:request_json["SETUP"].get("variables", None)}}))
-                        if driver.status == DriverStatus.RUNNING:
-                            update_msg = {   
-                                "ID": self.get_new_message_id(),
-                                "STATUS": "RUNNING",
-                                "DRIVER": driver_id
-                            }
-                            self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
-                        break
-                    else:
-                        logger.info(f"Previous driver {existing_driver_id} NOT COMPATIBLE")
-
+    def process_variables(self, driver_object, var_datas:dict):
+        # TODO: Consider a variable that already has ben setup but now is the other type (READ/WRITE) so it should be changed to BOTH
+        # An option can be to store the variable type as well in the self.variables dict ([handles], var_type)
+        for var_name, var_data in var_datas.items():
+            var_handle = var_data['handle']
+            self.handles[var_handle] = (var_name, driver_object)
+            if driver_object not in self.variables:
+                self.variables[driver_object] = {}
+            if var_name not in self.variables[driver_object]:
+                self.variables[driver_object][var_name] = [var_handle]
             else:
-                # Create new driver
-                pipe, driver_pipe = Pipe()
-                driver_id = self.get_new_driver_id()
-                driver = driver_class(driver_id, driver_pipe)
-                driver.setDaemon(True)
-                driver.start()
-                self.drivers[driver_id] = (driver, pipe)
-                # Set-up driver and add variables as alias
-                pipe.send(json.dumps({DriverActions.SETUP:request_json["SETUP"]}))
-                alias_id = driver.create_new_driver_alias()
-                pipe.send(json.dumps({DriverActions.ADD_VARIABLES:{alias_id:request_json["SETUP"].get("variables", None)}}))
-                logger.info(f'New {driver_type} driver: {driver_id}')        
-
-                # Send response
-                response_json = {   
-                    "ID": request_json["ID"],
-                    "SETUP": "Success",
-                    "DRIVER": alias_id
-                }
-                self.udp_socket.sendto(json.dumps(response_json).encode('utf8'), self.server_address)
+                self.variables[driver_object][var_name].append(var_handle)
 
 
-    def do_driver_updates(self, request_json):
-        #TODO: Use dicts
+    def do_driver_updates(self, telegram_data) -> bool:
         try:
-            driver_id = self.get_driver_id_from_alias(request_json["DRIVER"])
-            (_, pipe) = self.drivers[driver_id]
-            update_data = request_json["UPDATE"]
-            if pipe:
-                if update_data:
-                    pipe.send(json.dumps({DriverActions.UPDATE:update_data}))
-                    logger.debug(f"Driver {driver_id}: input_data_updated = {update_data}")
-            else:
-                logger.debug(f"Driver {driver_id}: Pipe is not active")
+            updates = {}
+            for var_handle, var_value in telegram_data.items():
+                var_name, driver_object = self.handles[var_handle]
+                if driver_object not in updates:
+                    updates[driver_object] = {var_name: var_value}
+                else:
+                    updates[driver_object].update({var_name: var_value})
+            
+            for driver_object, update_data in updates.items():
+                pipe = self.drivers[driver_object]
+                if pipe:
+                    if update_data:
+                        pipe.send(json.dumps({DriverActions.UPDATE:update_data}))
+                        logger.debug(f"Driver {driver_object.name}: input_data_updated = {update_data}")
+                else:
+                    logger.debug(f"Driver {driver_object.name}: Pipe is not active")
+            
+            return True
+
         except:
-            logger.debug(f"Driver {driver_id} not found")
+            print("Error processing UPDATE telegram!")
+            return False
 
+    def doWebsocketInterface(self):
+        ''' Websocket interface '''
+        # Loop connections
+        for connection in WebSocketConnections:
+            # Check if there is a message to process
+            while connection.msg_queue:
+                # Get message data
+                try:
+                    msg = json.loads(connection.msg_queue.pop())
+                except:
+                    continue
 
-    def clean_drivers(self):
-        """ Close all drivers."""
-        while self.drivers:
-            driver_id, (driver, pipe) = self.drivers.popitem()
-            self.clean_driver(driver_id, driver, pipe)
+                if 'request' in msg:
+                    req = msg['request']
+                    # Get command
+                    command = req['command']
+                    # Set response
+                    res_data = ''
+                    # connect command 
+                    if (command == "connect"):
+                        # Check arguments
+                        if ('data' in req and 'url' in req['data']):
+                            self.server_address = (req['data']['url'], 4844)
+                        else:
+                            self.server_address = ('127.0.0.1', 4844)
+                        # Check gateway status
+                        if self.status == GatewayStatus.STANDBY:
+                            # Try to connect
+                            self.doConnect()
+                            if self.status == GatewayStatus.CONNECTED:
+                                # Notify client
+                                res_data = {"status": "connected", "ip": self.server_address[0]}
+                            else:
+                                # Notify client
+                                res_data = {"status": "error", "message": "Connection with ip " + self.server_address[0] + " cannot be established"}
+                        else:
+                            res_data = {"status": "error", "message": "Gateway status is not STANDBY"}
 
+                    # disconnect command 
+                    elif (command == "disconnect"):
+                        # Check gateway status
+                        if self.status == GatewayStatus.CONNECTED:
+                            # Do cleanup
+                            self.doCleanup()
+                            self.status = GatewayStatus.STANDBY
+                            # Notify client
+                            res_data = {"status": "disconnected"}
+                        else:
+                            res_data = {"status": "error", "message": "Gateway status is not CONNECTED"}
 
-    def clean_driver(self, driver_id, driver, pipe):
-        """ Clean specific driver. """
-        logger.debug('Cleaning driver: {}'.format(driver_id))
-        pipe.send(json.dumps({DriverActions.EXIT: None}))
-        logger.info(f"Driver {driver_id} removed.")
+                    # reset command 
+                    elif (command == "reset"):
+                        # Check gateway status
+                        if self.status == GatewayStatus.ERROR:
+                            # Do cleanup
+                            self.doCleanup()
+                            self.status = GatewayStatus.STANDBY
+                            self.error_msg = ''
+                            # Notify client
+                            res_data = {"status": "reset"}
+                        else:
+                            res_data = {"status": "error", "message": "Gateway status is not ERROR"}
 
+                    # status command 
+                    elif (command == "status"):
+                        # Notify client
+                        if self.status == GatewayStatus.ERROR:
+                                res_data = {"status": "error", "message": str(self.error_msg), "ip": self.server_address[0] if self.server_address != None else ""}
+                        else:
+                            res_data = {"status": str(GatewayStatus(self.status).name), "ip": self.server_address[0] if self.server_address != None else ""}
+
+                    # version command
+                    elif (command == "version"):
+                        # Notify client
+                        res_data = {"status": str(version)}
+                
+                    # Not defined command
+                    else:
+                        res_data = {"status": "Unknown command"}
+
+                    # Send response
+                    connection.sendMessage(json.dumps({"response": {"id": req["id"], "command": command, "data": res_data}}))
+                    logger.debug('Response sent: {}'.format(json.dumps({"response": {"id": req["id"], "command": command, "data": res_data}})))
 
 # Testing
 if __name__ == '__main__':
