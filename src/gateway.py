@@ -30,7 +30,7 @@ from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 
 
 # Version
-version = "3.3.5"
+version = "4.0.1"
 
 # Settings
 poll_time = 1 # seconds
@@ -118,11 +118,7 @@ class gateway():
                 return f"driver_{id}"
             else:
                 id += 1
-    
-    def get_driver_id_from_alias(self, alias):
-        ''' driver aliases start with driver name followed by ".x" '''
-        return alias.split('.')[0]
-        
+            
     def run(self, ip:str='127.0.0.1', port:int=2323):
         ''' Main loop'''
 
@@ -352,8 +348,8 @@ class gateway():
                     self.do_driver_setup(request_json)
                 elif ('DELETE' in request_json):
                     self.do_driver_delete(request_json)
-                elif ('UPDATE' in request_json):
-                    self.do_driver_update(request_json)
+                elif ('UPDATES' in request_json):
+                    self.do_driver_updates(request_json)
                 elif ('POLLING' in request_json):
                     self.last_poll_received = time.time()
                 needs_sleep = False
@@ -370,12 +366,14 @@ class gateway():
 
         # Check updates from drivers
         try:
+            updates = {}
             for driver_id, (driver, pipe)  in self.drivers.items():
                 if driver.is_alive() and pipe:
-                    if pipe.poll():
+                    while pipe.poll():
                         action, data = json.loads(pipe.recv()).popitem()
                         if action == DriverActions.UPDATE:
-                            self.send_driver_update(driver_id, data)
+                            for var_name
+                            updates.update(data)
                             logger.debug('Driver {} output data updated: {}'.format(driver_id, data))
                         elif action == DriverActions.STATUS:
                             self.send_driver_status(driver_id, data)
@@ -388,6 +386,7 @@ class gateway():
                             self.send_var_info(driver_id, var_data, var_id)
                             logger.debug('Driver {} debug info: {}'.format(driver_id, data))
                         needs_sleep = False
+            self.send_driver_updates(updates)
 
         except Exception as e:
             self.status = GatewayStatus.ERROR
@@ -456,6 +455,14 @@ class gateway():
         logger.info(f"Driver {driver_id} deleted")
         
 
+    def send_driver_updates(self, data):
+        update_msg = {   
+            "ID": self.get_new_message_id(),
+            "UPDATES": data
+        }
+        self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
+
+
     def send_driver_update(self, driver_id, driver_data):
         (driver, _) = self.drivers[driver_id]
         
@@ -474,6 +481,7 @@ class gateway():
                 "DRIVER": id
             }
             self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
+
 
     def send_driver_status(self, driver_id, driver_status):
         (driver, _) = self.drivers[driver_id]
@@ -516,6 +524,7 @@ class gateway():
             self.udp_socket.sendto(json.dumps(update_msg).encode('utf8'), self.server_address)
 
     def do_driver_setup(self, request_json):
+        # TODO: Fill up alias and variable dicts
         driver_type = request_json["DRIVER"]
         driver_class, _ = registered_drivers[driver_type]
 
@@ -581,7 +590,8 @@ class gateway():
                 self.udp_socket.sendto(json.dumps(response_json).encode('utf8'), self.server_address)
 
 
-    def do_driver_update(self, request_json):
+    def do_driver_updates(self, request_json):
+        #TODO: Use dicts
         try:
             driver_id = self.get_driver_id_from_alias(request_json["DRIVER"])
             (_, pipe) = self.drivers[driver_id]

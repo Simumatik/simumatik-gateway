@@ -246,7 +246,11 @@ class driver(threading.Thread):
         """
         try:
             if self.pipe:
-                self.pipe.send(json.dumps({DriverActions.UPDATE: data}))
+                # Send {handle:value} data instead of {var_name:value}
+                update_data = {}
+                for var_name, value in data.items():
+                    update_data[self.variables[var_name]["handle"]] = value
+                self.pipe.send(json.dumps({DriverActions.UPDATE: update_data}))
         except:
             pass
 
