@@ -50,7 +50,7 @@ class fastConnection (pyads.Connection):
             check_length=False,
         )
         delta = time.perf_counter()-t
-        #print(f'{time.perf_counter()}:{len(data_names)} variables read in {delta}s')
+        print(f'{time.perf_counter()}:{len(data_names)} variables read in {delta}s')
 
         data_start = 4 * num_requests
         offset = data_start
