@@ -354,7 +354,7 @@ class gateway():
         if needs_sleep:
             time.sleep(1e-3)
 
-
+        
     def do_driver_setup(self, telegram_data)->dict:
         res = {}
         for driver_handle, driver_data in telegram_data.items():
