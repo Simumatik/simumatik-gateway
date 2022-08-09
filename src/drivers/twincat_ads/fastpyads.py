@@ -50,7 +50,7 @@ class fastConnection (pyads.Connection):
             check_length=False,
         )
         delta = time.perf_counter()-t
-        if delta>0.010:
+        if delta>0.005:
             print(f'{time.perf_counter()}:{len(data_names)} variables read in {delta}s')
 
         data_start = 4 * num_requests
@@ -113,5 +113,5 @@ class fastConnection (pyads.Connection):
             check_length=False,
         )
         delta = time.perf_counter()-t
-        if delta>0.010:
+        if delta>0.005:
             print(f'{time.perf_counter()}:{len(data_names_and_values)} variables written in {delta}s')

@@ -253,7 +253,12 @@ class gateway():
         # Send polling message within the interval
         if (time.time()-self.last_poll_sent) >= poll_time:
             try:
-                self.send_message(id=self.get_new_message_id(), command="POLLING", data={"LAST_PROC_UPDATE": self.last_processed_update})
+                polling_data = {
+                    "LAST_PROC_UPDATE": self.last_processed_update, 
+                    "DRIVER_COUNT": len(self.drivers)
+                    }
+                print("POLLING:", polling_data)
+                self.send_message(id=self.get_new_message_id(), command="POLLING", data=polling_data)
                 self.last_poll_sent = time.time()
                 needs_sleep = False
             except:
@@ -277,6 +282,13 @@ class gateway():
                 elif 'CLEAN' == telegram_command:
                     self.clean_drivers()
                     self.send_message(id=telegram_id, command='CLEAN', data='SUCCESS')
+                    # Clean telegram pipe
+                    while True:
+                        try:
+                            data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
+                        except:
+                            print("Pipe empty after clean!")
+                            break
                 elif 'UPDATE' == telegram_command:
                     self.last_processed_update = telegram_id
                     res = self.do_driver_updates(telegram_data)
