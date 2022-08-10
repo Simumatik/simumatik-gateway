@@ -257,7 +257,6 @@ class gateway():
                     "LAST_PROC_UPDATE": self.last_processed_update, 
                     "DRIVER_COUNT": len(self.drivers)
                     }
-                print("POLLING:", polling_data)
                 self.send_message(id=self.get_new_message_id(), command="POLLING", data=polling_data)
                 self.last_poll_sent = time.time()
                 needs_sleep = False
@@ -287,7 +286,6 @@ class gateway():
                         try:
                             data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
                         except:
-                            print("Pipe empty after clean!")
                             break
                 elif 'UPDATE' == telegram_command:
                     self.last_processed_update = telegram_id

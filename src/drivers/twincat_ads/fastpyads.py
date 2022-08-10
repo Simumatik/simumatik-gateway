@@ -37,7 +37,7 @@ class fastConnection (pyads.Connection):
             sum_req_array[i].iOffset = self._symbol_info_cache[data_name].iOffs
             sum_req_array[i].size = self._symbol_info_cache[data_name].size
 
-        t = time.perf_counter()
+        #t = time.perf_counter()
         sum_response = adsSyncReadWriteReqEx2(
             self._port, 
             self._adr,
@@ -49,9 +49,9 @@ class fastConnection (pyads.Connection):
             return_ctypes=False,
             check_length=False,
         )
-        delta = time.perf_counter()-t
-        if delta>0.005:
-            print(f'{time.perf_counter()}:{len(data_names)} variables read in {delta}s')
+        #delta = time.perf_counter()-t
+        #if delta>0.005:
+        #    print(f'{time.perf_counter()}:{len(data_names)} variables read in {delta}s')
 
         data_start = 4 * num_requests
         offset = data_start
@@ -100,7 +100,7 @@ class fastConnection (pyads.Connection):
             )
             offset += self._symbol_info_cache[data_name].size
 
-        t = time.perf_counter()
+        #t = time.perf_counter()
         adsSyncReadWriteReqEx2(
             self._port, 
             self._adr,
@@ -112,6 +112,6 @@ class fastConnection (pyads.Connection):
             return_ctypes=False,
             check_length=False,
         )
-        delta = time.perf_counter()-t
-        if delta>0.005:
-            print(f'{time.perf_counter()}:{len(data_names_and_values)} variables written in {delta}s')
+        #delta = time.perf_counter()-t
+        #if delta>0.005:
+        #    print(f'{time.perf_counter()}:{len(data_names_and_values)} variables written in {delta}s')
