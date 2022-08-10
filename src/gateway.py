@@ -96,6 +96,7 @@ class gateway():
         self.last_poll_sent = 0
         self.last_poll_received = 0
         self.last_processed_update = 0
+        self.loop_counter = 0
         # Emulation
         self.emulation_running = False
         # Drivers
@@ -249,17 +250,20 @@ class gateway():
         """ Executed while gateway is connected."""
         # Flag if sleep is needed
         needs_sleep = True
+        self.loop_counter += 1
 
         # Send polling message within the interval
         if (time.time()-self.last_poll_sent) >= poll_time:
             try:
                 polling_data = {
                     "LAST_PROC_UPDATE": self.last_processed_update, 
-                    "DRIVER_COUNT": len(self.drivers)
+                    "DRIVER_COUNT": len(self.drivers),
+                    "CYCLES": round(1000/self.loop_counter,2),
                     }
                 self.send_message(id=self.get_new_message_id(), command="POLLING", data=polling_data)
                 self.last_poll_sent = time.time()
                 needs_sleep = False
+                self.loop_counter = 0
             except:
                 self.status = GatewayStatus.ERROR
                 self.error_msg = 'Exception sending polling telegram'
