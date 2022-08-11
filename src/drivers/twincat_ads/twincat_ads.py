@@ -18,7 +18,6 @@ from ..driver import driver, VariableQuality
 
 from multiprocessing import Pipe
 from typing import Optional
-from .fastpyads import fastConnection
 import pyads
     
 
@@ -51,8 +50,7 @@ class twincat_ads(driver):
         """
         # Create connection
         try:
-            #self._connection = pyads.Connection(self.net_id, self.port)
-            self._connection = fastConnection(self.net_id, self.port)
+            self._connection = pyads.Connection(self.net_id, self.port)
             self._connection.open()
         except Exception as e:
             self.sendDebugInfo(f"Connection with {self.net_id} cannot be established.")

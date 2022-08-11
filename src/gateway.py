@@ -385,9 +385,8 @@ class gateway():
                 # Check if compatible driver already exists
                 for driver_object, pipe in self.drivers.items():
                     if driver_object.__class__ == driver_class:
-                        logger.info(f"Previous driver {driver_object.name} ({driver_object.__class__}) found for {driver_class}")
                         if driver_object.checkSetupCompatible(parameter_data):
-                            logger.info(f"Driver {driver_object.name} is compatible")
+                            logger.info(f"Handler {driver_handle} using compatible driver {driver_object.name}")
                             driver_object.handles.append(driver_handle)
                             # Fill up handle and variable dicts
                             if variable_data:
@@ -399,8 +398,6 @@ class gateway():
 
                             res[driver_handle] = "SUCCESS"
                             break
-                        else:
-                            logger.info(f"Previous driver {driver_object.name} NOT COMPATIBLE")
 
                 else:
                     # Create new driver
@@ -415,7 +412,7 @@ class gateway():
                     if variable_data:
                         self.process_variables(driver_object, variable_data)
                         pipe.send(json.dumps({DriverActions.ADD_VARIABLES: variable_data}))
-                    logger.info(f'New {driver_type} driver: {driver_object.name}')        
+                    logger.info(f'New {driver_type} driver created: {driver_object.name}, {setup_data}')        
                     res[driver_handle] = "SUCCESS"
         return res
 
