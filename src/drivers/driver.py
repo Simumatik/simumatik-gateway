@@ -28,7 +28,6 @@ class DriverStatus(str, Enum):
     EXIT = 'EXIT'
 
 class DriverActions(str, Enum):
-    SETUP = 'SETUP'
     ADD_VARIABLES = 'ADD_VARIABLES'
     UPDATE = 'UPDATE'
     STATUS = 'STATUS'
@@ -71,7 +70,7 @@ class driver(threading.Thread):
     
     """
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None):
+    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
@@ -86,6 +85,7 @@ class driver(threading.Thread):
         # Initialize
         self.name = name
         self.pipe = pipe
+        self.params = params
         self.handles = []
         self._connection = None
         self.last_read = time.perf_counter() # last read package sent
@@ -104,6 +104,11 @@ class driver(threading.Thread):
 
     def run(self):
         """ Run loop."""
+        if self._setup(self.params):
+            self.changeStatus(DriverStatus.RUNNING)
+        else:
+            self.changeStatus(DriverStatus.ERROR)
+
         while self.status != DriverStatus.EXIT:
 
             try:
@@ -127,16 +132,6 @@ class driver(threading.Thread):
                                     self.sendDebugInfo('RESET action failed! Cleanup not completed.')
                             else:
                                 self.sendDebugInfo('RESET action failed! Actual status is not ERROR.')
-
-                        # Action SETUP
-                        elif action == DriverActions.SETUP:
-                            if self.status == DriverStatus.STANDBY: 
-                                if self._setup(data):
-                                    self.changeStatus(DriverStatus.RUNNING)
-                                else:
-                                    self.changeStatus(DriverStatus.ERROR)
-                            else:
-                                self.sendDebugInfo('SETUP action failed! Actual status is not STANDBY.')
 
                         # Action ADD VARIABLES
                         elif action == DriverActions.ADD_VARIABLES:
@@ -259,14 +254,13 @@ class driver(threading.Thread):
 
         :returns: True if setup_data is compatible or False if not
         """
-        if param_data:
-            for key, value in param_data.items():
-                if self.__dict__[key] != value:
+        for key, value in param_data.items():
+            if key in self.params:
+                if self.params[key] != value:
                     return False
             else:
-                return True
-        else:
-            return True
+                return False
+        return True
         
 
     def _addVariables(self, variable_data: dict) -> bool:

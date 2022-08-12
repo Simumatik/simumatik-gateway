@@ -43,13 +43,13 @@ class s7protocol(driver):
     PDU_COUNTER     = 0
     MAX_ITEMS       = 10 # Number of elements that can be read or write at the time
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None):
+    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
         """
         # Inherit
-        driver.__init__(self, name, pipe)
+        driver.__init__(self, name, pipe, params)
 
         # Parameters
         self.ip = '192.168.0.1'

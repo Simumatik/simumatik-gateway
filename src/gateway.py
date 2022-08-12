@@ -377,7 +377,7 @@ class gateway():
             setup_data = driver_data["SETUP"]
             parameter_data = setup_data.get("parameters", None)
             variable_data = setup_data.get("variables", None)
-
+            logger.info(f"(Actual drivers {len(self.drivers)}), New driver requested {driver_handle}: {parameter_data}")
             # Check if requested driver type is registered
             if driver_type not in registered_drivers:
                 res[driver_handle] = "Failed"                
@@ -398,21 +398,21 @@ class gateway():
 
                             res[driver_handle] = "SUCCESS"
                             break
+                        #else:
+                        #    logger.info(f"Handler {driver_handle} not compatible with driver {driver_object.name}")
 
                 else:
                     # Create new driver
                     pipe, driver_pipe = Pipe()
-                    driver_object = driver_class(driver_handle, driver_pipe)
+                    driver_object = driver_class(driver_handle, driver_pipe, parameter_data)
                     driver_object.setDaemon(True)
-                    driver_object.start()
                     self.drivers[driver_object] = pipe
                     driver_object.handles.append(driver_handle)
-                    # Set-up driver and add variables as alias
-                    pipe.send(json.dumps({DriverActions.SETUP: parameter_data}))
+                    driver_object.start()
                     if variable_data:
                         self.process_variables(driver_object, variable_data)
                         pipe.send(json.dumps({DriverActions.ADD_VARIABLES: variable_data}))
-                    logger.info(f'New {driver_type} driver created: {driver_object.name}, {setup_data}')        
+                    logger.info(f'New {driver_type} driver created: {driver_object.name}, {parameter_data}')        
                     res[driver_handle] = "SUCCESS"
         return res
 

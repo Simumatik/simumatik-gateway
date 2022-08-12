@@ -156,9 +156,9 @@ from ..driver import driver
 
 class example_driver(driver):
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None):
+    def __init__(self, name: str, pipe: Optional[Pipe] = None,  params:dict = None,  params:dict = None):
         # Inherit
-        driver.__init__(self, name, pipe)
+        driver.__init__(self, name, pipe, params)
 
         # Parameters
         self.url = 'opc.tcp://localhost:4840'
