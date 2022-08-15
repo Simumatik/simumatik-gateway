@@ -6,5 +6,5 @@ pyModbusTCP==0.2.0
 pyads==3.3.9
 crccheck==1.1
 pycomm3==1.2.8
-pythonnet==3.0.0rc4
+pythonnet==2.5.2
 pywin32==304
