@@ -18,7 +18,6 @@ from ..driver import driver, VariableQuality
 
 from multiprocessing import Pipe
 from typing import Optional
-import pyads
     
 
 class twincat_ads(driver):
@@ -50,6 +49,7 @@ class twincat_ads(driver):
         """
         # Create connection
         try:
+            import pyads
             self._connection = pyads.Connection(self.net_id, self.port)
             self._connection.open()
         except Exception as e:
