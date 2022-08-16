@@ -42,7 +42,7 @@ VARIABLES = {
 
 # Add your custom logic in this test.
 d = twincat_ads(None, 'test')
-d.net_id = "192.168.1.192.1.1"
+d.net_id = "192.168.1.125.1.1"
 d.port = 851
 
 if d.connect():

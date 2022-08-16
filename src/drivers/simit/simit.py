@@ -90,13 +90,13 @@ class simit(driver):
         big_endian : True if big endian, else little endian
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None):
+    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
         """
         # Inherit
-        driver.__init__(self, name, pipe)
+        driver.__init__(self, name, pipe, params)
 
         # Parameters
         self.SHM_name = "SIMITShared Memory"

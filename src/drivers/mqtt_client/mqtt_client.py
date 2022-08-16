@@ -36,13 +36,13 @@ class mqtt_client(driver):
         Retain published topics by the driver in the MQTT Broker. Default = True
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None):
+    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
         """
         # Inherit
-        driver.__init__(self, name, pipe)
+        driver.__init__(self, name, pipe, params)
 
         # Parameters
         self.ip = '127.0.0.1'
@@ -126,7 +126,6 @@ class mqtt_client(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
-        # TODO: Possible improvement can be to send multiple at once
         for (var_id, new_value) in variables:
             try:
                 self._connection.publish(var_id, new_value)

@@ -56,13 +56,13 @@ class hokuyo_uam(driver):
         Time in seconds to detect connection loss. Default = 0.03s
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None):
+    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
         """
         # Inherit
-        driver.__init__(self, name, pipe)
+        driver.__init__(self, name, pipe, params)
 
         # Parameters
         self.force_write = 0 # No need to force, this driver writes on demand
