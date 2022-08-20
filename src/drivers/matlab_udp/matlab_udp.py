@@ -41,13 +41,13 @@ class matlab_udp(driver):
         Max telegram size (bytes). Default = 1024
     """
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None):
+    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
         """
         # Inherit
-        driver.__init__(self, name, pipe)
+        driver.__init__(self, name, pipe, params)
 
         # Parameters
         self.ip = '127.0.0.1'
@@ -170,7 +170,7 @@ class matlab_udp(driver):
     def loop(self):
         """ Runs every iteration while the driver is active."""
         if self.has_received and self._connection:
-            self._connection.sendto(json.dumps(self.write_json).encode('utf8'), (self.ip, self.port))
+            self._connection.sendto(json.dumps(self.variables_to_send).encode('utf8'), (self.ip, self.port))
             self.variables_to_send.clear()
             self.has_received = False
         
