@@ -95,6 +95,14 @@ class allenbradley_logix(driver):
         """
         res = []
         try:
+            # special handling for arrays, logix driver.read() wants arraylength in tag name. array{10] for example}
+            variables2 = []
+            for var_id in variables:
+                if self.variables[var_id]['size'] > 1:
+                    variables2.append(var_id + "{" + str(self.variables[var_id]['size']) + "}")
+                else:
+                    variables2.append(var_id)
+
             values = self._connection.read(*variables)
             if not isinstance(values, list):
                 values = [values]
@@ -103,6 +111,11 @@ class allenbradley_logix(driver):
                     res.append((tag, None, VariableQuality.BAD))
                 else:
                     res.append((tag, value, VariableQuality.GOOD))
+                    # if STRING TYPE:
+                    #     res.append((tag, ''.join([chr(i) for i in value]), VariableQuality.GOOD))
+                    # else:
+                    #     res.append((tag, value, VariableQuality.GOOD))
+
         except Exception as e:
             self.sendDebugInfo(f'exception reading variable values: {e}')
         return res
