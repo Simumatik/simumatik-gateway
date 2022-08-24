@@ -123,32 +123,27 @@ class allenbradley_logix(driver):
 
         # Mismatch if value is defined as BYTE (or Word) in simumatik and SINT (or Int) in RSLogix 5000
         for count, (var_id, var_value) in enumerate(variables):
-            if self.variables[var_id]['logix_data_type'] == 'SINT' and self.variables[var_id]['datatype'] == VariableDatatype.BYTE:
-                if not isinstance(var_value, list):
-                    # var_value is not a list
+            if not isinstance(var_value, list): # The variable is not a list
+                if self.variables[var_id]['logix_data_type'] == 'SINT' and self.variables[var_id]['datatype'] == VariableDatatype.BYTE:
                     while var_value > 127: 
                         var_value -= 256
-                else:
-                    # var value is a list
+                    variables[count] = (var_id, var_value)
+                elif self.variables[var_id]['logix_data_type'] == 'INT' and self.variables[var_id]['datatype'] == VariableDatatype.WORD:
+                    while var_value > 32767: 
+                        var_value -= 65536
+                    variables[count] = (var_id, var_value)
+            else: # The variable is a list    
+                if self.variables[var_id]['logix_data_type'] == 'SINT' and self.variables[var_id]['datatype'] == VariableDatatype.BYTE:
                     for i, value in enumerate(var_value):
                         while var_value[i] > 127:
                             var_value[i] -= 256
-                
-                variables[count] = (var_id, var_value)
-
-            if self.variables[var_id]['logix_data_type'] == 'INT' and self.variables[var_id]['datatype'] == VariableDatatype.WORD:
-                if not isinstance(var_value, list):
-                    # var_value is not a list
-                    while var_value > 32767: 
-                        var_value -= 65536
-                else:
-                    # var value is a list
+                    variables[count] = (var_id, var_value)
+                elif self.variables[var_id]['logix_data_type'] == 'INT' and self.variables[var_id]['datatype'] == VariableDatatype.WORD:
                     for i, value in enumerate(var_value):
                         while var_value[i] > 32767:
                             var_value[i] -= 65536
+                    variables[count] = (var_id, var_value)
 
-                variables[count] = (var_id, var_value)
-        
         # Handling arrays, specify element count in using curly braces (array{10}) 
         for count, (var_id, var_value) in enumerate(variables):
             if self.variables[var_id]['size'] > 1:
