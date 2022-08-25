@@ -170,7 +170,7 @@ class matlab_udp(driver):
     def loop(self):
         """ Runs every iteration while the driver is active."""
         if self.has_received and self._connection:
-            self._connection.sendto(json.dumps(self.variables_to_send).encode('utf8'), (self.ip, self.port))
+            self._connection.sendto(json.dumps(self.variables_to_send).encode('utf8'), (self.ip, int(self.port)))
             self.variables_to_send.clear()
             self.has_received = False
         
