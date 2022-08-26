@@ -149,27 +149,13 @@ class allenbradley_logix(driver):
                             var_value[i] -= 65536
                     variables[count] = (var_id, var_value)
 
-        # Handling arrays, specify element count in using curly braces (array{10}) 
+        # Handling arrays/strings, specify element count in using curly braces (eg. array{10}) 
         for count, (var_id, var_value) in enumerate(variables):
             if self.variables[var_id]['size'] > 1:
-                if self.variables[var_id]['datatype'] == VariableDatatype.STRING and var_value != "":
-                    print(f"{var_value}, {type(var_value)}")
-                    
+                if self.variables[var_id]['datatype'] == VariableDatatype.STRING and var_value != "": 
                     if not isinstance(var_value, list):
-                        var_value = [ord(x) for x in var_value]
-                        print(f"{var_value}, {type(var_value)}")
+                        var_value = [ord(x) for x in var_value] # Convert from string to list of int (ascii values)
 
-                    # if isinstance(var_value, list):
-                    #     values = []
-                    #     for value in var_value:
-                    #         if type(value) is str:
-                    #             values.append(ord(value))
-                    #         elif type(value) is int:
-                    #             values.append(value)
-                    #         else:
-                    #             values.append(0)
-                    #     var_value = values
-                    #     print(var_value)
                 variables[count] = (var_id + "{" + str(self.variables[var_id]['size']) + "}", var_value)
 
         try:
