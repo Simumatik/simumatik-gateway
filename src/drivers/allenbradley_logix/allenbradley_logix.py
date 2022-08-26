@@ -102,12 +102,16 @@ class allenbradley_logix(driver):
                     variables[count] = var_id + "{" + str(self.variables[var_id]['size']) + "}"
 
             values = self._connection.read(*variables)
+
             if not isinstance(values, list):
                 values = [values]
             for (tag, value, _, error) in values:
                 if error:
                     res.append((tag, None, VariableQuality.BAD))
                 else:
+                    if isinstance(value, list) and self.variables[tag]['datatype'] == VariableDatatype.STRING:
+                        value = ''.join([chr(x) for x in value]) #convert from sint list to string and send to component
+
                     res.append((tag, value, VariableQuality.GOOD))
 
         except Exception as e:
@@ -123,45 +127,50 @@ class allenbradley_logix(driver):
         res = []
 
         # Mismatch if value is defined as BYTE (or Word) in simumatik and SINT (or Int) in RSLogix 5000
-        # for count, (var_id, var_value) in enumerate(variables):
-        #     if not isinstance(var_value, list): # The variable is not a list
-        #         if self.variables[var_id]['logix_data_type'] == 'SINT' and self.variables[var_id]['datatype'] == VariableDatatype.BYTE:
-        #             while var_value > 127: 
-        #                 var_value -= 256
-        #             variables[count] = (var_id, var_value)
-        #         elif self.variables[var_id]['logix_data_type'] == 'INT' and self.variables[var_id]['datatype'] == VariableDatatype.WORD:
-        #             while var_value > 32767: 
-        #                 var_value -= 65536
-        #             variables[count] = (var_id, var_value)
-        #     else: # The variable is a list    
-        #         if self.variables[var_id]['logix_data_type'] == 'SINT' and self.variables[var_id]['datatype'] == VariableDatatype.BYTE:
-        #             for i, value in enumerate(var_value):
-        #                 while var_value[i] > 127:
-        #                     var_value[i] -= 256
-        #             variables[count] = (var_id, var_value)
-        #         elif self.variables[var_id]['logix_data_type'] == 'INT' and self.variables[var_id]['datatype'] == VariableDatatype.WORD:
-        #             for i, value in enumerate(var_value):
-        #                 while var_value[i] > 32767:
-        #                     var_value[i] -= 65536
-        #             variables[count] = (var_id, var_value)
+        for count, (var_id, var_value) in enumerate(variables):
+            if not isinstance(var_value, list): # The variable is not a list
+                if self.variables[var_id]['logix_data_type'] == 'SINT' and self.variables[var_id]['datatype'] == VariableDatatype.BYTE:
+                    while var_value > 127: 
+                        var_value -= 256
+                    variables[count] = (var_id, var_value)
+                elif self.variables[var_id]['logix_data_type'] == 'INT' and self.variables[var_id]['datatype'] == VariableDatatype.WORD:
+                    while var_value > 32767: 
+                        var_value -= 65536
+                    variables[count] = (var_id, var_value)
+            else: # The variable is a list    
+                if self.variables[var_id]['logix_data_type'] == 'SINT' and self.variables[var_id]['datatype'] == VariableDatatype.BYTE:
+                    for i, value in enumerate(var_value):
+                        while var_value[i] > 127:
+                            var_value[i] -= 256
+                    variables[count] = (var_id, var_value)
+                elif self.variables[var_id]['logix_data_type'] == 'INT' and self.variables[var_id]['datatype'] == VariableDatatype.WORD:
+                    for i, value in enumerate(var_value):
+                        while var_value[i] > 32767:
+                            var_value[i] -= 65536
+                    variables[count] = (var_id, var_value)
 
         # Handling arrays, specify element count in using curly braces (array{10}) 
         for count, (var_id, var_value) in enumerate(variables):
             if self.variables[var_id]['size'] > 1:
-                if isinstance(var_value, list):
-                    values = []
-                    for value in var_value:
-                        if type(value) is str:
-#                        if value.isalnum():
-                            values.append(ord(value))
-                        elif type(value) is int:
-                            values.append(value)
-                        else:
-                            values.append(0)
-                    var_value = values
-                    print(var_value)
-                variables[count] = (var_id + "{" + str(self.variables[var_id]['size']) + "}", var_value)
+                if self.variables[var_id]['datatype'] == VariableDatatype.STRING and var_value != "":
+                    print(f"{var_value}, {type(var_value)}")
+                    
+                    if not isinstance(var_value, list):
+                        var_value = [ord(x) for x in var_value]
+                        print(f"{var_value}, {type(var_value)}")
 
+                    # if isinstance(var_value, list):
+                    #     values = []
+                    #     for value in var_value:
+                    #         if type(value) is str:
+                    #             values.append(ord(value))
+                    #         elif type(value) is int:
+                    #             values.append(value)
+                    #         else:
+                    #             values.append(0)
+                    #     var_value = values
+                    #     print(var_value)
+                variables[count] = (var_id + "{" + str(self.variables[var_id]['size']) + "}", var_value)
 
         try:
             values = self._connection.write(*variables)
