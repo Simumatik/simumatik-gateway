@@ -31,13 +31,13 @@ class micro800_http(driver):
         Port used for the HTTP communication (shown in the simulator). Default = 51234
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None):
+    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
         """
         # Inherit
-        driver.__init__(self, name, pipe)
+        driver.__init__(self, name, pipe, params)
 
         # Parameters
         self.port = 54321
@@ -50,7 +50,7 @@ class micro800_http(driver):
     def connect(self) -> bool:
         """ Connect driver.
         
-        : returns: True if connection stablished False if not
+        : returns: True if connection established False if not
         """
         try:
             # Redefine URL with actual port

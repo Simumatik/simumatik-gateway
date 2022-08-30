@@ -19,7 +19,7 @@ from typing import Optional
 import socket
 import struct
 import time
-import fastcrc
+from crccheck.crc import Crc16Kermit
 import numpy as np
 
 from ..driver import driver, VariableQuality
@@ -39,7 +39,7 @@ def UAM_encode(decimal_list, format_str='!H'):
     return ascii_str.encode()
 
 def calc_crc(bytes):
-    crc16 = fastcrc.crc16.kermit(bytes)
+    crc16 = Crc16Kermit.calc(bytes)
     ascii_crc = str(hex(crc16))[2:].upper()
     return ('0' * (4 - len(ascii_crc)) + ascii_crc).encode()
 
@@ -56,13 +56,13 @@ class hokuyo_uam(driver):
         Time in seconds to detect connection loss. Default = 0.03s
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None):
+    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
         """
         # Inherit
-        driver.__init__(self, name, pipe)
+        driver.__init__(self, name, pipe, params)
 
         # Parameters
         self.force_write = 0 # No need to force, this driver writes on demand
@@ -83,7 +83,7 @@ class hokuyo_uam(driver):
     def connect(self) -> bool:
         """ Connect driver.
         
-        : returns: True if connection stablished False if not
+        : returns: True if connection established False if not
         """
         try:
             self._connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -163,7 +163,7 @@ class hokuyo_uam(driver):
         if self._client is None:
             try:
                 self._client, client_address = self._connection.accept()
-                self.sendDebugInfo(f'Connection stablished with: {client_address}')
+                self.sendDebugInfo(f'Connection established with: {client_address}')
             except:
                 pass
 

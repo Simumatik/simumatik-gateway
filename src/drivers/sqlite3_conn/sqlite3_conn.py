@@ -38,13 +38,13 @@ class sqlite3_conn(driver):
         This is the name of the column which includes the variable values. Default = "value"
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None):
+    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
         """
         # Inherit
-        driver.__init__(self, name, pipe)
+        driver.__init__(self, name, pipe, params)
 
         # Parameters
         self.address = "mydb.db"
@@ -56,7 +56,7 @@ class sqlite3_conn(driver):
     def connect(self) -> bool:
         """ Connect driver.
         
-        : returns: True if connection stablished False if not
+        : returns: True if connection established False if not
         """
         try:
             self._connection = sqlite3.connect(self.address)
@@ -81,7 +81,7 @@ class sqlite3_conn(driver):
             self._connection.commit()
 
         except Exception as e:
-            self.sendDebugInfo(f"SETUP: Connection with {self.address} cannot be stablished.")
+            self.sendDebugInfo(f"SETUP: Connection with {self.address} cannot be established.")
             return False
         
         return True

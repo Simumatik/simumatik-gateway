@@ -24,27 +24,51 @@ from drivers.driver import VariableOperation, VariableDatatype
 
 # Define your I/O variables here
 VARIABLES = {
-    'ConveyorControl.vulcanConveyor.conveyorIndexer.indexerPistonsControl[0].sensors[0].force.forceEnabled':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
-    'ConveyorControl.vulcanConveyor.conveyorIndexer.indexerPistonsControl[0].sensors[0].force.forceValue':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
-    'ConveyorControl.vulcanConveyor.conveyorIndexer.indexerPistonsControl[0].sensors[0].hardwareInput':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
-    'ConveyorControl.vulcanConveyor.conveyorIndexer.indexerPistonsControl[0].sensors[0].value':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
-    }
+    'GVL.ByteIn':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
+    'GVL.ByteOut':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
+    'GVL.BoolIn':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
+    'GVL.BoolOut':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
+    'GVL.WordIn':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
+    'GVL.WordOut':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
+    'GVL.IntIn':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
+    'GVL.IntOut':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
+    'GVL.DWordIn':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.WRITE},
+    'GVL.DWordOut':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.READ},
+    'GVL.DIntIn':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
+    'GVL.DIntOut':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
+    'GVL.RealIn':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.WRITE},
+    'GVL.RealOut':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.READ},
+}
 
 # Add your custom logic in this test.
 d = twincat_ads(None, 'test')
-d.net_id = "192.168.1.160.1.1"
+d.net_id = "192.168.1.125.1.1"
 d.port = 851
 
 if d.connect():
+    print("Connected")
     d.addVariables(VARIABLES)
 
     counter = 0
-    while time.perf_counter() < 5:
-        #d.writeVariables([('ConveyorControl.vulcanConveyor.conveyorIndexer.indexerPistonsControl[0].sensors[0].force.forceEnabled', 1)])
-        #d.writeVariables([('ConveyorControl.vulcanConveyor.conveyorIndexer.indexerPistonsControl[0].sensors[0].force.forceValue', 1)])
-        d.writeVariables([('ConveyorControl.vulcanConveyor.conveyorIndexer.indexerPistonsControl[0].sensors[0].hardwareInput', counter%2)])
-        print(d.readVariables(['ConveyorControl.vulcanConveyor.conveyorIndexer.indexerPistonsControl[0].sensors[0].value']))
-        time.sleep(0.5)
+    while counter < 5:
+        d.writeVariables([('GVL.ByteIn', counter)])
+        d.writeVariables([('GVL.BoolIn', counter%2)])
+        d.writeVariables([('GVL.WordIn', counter)])
+        d.writeVariables([('GVL.IntIn', -counter)])
+        d.writeVariables([('GVL.DWordIn', counter)])
+        d.writeVariables([('GVL.DIntIn', -16*counter)])
+        d.writeVariables([('GVL.RealIn', 3.1415*counter)])
+
+        time.sleep(1)
+
+        print(d.readVariables(['GVL.ByteOut']))
+        print(d.readVariables(['GVL.BoolOut']))
+        print(d.readVariables(['GVL.WordOut']))
+        print(d.readVariables(['GVL.IntOut']))
+        print(d.readVariables(['GVL.DWordOut']))
+        print(d.readVariables(['GVL.DIntOut']))
+        print(d.readVariables(['GVL.RealOut']))
+
         counter += 1
 
     d.disconnect()

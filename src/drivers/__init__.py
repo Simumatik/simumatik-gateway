@@ -7,6 +7,7 @@ from .cprog_cri.cprog_cri import cprog_cri
 from .development.development import development
 from .hokuyo_uam.hokuyo_uam import hokuyo_uam
 from .micro800_http.micro800_http import micro800_http
+from .modbustcp_master.modbustcp_master import modbustcp_master
 from .mqtt_client.mqtt_client import mqtt_client
 from .opcua_client.opcua_client import opcua_client
 from .s7protocol.s7protocol import s7protocol
@@ -24,6 +25,7 @@ registered_drivers = {
   "development": (development,"1"),
   "hokuyo_uam": (hokuyo_uam,"1"),
   "micro800_http": (micro800_http, "1"),
+  "modbustcp_master": (modbustcp_master,"1"),
   "mqtt_client": (mqtt_client,"1"),
   "opcua_client": (opcua_client, "1"),
   "s7protocol": (s7protocol, "1"),
@@ -36,8 +38,10 @@ registered_drivers = {
 
 if platform.system() == "Windows":
     from .fanuc_roboguide.fanuc_roboguide import fanuc_roboguide
+    from .opcda_client.opcda_client import opcda_client
     from .robotware.robotware import robotware
     from .robodk_api.robodk_api import robodk_api
+    registered_drivers.update({"opcda_client": (opcda_client, "1")})
     registered_drivers.update({"fanuc_roboguide": (fanuc_roboguide, "1")})
     registered_drivers.update({"abb_driver": (robotware,"1")}) # TODO: Fix. Name is different to retrocompatibility
     registered_drivers.update({"robodk_driver": (robodk_api, "1")}) # TODO: Fix. name is different to retrocompatibility

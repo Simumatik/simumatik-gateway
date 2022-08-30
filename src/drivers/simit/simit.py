@@ -90,13 +90,13 @@ class simit(driver):
         big_endian : True if big endian, else little endian
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None):
+    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
         """
         # Inherit
-        driver.__init__(self, name, pipe)
+        driver.__init__(self, name, pipe, params)
 
         # Parameters
         self.SHM_name = "SIMITShared Memory"
@@ -111,12 +111,12 @@ class simit(driver):
     def connect(self) -> bool:
         """ Connect driver.
         
-        : returns: True if connection stablished False if not
+        : returns: True if connection established False if not
         """
         try:
             self._connection = shared_memory.SharedMemory(name=self.SHM_name)
         except Exception as e:
-            self.sendDebugInfo(f"SETUP: Connection with {self.SHM_name} cannot be established. ({e})")
+            self.sendDebugInfo(f"SETUP: Connection with {self.SHM_name} cannot be eestablished. ({e})")
             return False
         else:
             self.bytes = self._connection.buf.tobytes()

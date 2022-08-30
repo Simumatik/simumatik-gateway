@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from ..driver import driver, VariableQuality 
+from ..driver import driver, VariableQuality, VariableDatatype
 
 from multiprocessing import Pipe
 from typing import Optional
@@ -28,15 +28,19 @@ class allenbradley_logix(driver):
 
     Parameters:
     ip  : String    : ip address of the PLC
+            - IP Address Only (``10.20.30.100``) - Use for a ControlLogix PLC is in slot 0 or if connecting to a CompactLogix or Micro800 PLC.
+            - IP Address/Slot (``10.20.30.100/1``) - (ControlLogix) if PLC is not in slot 0
+            - CIP Routing Path (``1.2.3.4/backplane/2/enet/6.7.8.9/backplane/0``) - Use for more complex routing.
+
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None):
+    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
         """
         # Inherit
-        driver.__init__(self, name, pipe)
+        driver.__init__(self, name, pipe, params)
         
         self.ip = '192.168.0.1'
 
@@ -44,14 +48,14 @@ class allenbradley_logix(driver):
     def connect(self) -> bool:
         """ Connect driver.
         
-        : returns: True if connection stablished False if not
+        : returns: True if connection established False if not
         """
         # Create connection
         try:
             self._connection = LogixDriver(self.ip)
             self._connection.open()
         except Exception as e:
-            self.sendDebugInfo(f"Connection with {self.ip} cannot be stablished.")
+            self.sendDebugInfo(f"Connection with {self.ip} cannot be established.")
             return False
 
         # Check connection status.
@@ -77,6 +81,7 @@ class allenbradley_logix(driver):
         for var_id in list(variables.keys()):
             var_data = dict(variables[var_id])
             try:
+                var_data['logix_data_type'] = self._connection.get_tag_info(var_id)['data_type_name']
                 var_data['value'] = None
                 self.variables[var_id] = var_data 
             except Exception as e:
@@ -109,6 +114,20 @@ class allenbradley_logix(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
+
+        # Mismatch if value is defined as BYTE (or Word) in simumatik and SINT (or Int) in RSLogix 5000
+        for count, (var_id, var_value) in enumerate(variables):
+            if self.variables[var_id]['logix_data_type'] == 'SINT' and self.variables[var_id]['datatype'] == VariableDatatype.BYTE:
+                while var_value > 127: 
+                    var_value -= 256
+                
+                variables[count] = (var_id, var_value)
+
+            if self.variables[var_id]['logix_data_type'] == 'INT' and self.variables[var_id]['datatype'] == VariableDatatype.WORD:
+                while var_value > 32767: 
+                    var_value -= 65536
+                
+                variables[count] = (var_id, var_value)
 
         try:
             values = self._connection.write(*variables)

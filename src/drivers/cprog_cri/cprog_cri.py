@@ -47,13 +47,13 @@ class cprog_cri(driver):
         CPRog CRI Interface Server IP. It is the IP of the machine running CPRog. Default = '127.0.0.1'
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None):
+    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
         """
         # Inherit
-        driver.__init__(self, name, pipe)
+        driver.__init__(self, name, pipe, params)
 
         # Parameters
         self.ip = '127.0.0.1'
@@ -66,7 +66,7 @@ class cprog_cri(driver):
     def connect(self) -> bool:
         """ Connect driver.
         
-        : returns: True if connection stablished False if not
+        : returns: True if connection established False if not
         """
         # Force rpi to max 50ms, CPROG updates are every 100ms
         self.rpi = min(50, self.rpi) 
