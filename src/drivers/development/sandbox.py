@@ -2,9 +2,27 @@ import clr
 import os
 import sys
 import time
-import psutil
+import win32service
 import win32serviceutil
 import socket
+
+def GetServiceName(names):
+    for name in names:
+        try:
+            win32serviceutil.QueryServiceStatus(name, None)
+        except:
+            continue
+        else:    
+            return name
+    return None
+
+def GetStatus(name):
+    try:
+        state = win32serviceutil.QueryServiceStatus(name, None)[1]
+    except:
+        return None
+    else: 
+        return state
 
 print("Has to be ran as admin..")
 
@@ -18,33 +36,24 @@ from IsoOnTcp import IsoToS7online
 clr.AddReference('System.Net')
 from System.Net import IPAddress
 
-# Stop S7 service
-possible_service_names = ["s7oiehsx64", "s7oiehsx"]
-service = None
-for name in possible_service_names:
-    try:
-        service = psutil.win_service_get(name)
-        service = service.as_dict()
-    except Exception as ex:
-        print(str(ex))
 
-    if service:
-        break
 
-if service:
+# Get service status
+possible_service_names = ["s7oiehsx", "s7oiehsx64"]
+service_name = GetServiceName(possible_service_names)
+if service_name:
     print("service found")
+    if GetStatus(service_name) == win32service.SERVICE_RUNNING:
+        print("service is running")
+    else:
+        print("service is not running")
 else:
     print("service not found")
 
 
-if service and service['status'] == 'running':
-    print("service is running")
-else:
-    print("service is not running")
 
 
-print(service)
-
+quit()
 # Stop service
 print(f"Stopping server {service['name']}")
 win32serviceutil.StopService(service['name'])
