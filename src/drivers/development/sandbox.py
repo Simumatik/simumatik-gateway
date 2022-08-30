@@ -51,16 +51,11 @@ else:
     print("service not found")
 
 
-
-
-quit()
 # Stop service
-print(f"Stopping server {service['name']}")
-win32serviceutil.StopService(service['name'])
+print(f"Stopping server {service_name}")
+win32serviceutil.StopService(service_name)
 
-while service['status'] != "stopped":
-    service = psutil.win_service_get(service['name'])
-    service = service.as_dict()
+while GetStatus(service_name) != win32service.SERVICE_STOPPED:
     print("service not stopped")
     time.sleep(0.5)
 print("service is stopped")
@@ -77,12 +72,10 @@ except Exception as e:
     print(f"Exception during get 102: {e}")
 
 # Restart service
-print(f"Restarting server {service['name']}")
-win32serviceutil.RestartService(service['name'])
+print(f"Restarting server {service_name}")
+win32serviceutil.RestartService(service_name)
 
-while service['status'] != "running":
-    service = psutil.win_service_get(service['name'])
-    service = service.as_dict()
+while GetStatus(service_name) != win32service.SERVICE_RUNNING:
     print("service not running")
     time.sleep(0.5)
 print("service is running again")
@@ -99,11 +92,8 @@ PLCSIMIPADRESS = IPAddress.Parse("192.168.0.1")
 RACK = 0
 SLOT = 1
 ENABLETSAPCHECK = False
-
 print("create server")
 server = IsoToS7online(ENABLETSAPCHECK)
-
-
 try:
     print("start server")
     server.start(NAME, NETWORKIPADRESS, PLCSIMIPADRESS, RACK, SLOT)
