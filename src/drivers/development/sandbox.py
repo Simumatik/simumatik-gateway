@@ -16,13 +16,17 @@ from System.Net import IPAddress
 
 NAME = "PLC#001"
 NETWORKIPADRESS = IPAddress.Parse("192.168.1.192")
-PLCSIMIPADRESS = IPAddress.Parse("192.168.1.250")
+PLCSIMIPADRESS = IPAddress.Parse("192.168.0.1")
 RACK = 0
-SLOT = 2
+SLOT = 1
 ENABLETSAPCHECK = False
 
 server = IsoToS7online(ENABLETSAPCHECK)
 print("reached 1")
+
+# Stop S7 service
+
+
 
 try:
     server.start(NAME, NETWORKIPADRESS, PLCSIMIPADRESS, RACK, SLOT)
@@ -35,4 +39,7 @@ time.sleep(120)
 
 
 server.Dispose()
+
+# Restart S7 service
+
 print("reached 3")
