@@ -1,27 +1,24 @@
-import psutil
+import win32service
+import win32serviceutil
 
-possible_service_names = ["s7oiehsx64", "s7oiehsx"]
-service = None
-for name in possible_service_names:
-    try:
-        service = psutil.win_service_get(name)
-        service = service.as_dict()
-    except Exception as ex:
-        print(str(ex))
+# print(win32service.SERVICE_RUNNING)       # - 4
+# print(win32service.SERVICE_STOPPED)       # - 1
+# print(win32service.SERVICE_START_PENDING) # - 2 
+# print(win32service.SERVICE_STOP_PENDING)  # - 3
 
-    if service:
-        break
-
-if service:
-    print("service found")
-else:
-    print("service not found")
-
-
-if service and service['status'] == 'running':
-    print("service is running")
-else:
-    print("service is not running")
+def GetServiceName(names):
+    for name in names:
+        try:
+            win32serviceutil.QueryServiceStatus(name, None)
+        except:
+            continue
+        else:    
+            return name
+    return None
 
 
+possible_service_names = ["s7oiehsx", "s7oiehsx64"]
+service_name = GetServiceName(possible_service_names)
 
+if service_name:
+   print("service_name")
