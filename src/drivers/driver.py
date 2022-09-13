@@ -68,6 +68,9 @@ class driver(threading.Thread):
     force_write: float
         Used to periodically (in sec) re-write variables. Default = 1
     
+    auto_reset: float
+        Used to define the time (in sec) to try reset the driver when the state is ERROR. Default = 5.0
+    
     """
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
@@ -81,6 +84,7 @@ class driver(threading.Thread):
         # Standard parameters
         self.rpi = 50
         self.force_write = 1 
+        self.auto_reset = 5.0
 
         # Initialize
         self.name = name
@@ -91,9 +95,11 @@ class driver(threading.Thread):
         self.last_read = time.perf_counter() # last read package sent
         self.last_write = time.perf_counter() # last write package sent
         self.last_forced_write = time.perf_counter() # last read package sent
+        self.last_status_change = time.perf_counter() # last status changed timestamp
         
         # Driver internal data
         self.variables = {} # Dictionary to store variable data (definition and additional data specific to each driver)
+        self.raw_variables_def = {} # Dictionary to store raw variable definition data, used to reset the driver
         self.pending_updates = {} # Pending variable updates to write on the driver {var_name: var_value}
 
         if self.pipe is None: 
@@ -136,6 +142,7 @@ class driver(threading.Thread):
                         # Action ADD VARIABLES
                         elif action == DriverActions.ADD_VARIABLES:
                             if self.status == DriverStatus.RUNNING: 
+                                self.raw_variables_def.update(data)
                                 if not self._addVariables(data):
                                     self.sendDebugInfo('ADD_VARIABLES action failed!')
 
@@ -155,6 +162,7 @@ class driver(threading.Thread):
                                     self.sendDebugVarInfo(('UPDATE action failed! Data format is wrong: ' + var_name, var_name))
                             else:
                                 self.sendDebugInfo('UPDATE action failed! Actual status is not RUNNING.')
+
                     except Exception as e:
                         self.changeStatus(DriverStatus.ERROR)
                         self.sendDebugInfo('Exception executing action: ' + str(e))
@@ -166,6 +174,20 @@ class driver(threading.Thread):
             if self.status == DriverStatus.RUNNING:
                 if not self._transmitVariables():
                     self.changeStatus(DriverStatus.ERROR)
+
+            # Auto reset
+            elif self.status == DriverStatus.ERROR and self.auto_reset>0:
+                if time.perf_counter() - self.last_status_change >= self.auto_reset: 
+                    if self.raw_variables_def: # Check if previously the driver had some variables set up
+                        self._cleanup()
+                        if self._setup(self.params):
+                            self.changeStatus(DriverStatus.RUNNING)
+                            if not self._addVariables(self.raw_variables_def):
+                                self.sendDebugInfo('ADD_VARIABLES action failed!')
+                        else:
+                            self.changeStatus(DriverStatus.ERROR)
+                    else:
+                        self.changeStatus(DriverStatus.ERROR)
 
             # Driver loop
             self.loop()
@@ -188,6 +210,7 @@ class driver(threading.Thread):
         """
         try:
             self.status = new_status
+            self.last_status_change = time.perf_counter()
             if self.pipe:
                 self.pipe.send(json.dumps({DriverActions.STATUS: self.status}))
         except:
@@ -286,7 +309,7 @@ class driver(threading.Thread):
         """
         try:
             self.disconnect()
-        
+            self.variables = {}        
         except Exception as e:
             self.sendDebugInfo('Exception during cleanup: '+str(e))
         
