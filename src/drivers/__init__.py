@@ -1,5 +1,7 @@
 import platform
 
+from drivers.rosbridge.rosbridge import rosbridge
+
 from .driver import driver, DriverActions, DriverStatus
 
 from .allenbradley_logix.allenbradley_logix import allenbradley_logix
@@ -10,6 +12,7 @@ from .micro800_http.micro800_http import micro800_http
 from .modbustcp_master.modbustcp_master import modbustcp_master
 from .mqtt_client.mqtt_client import mqtt_client
 from .opcua_client.opcua_client import opcua_client
+from .rosbridge.rosbridge import rosbridge
 from .s7protocol.s7protocol import s7protocol
 from .simit import simit
 from .sqlite3_conn import sqlite3_conn
@@ -28,6 +31,7 @@ registered_drivers = {
   "modbustcp_master": (modbustcp_master,"1"),
   "mqtt_client": (mqtt_client,"1"),
   "opcua_client": (opcua_client, "1"),
+  "rosbridge": (rosbridge, "1"),
   "s7protocol": (s7protocol, "1"),
   "simit" : (simit, "1"),
   "sqlite3_conn" : (sqlite3_conn, "1"),
