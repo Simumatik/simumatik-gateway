@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from ..driver import driver, VariableQuality 
+from ..driver import VariableDatatype, driver, VariableQuality 
 
 from multiprocessing import Pipe
 from typing import Optional
@@ -99,7 +99,10 @@ class twincat_ads(driver):
             self.sendDebugInfo(f'readVariables exception: {e}')
         else:
             for var_id, value in values.items():
-                res.append((var_id, value, VariableQuality.GOOD))
+                if isinstance(value,str) and variables[var_id]['type'] != VariableDatatype.STRING:
+                    res.append((var_id, None, VariableQuality.BAD))
+                else:
+                    res.append((var_id, value, VariableQuality.GOOD))
 
         return res
 
