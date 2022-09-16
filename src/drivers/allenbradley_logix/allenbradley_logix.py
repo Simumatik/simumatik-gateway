@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#from curses.ascii import isalnum
 from ..driver import driver, VariableQuality, VariableDatatype
 
 from multiprocessing import Pipe
@@ -110,7 +109,7 @@ class allenbradley_logix(driver):
                     res.append((tag, None, VariableQuality.BAD))
                 else:
                     if isinstance(value, list) and self.variables[tag]['datatype'] == VariableDatatype.STRING:
-                        value = ''.join([chr(x) for x in value]) #convert from sint list to string and send to component
+                        value = ''.join([chr(x) for x in value]) #convert from sint list to string
 
                     res.append((tag, value, VariableQuality.GOOD))
 
