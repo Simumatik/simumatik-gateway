@@ -30,7 +30,7 @@ from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 
 
 # Version
-version = "4.0.1"
+version = "4.0.3"
 MAX_TELEGRAM_LENGTH = 2**13 # (8K)
 MAX_UPDATES_PER_TELEGRAM = 100
 

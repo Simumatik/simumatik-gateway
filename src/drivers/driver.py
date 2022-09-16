@@ -141,8 +141,8 @@ class driver(threading.Thread):
 
                         # Action ADD VARIABLES
                         elif action == DriverActions.ADD_VARIABLES:
+                            self.raw_variables_def.update(data)
                             if self.status == DriverStatus.RUNNING: 
-                                self.raw_variables_def.update(data)
                                 if not self._addVariables(data):
                                     self.sendDebugInfo('ADD_VARIABLES action failed!')
 
