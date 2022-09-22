@@ -102,10 +102,10 @@ class rosbridge(driver):
                 var_data['value'] = self.defaultVariableValue(var_data['datatype'], var_data['size'])
 
                 if var_data['operation'] == VariableOperation.WRITE:
-                    var_data['publisher'] = roslibpy.Topic(self.connection, var_id, message_type)
+                    var_data['publisher'] = roslibpy.Topic(self._connection, var_id, message_type)
                 if var_data['operation'] == VariableOperation.READ:
                     #Create a subscriber for the variable
-                    var_data['subscriber'] = roslibpy.Topic(self.connection, var_id, message_type)
+                    var_data['subscriber'] = roslibpy.Topic(self._connection, var_id, message_type)
                     #Define callback function with fixed name and field
                     callback_lambda = lambda message, name = var_id, field = message_field : self.callback(message, name, field)
                     #Subscribe using the callback function
@@ -159,13 +159,14 @@ class rosbridge(driver):
     def callback(self, msg, var_id, field):
         # Callback function called when the subscriber recieves a message
         #If the datatype is float, round.
-        if  isinstance(msg[field], float) or (isinstance(msg[field], list) and isinstance(msg[field][0], float)):
+        if  isinstance(msg[field], float):
+            value = round(msg[field], 3)
+        elif isinstance(msg[field], list and isinstance(msg[field][0], float)):
             value = [round(x,3) for x in msg[field]]
         else:
             value = msg[field]
         
         if self.variables[var_id]['value'] != value:
-            self.variables[var_id]['value'] = value
             self.new_values[var_id] = value
 
 
@@ -182,6 +183,7 @@ class rosbridge(driver):
                 'dword' : 'std_msgs/UInt32',
                 'qword' : 'std_msgs/UInt64',
                 'float' : 'std_msgs/Float32', #Can be changed to Float64
+                'str'   : 'std_msgs/String',
                 'string': 'std_msgs/String'
             }
 
