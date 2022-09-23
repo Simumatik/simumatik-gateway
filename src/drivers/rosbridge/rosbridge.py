@@ -161,7 +161,7 @@ class rosbridge(driver):
         #If the datatype is float, round.
         if  isinstance(msg[field], float):
             value = round(msg[field], 3)
-        elif isinstance(msg[field], list and isinstance(msg[field][0], float)):
+        elif isinstance(msg[field], list) and isinstance(msg[field][0], float):
             value = [round(x,3) for x in msg[field]]
         else:
             value = msg[field]
