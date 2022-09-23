@@ -69,8 +69,8 @@ from drivers.driver import VariableOperation
 HOST = "192.168.1.186"
 PORT = 9090
 
-TOPIC_1 = "/test_01"
-TOPIC_2 = "/test_02"
+TOPIC_1 = "test_01"
+TOPIC_2 = "test_02"
 
 VARIABLES = {
     TOPIC_1:{'datatype': "int", 'size': 1, 'operation': VariableOperation.WRITE},
