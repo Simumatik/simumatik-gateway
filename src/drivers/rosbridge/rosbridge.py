@@ -75,7 +75,7 @@ class rosbridge(driver):
         """ Disconnect driver.
         """
         if self._connection:
-            self._connection.terminate()
+            self._connection.close()
 
 
     def addVariables(self, variables: dict):
@@ -99,6 +99,7 @@ class rosbridge(driver):
                     message_field = 'data'
 
                 var_data['value'] = self.defaultVariableValue(var_data['datatype'], var_data['size'])
+                self.new_values[var_id] = var_data['value']
 
                 if var_data['operation'] == VariableOperation.WRITE:
                     var_data['publisher'] = roslibpy.Topic(self._connection, var_id, message_type)
