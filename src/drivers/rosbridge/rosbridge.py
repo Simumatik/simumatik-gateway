@@ -75,8 +75,7 @@ class rosbridge(driver):
         """ Disconnect driver.
         """
         if self._connection:
-            self._connection.loop_stop()
-            self._connection.disconnect()
+            self._connection.close()
 
 
     def addVariables(self, variables: dict):
