@@ -18,11 +18,13 @@
 TEST rosbridge driver
 ------------------------
 
-This test requires a running node on the host ip that takes <TOPIC_1> and mirrors the value of it to <TOPIC_2>. This test script
-will publish a value to <TOPIC_1>, and when it receives a change in value of <TOPIC_2> it sends back that value +1 in <TOPIC_1>.
+This test requires a running node on the host ip that takes <TOPIC_1> and 
+mirrors the value of it to <TOPIC_2>. This test script will publish a value 
+to <TOPIC_1>, and when it receives a change in value of <TOPIC_2> it sends back 
+that value +1 in <TOPIC_1>.
 
-Make sure that the rosbridge_websocket is running on the host. The following script can be used for the test, it needs to be 
-built and started on the host (instructions at https://docs.ros.org/en/humble/Tutorials/Beginner-Client-Libraries/Creating-Your-First-ROS2-Package.html).
+The rosbridge_websocket needs to be running on the host. The following COMMENTED script 
+can be used for the test, transfer it to the host and make sure that it's running:
 
 ```
 import rclpy
@@ -33,7 +35,7 @@ from std_msgs.msg import Int32
 class Topic_Mirror(Node):
 
     def __init__(self):
-        super().__init__('agv_control')
+        super().__init__('topic_mirror')
         self.publisher = self.create_publisher(Int32, 'test_02', 10)
         self.subscriber = self.create_subscription(Int32, 'test_01', self.callback, 10)
 
@@ -84,16 +86,16 @@ d.port = PORT
 if d.connect():
     d.addVariables(VARIABLES)
 
-    value = 1
+    value = 0
     start_time = time.perf_counter()
     while time.perf_counter() - start_time < 10:
         d.writeVariables([(TOPIC_1, value)])
 
-        time.sleep(0.01)
+        time.sleep(1)
 
         var_id, var_value, var_quality = d.readVariables([TOPIC_2])[0]
         print(var_id, var_value, var_quality)
-        if var_value:
+        if var_value is not None:
             value = var_value + 1
 
     d.disconnect()
