@@ -34,6 +34,14 @@ class mqtt_client(driver):
 
     retain: bool
         Retain published topics by the driver in the MQTT Broker. Default = True
+
+    username: string
+        The username to authenticate with. Need have no relationship to the client id. Must be unicode [MQTT-3.1.3-11].
+        Set to None to reset client back to not using username/password for broker authentication.
+
+    password: string
+        The password to authenticate with. Optional, set to None if not required. If it is unicode, then it
+        will be encoded as UTF-8.
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
@@ -48,6 +56,8 @@ class mqtt_client(driver):
         self.ip = '127.0.0.1'
         self.port = 1883
         self.retain = True
+        self.username = None
+        self.password = None
 
         # Interal vars
         self.new_values = {}
@@ -64,6 +74,8 @@ class mqtt_client(driver):
             self._connection = mqtt.Client(self._name, clean_session=not self.retain)
             self._connection.on_message = self.onMessage
             #self._connection.on_log = self.onLog
+            if self.username is not None:
+                self._connection.username_pw_set(self.username, self.password)
             self._connection.connect(self.ip, port=int(self.port), keepalive=60)
             self._connection.loop_start()
 
