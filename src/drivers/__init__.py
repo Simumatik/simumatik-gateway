@@ -8,6 +8,7 @@ from .allenbradley_logix.allenbradley_logix import allenbradley_logix
 from .cprog_cri.cprog_cri import cprog_cri
 from .development.development import development
 from .hokuyo_uam.hokuyo_uam import hokuyo_uam
+from .matlab_udp.matlab_udp import matlab_udp
 from .micro800_http.micro800_http import micro800_http
 from .modbustcp_master.modbustcp_master import modbustcp_master
 from .mqtt_client.mqtt_client import mqtt_client
@@ -28,6 +29,7 @@ registered_drivers = {
   "development": (development,"1"),
   "hokuyo_uam": (hokuyo_uam,"1"),
   "micro800_http": (micro800_http, "1"),
+  "matlab_udp": (matlab_udp, "1"),
   "modbustcp_master": (modbustcp_master,"1"),
   "mqtt_client": (mqtt_client,"1"),
   "opcua_client": (opcua_client, "1"),
