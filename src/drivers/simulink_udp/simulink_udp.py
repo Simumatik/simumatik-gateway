@@ -23,9 +23,9 @@ from typing import Optional
 from ..driver import driver, VariableQuality, DriverStatus 
 
 
-class matlab_udp(driver):
+class simulink_udp(driver):
     """
-    This driver is a generic driver to communicate using UDP.
+    This driver is based on the generic driver to communicate using UDP but slightly modify to communicate with a special Simulink block.
 
     Parameters:
     ip: str
