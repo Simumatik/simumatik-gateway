@@ -20,7 +20,7 @@ import time
 import json
 from typing import Optional
 
-from ..driver import VariableOperation, driver, VariableQuality, DriverStatus 
+from ..driver import driver, VariableQuality, DriverStatus 
 
 
 class matlab_udp(driver):
