@@ -45,8 +45,7 @@ def calc_crc(bytes):
 
 class hokuyo_uam(driver):
     '''
-    Driver that can be used for development. The driver can be used on a component just assigning the driver type "development".
-    Feel free to add your code in the methods below.
+    Driver that can be used for emulating a Hokuyo UAM Laser scanner.
     Parameters:
     ip: str
         Ip address to listen for commands on. Default = "0.0.0.0"
@@ -54,6 +53,7 @@ class hokuyo_uam(driver):
         Port to listen for commands on. Default = 10940
     transmit_interval: float
         Time in seconds to detect connection loss. Default = 0.03s
+    data_size: Number of laser rays, default 1080
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
