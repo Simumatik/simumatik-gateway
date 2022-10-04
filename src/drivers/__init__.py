@@ -15,6 +15,7 @@ from .opcua_client.opcua_client import opcua_client
 from .rosbridge.rosbridge import rosbridge
 from .s7protocol.s7protocol import s7protocol
 from .simit import simit
+from .simulink_udp.simulink_udp import simulink_udp
 from .sqlite3_conn import sqlite3_conn
 from .twincat_ads import twincat_ads
 from .udp_generic.udp_generic import udp_generic
@@ -34,6 +35,7 @@ registered_drivers = {
   "rosbridge": (rosbridge, "1"),
   "s7protocol": (s7protocol, "1"),
   "simit" : (simit, "1"),
+  "simulink_udp": (simulink_udp, "1"),
   "sqlite3_conn" : (sqlite3_conn, "1"),
   "twincat_ads" : (twincat_ads, "1"),
   "udp_driver": (udp_generic,"1"),
