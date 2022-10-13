@@ -14,34 +14,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from msilib.schema import ServiceControl
-import clr
-import os
-import sys
-import time
-import win32service
-import win32serviceutil
-import socket
-
 from multiprocessing import Pipe
 from typing import Optional
 
 from ..driver import driver
 
-p = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(p)
-
-clr.FindAssembly("IsoToS7online")
-clr.AddReference("IsoToS7online")
-from IsoOnTcp import IsoToS7online
-
-clr.AddReference('System.Net')
-from System.Net import IPAddress
-
-# stop service
-# start socket
-# start ServiceControl
-# stop socket
 
 class development(driver):
     '''
@@ -62,7 +39,6 @@ class development(driver):
 
         # Parameters
         self.myparam = 3
-        print("INIT!!")
 
 
     def connect(self) -> bool:
