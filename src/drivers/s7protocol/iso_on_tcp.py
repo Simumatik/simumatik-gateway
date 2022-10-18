@@ -77,6 +77,50 @@ DEBUGG = False
 """
  PDU Telegrams
 """
+PDU = namedtuple('PDU', ['Command',     # (U8) Specific for type of PDU
+                         'Type',        # (U8) Type
+                         'DestRef',     # (U16)
+                         'SourceRef',   # (U16)
+                         'ParamLength', # (U16) Parameter data length
+                         'DataLength',  # (U16) Data length
+                         'Params',      # (String with Parameter data)
+                         'Data'])       # (String containing Data)
+
+def formatPDU(tpdu):
+    """ Returns the CIP request packet formated."""
+    if tpdu:
+        mess = struct.pack('!BBHHHH',
+                           tpdu.Command,
+                           tpdu.Type,
+                           tpdu.DestRef,
+                           tpdu.SourceRef,
+                           tpdu.ParamLength,
+                           tpdu.DataLength)
+        # Type 2 and 3 PDUs have 12 byte header
+        if tpdu.Type in [2,3]:
+            mess += b'\x00\x00'
+        # Add Parameters
+        if tpdu.ParamLength:
+            mess += tpdu.Params
+        # Add Data
+        if tpdu.DataLength:
+            mess += tpdu.Data
+        return mess
+    else:
+        return None
+
+def getPDU(message):
+    """ Gets a pdu from a string."""
+    try:
+        spdu = struct.unpack('!BBHHHH',message[:10])
+        point = 12 if int(spdu[1]) in [2,3] else 10
+        params = message[point : (point+spdu[4])] if spdu[4] else ""
+        data = message[(point+spdu[4]) : (point+spdu[4]+spdu[5])] if spdu[5] else ""
+        tpdu = PDU._make(spdu+(params,data))
+        return tpdu
+    except Exception as e:
+        if DEBUGG: print("Driver S7Siemens"+"Error! Can't get PDU."+str(e))
+    return None
 
 def PDULengthRequest(socket, PDU_id): 
     """ Send a specific PDU to request length."""
@@ -96,129 +140,138 @@ def PDULengthRequest(socket, PDU_id):
             return PDULength
 
 
+def PDU_from_ReadAreas(PDU_id:int, areas:list):
+    PARAMS = struct.pack("BB", CMD_READ, len(areas))
+    for (_, area) in areas:
+        PARAMS += area.Formated
+        
+    return PDU(
+        Command = 0x32,
+        Type = 0x01,
+        DestRef = 0x0000,
+        SourceRef = PDU_id,
+        ParamLength = len(PARAMS),
+        DataLength = 0x00,                  
+        Params = PARAMS,
+        Data = b'')
+
+def ReadAreas_from_PDU(pdu:PDU, areas:list):
+    results = []
+    if pdu:
+        if pdu.Data:
+            point = 0
+            for (name, area) in areas:
+                # Result data is OK
+                res, typelength, length = struct.unpack('!BBH',pdu.Data[point:point+4])
+                if res == DATA_OK:
+                    if typelength in [4,5]: # Length in Bits
+                        length >>= 3
+                    elif typelength in [3,9]: # Length in Bytes
+                        pass
+                    # Check count
+                    dataend = point+4+length
+                    # Return Data
+                    if area.Type == S7_Bit:
+                        value = (0,) if (pdu.Data[point+4:dataend] == b'\x00') else (1,)
+                    if area.Type == S7_Byte:
+                        value = struct.unpack('B',pdu.Data[point+4:dataend])
+                    elif area.Type == S7_Word:
+                        value = struct.unpack('!H',pdu.Data[point+4:dataend])
+                    elif area.Type == S7_Int:
+                        value = struct.unpack('!h',pdu.Data[point+4:dataend])
+                    elif area.Type == S7_DoubleWord:
+                        value = struct.unpack('!I',pdu.Data[point+4:dataend])
+                    elif area.Type == S7_DoubleInt:
+                        value = struct.unpack('!i',pdu.Data[point+4:dataend])
+                    elif area.Type == S7_Real:
+                        value = struct.unpack('!f',pdu.Data[point+4:dataend])
+                    results.append((name, value[0], VariableQuality.GOOD))
+                    # Value has an extra bit if not even length
+                    point = dataend+dataend%2
+                else:
+                    # Data not OK
+                    results.append((name, None, VariableQuality.BAD))
+    return results
+
+def PDU_from_WriteAreas(PDU_id:int, areadata:list):
+    PARAMS = struct.pack("BB", CMD_WRITE, len(areadata))
+    DATA = b''
+    for (name, area, value) in areadata:
+        PARAMS += area.Formated
+        # Attach data
+        if area.Type == S7_Bit:
+            DATA += struct.pack('!BBHB', 0, DATA_TRANSPORT_SIZE_BBIT, area.Count, value) #Different code for Bits (3)
+            # Adds an empty byte if data length is odd
+            if area.Count%2:
+                DATA += b'\x00'
+        elif area.Type == S7_Byte:
+            DATA += struct.pack('!BBHB', 0, DATA_TRANSPORT_SIZE_BBYTE, area.Count*8, value)
+            # Adds an empty byte if data length is odd
+            if area.Count%2:
+                DATA += b'\x00'
+        elif area.Type == S7_Word:
+            DATA += struct.pack('!BBHH', 0, DATA_TRANSPORT_SIZE_BBYTE, area.Count*16, value) 
+        elif area.Type == S7_Int:
+            DATA += struct.pack('!BBHh', 0, DATA_TRANSPORT_SIZE_BINT, area.Count*16, value) 
+        elif area.Type == S7_DoubleWord:
+            DATA += struct.pack('!BBHI', 0, DATA_TRANSPORT_SIZE_BBYTE, area.Count*32, value)
+        elif area.Type == S7_DoubleInt:
+            DATA += struct.pack('!BBHi', 0, DATA_TRANSPORT_SIZE_BINT, area.Count*32, value)
+        elif area.Type == S7_Real:
+            DATA += struct.pack('!BBHf', 0, DATA_TRANSPORT_SIZE_BREAL, area.Count*4, value)
+        
+    return PDU(Command = 0x32,
+        Type = 0x01,
+        DestRef = 0x0000,
+        SourceRef = PDU_id,
+        ParamLength = len(PARAMS),
+        DataLength = len(DATA),                  
+        Params = PARAMS,
+        Data = DATA)    
+
+def WriteAreas_from_PDU(pdu:PDU, areas:list):
+    results = []
+    # Check reply
+    reply_OK = False
+    if pdu:
+        if (pdu.Params and pdu.Data):
+            res, reply_len = struct.unpack('!BB',pdu.Params)
+            # All area status returned
+            if len(areas) == reply_len:
+                reply_OK = True
+    for i in range(len(areas)):
+        (name, area, value) = areas[i]
+        if reply_OK:
+            # Result data is OK
+            if pdu.Data[i] == DATA_OK:
+                results.append((name, value, VariableQuality.GOOD))
+            else:
+                results.append((name, None, VariableQuality.BAD))
+        # Not all area status returned
+        else:
+            results.append((name, None, "Error"))
+    return results
+
 def PDUReadAreas(socket, PDU_id, areas = []):
     """ Send a read data PDU request.
         areas (Array of AreaData): [(Area, Start, Count, Type, DB)]
     """
-    # Get results
     results = []
-    # Check
     if socket and len(areas):
-        PARAMS = struct.pack("BB", CMD_READ, len(areas))
-        for (name, area) in areas:
-            PARAMS += area.Formated
-            
-        request = PDU(Command = 0x32,
-                        Type = 0x01,
-                        DestRef = 0x0000,
-                        SourceRef = PDU_id,
-                        ParamLength = len(PARAMS),
-                        DataLength = 0x00,                  
-                        Params = PARAMS,
-                        Data = b'')
-
+        request = PDU_from_ReadAreas(PDU_id, areas)
         reply = exchangePDU(socket, request)
-        if reply:
-            if reply.Data:
-                point = 0
-                for (name, area) in areas:
-                    # Result data is OK
-                    res, typelength, length = struct.unpack('!BBH',reply.Data[point:point+4])
-                    if res == DATA_OK:
-                        if typelength in [4,5]: # Length in Bits
-                            length >>= 3
-                        elif typelength in [3,9]: # Length in Bytes
-                            pass
-                        # Check count
-                        dataend = point+4+length
-                        # Return Data
-                        if area.Type == S7_Bit:
-                            value = (0,) if (reply.Data[point+4:dataend] == b'\x00') else (1,)
-                        if area.Type == S7_Byte:
-                            value = struct.unpack('B',reply.Data[point+4:dataend])
-                        elif area.Type == S7_Word:
-                            value = struct.unpack('!H',reply.Data[point+4:dataend])
-                        elif area.Type == S7_Int:
-                            value = struct.unpack('!h',reply.Data[point+4:dataend])
-                        elif area.Type == S7_DoubleWord:
-                            value = struct.unpack('!I',reply.Data[point+4:dataend])
-                        elif area.Type == S7_DoubleInt:
-                            value = struct.unpack('!i',reply.Data[point+4:dataend])
-                        elif area.Type == S7_Real:
-                            value = struct.unpack('!f',reply.Data[point+4:dataend])
-                        results.append((name, value[0], VariableQuality.GOOD))
-                        # Value has an extra bit if not even length
-                        point = dataend+dataend%2
-                    else:
-                        # Data not OK
-                        results.append((name, None, VariableQuality.BAD))
-    # Return results
+        results = ReadAreas_from_PDU(reply, areas)
     return results
 
-
-def PDUWriteAreas(socket, PDU_id, areadata=[]):
+def PDUWriteAreas(socket, PDU_id, areas=[]):
     """ Send a read data PDU request.
         areadata (Array of (AreaData, value)): [((Area, Start, Count, Type, DB), value)]
     """
-    # Get results
     results = []
-    if socket and len(areadata):
-        PARAMS = struct.pack("BB", CMD_WRITE, len(areadata))
-        DATA = b''
-        for (name, area, value) in areadata:
-            PARAMS += area.Formated
-            # Attach data
-            if area.Type == S7_Bit:
-                DATA += struct.pack('!BBHB', 0, DATA_TRANSPORT_SIZE_BBIT, area.Count, value) #Different code for Bits (3)
-                # Adds an empty byte if data length is odd
-                if area.Count%2:
-                    DATA += b'\x00'
-            elif area.Type == S7_Byte:
-                DATA += struct.pack('!BBHB', 0, DATA_TRANSPORT_SIZE_BBYTE, area.Count*8, value)
-                # Adds an empty byte if data length is odd
-                if area.Count%2:
-                    DATA += b'\x00'
-            elif area.Type == S7_Word:
-                DATA += struct.pack('!BBHH', 0, DATA_TRANSPORT_SIZE_BBYTE, area.Count*16, value) 
-            elif area.Type == S7_Int:
-                DATA += struct.pack('!BBHh', 0, DATA_TRANSPORT_SIZE_BINT, area.Count*16, value) 
-            elif area.Type == S7_DoubleWord:
-                DATA += struct.pack('!BBHI', 0, DATA_TRANSPORT_SIZE_BBYTE, area.Count*32, value)
-            elif area.Type == S7_DoubleInt:
-                DATA += struct.pack('!BBHi', 0, DATA_TRANSPORT_SIZE_BINT, area.Count*32, value)
-            elif area.Type == S7_Real:
-                DATA += struct.pack('!BBHf', 0, DATA_TRANSPORT_SIZE_BREAL, area.Count*4, value)
-            
-        request = PDU(Command = 0x32,
-                        Type = 0x01,
-                        DestRef = 0x0000,
-                        SourceRef = PDU_id,
-                        ParamLength = len(PARAMS),
-                        DataLength = len(DATA),                  
-                        Params = PARAMS,
-                        Data = DATA)
+    if socket and len(areas):            
+        request = PDU_from_WriteAreas(PDU_id, areas)
         reply = exchangePDU(socket, request)
-        # Check reply
-        reply_OK = False
-        if reply:
-            if (reply.Params and reply.Data):
-                res, reply_len = struct.unpack('!BB',reply.Params)
-                # All area status returned
-                if len(areadata) == reply_len:
-                    reply_OK = True
-        for i in range(len(areadata)):
-            (name, area, value) = areadata[i]
-            if reply_OK:
-                # Result data is OK
-                if reply.Data[i] == DATA_OK:
-                    results.append((name, value, VariableQuality.GOOD))
-                else:
-                    results.append((name, None, VariableQuality.BAD))
-            # Not all area status returned
-            else:
-                results.append((name, None, "Error"))
-    
-    # Return results
+        results = WriteAreas_from_PDU(reply, areas)
     return results
 
 """
@@ -307,51 +360,6 @@ def ISOExchange(socket, message=""):
 """ 
 CIP ENCAPSULATION PACKET 
 """
-
-PDU = namedtuple('PDU', ['Command',     # (U8) Specific for type of PDU
-                         'Type',        # (U8) Type
-                         'DestRef',     # (U16)
-                         'SourceRef',   # (U16)
-                         'ParamLength', # (U16) Parameter data length
-                         'DataLength',  # (U16) Data length
-                         'Params',      # (String with Parameter data)
-                         'Data'])       # (String containing Data)
-
-def formatPDU(tpdu):
-    """ Returns the CIP request packet formated."""
-    if tpdu:
-        mess = struct.pack('!BBHHHH',
-                           tpdu.Command,
-                           tpdu.Type,
-                           tpdu.DestRef,
-                           tpdu.SourceRef,
-                           tpdu.ParamLength,
-                           tpdu.DataLength)
-        # Type 2 and 3 PDUs have 12 byte header
-        if tpdu.Type in [2,3]:
-            mess += b'\x00\x00'
-        # Add Parameters
-        if tpdu.ParamLength:
-            mess += tpdu.Params
-        # Add Data
-        if tpdu.DataLength:
-            mess += tpdu.Data
-        return mess
-    else:
-        return None
-
-def getPDU(message):
-    """ Gets a pdu from a string."""
-    try:
-        spdu = struct.unpack('!BBHHHH',message[:10])
-        point = 12 if int(spdu[1]) in [2,3] else 10
-        params = message[point : (point+spdu[4])] if spdu[4] else ""
-        data = message[(point+spdu[4]) : (point+spdu[4]+spdu[5])] if spdu[5] else ""
-        tpdu = PDU._make(spdu+(params,data))
-        return tpdu
-    except Exception as e:
-        if DEBUGG: print("Driver S7Siemens"+"Error! Can't get PDU."+str(e))
-    return None
 
 def connectPLC(socket, rack=0, slot=0):
     """ Sends a packet to connect the PLC."""

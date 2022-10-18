@@ -42,8 +42,8 @@ VARIABLES = {
 d = s7protocol(None, 'test')
 d.ip = '192.168.1.250'
 # For S-1200
-d.rack = 1
-d.slot = 1
+d.rack = 0
+d.slot = 2
 # For Logo!
 #d.rack = 0
 #d.slot = 2
