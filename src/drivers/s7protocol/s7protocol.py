@@ -102,7 +102,7 @@ class s7protocol(driver):
             area = getAreaFromString(var_id, var_data['datatype'])
             if area is not None:
                 var_data['area'] = area
-                var_data['value'] = 0
+                var_data['value'] = None
                 self.variables[var_id] = var_data
             else:
                 self.sendDebugVarInfo(('SETUP: Bad variable definition: {}'.format(var_id), var_id))
