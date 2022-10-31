@@ -45,8 +45,7 @@ try:
                 clr.FindAssembly("ABB.Robotics.Controllers.PC")
                 clr.AddReference("ABB.Robotics.Controllers.PC")
                 from ABB.Robotics.Controllers.Discovery import NetworkScanner
-                from ABB.Robotics.Controllers import ControllerFactory, UserInfo
-                from ABB.Robotics.Controllers.MotionDomain import CoordinateSystemType
+                from ABB.Robotics.Controllers import ControllerFactory, UserInfo, IOSystemDomain
 
                 ABB_SDK_FOUND = True
                 break
@@ -213,21 +212,37 @@ class robotware(driver):
     def get_signal_value(self, signal, datatype):
         # Return value
         if signal:
-            if signal.Type in [SIGNAL_DIGITALOUTPUT, SIGNAL_DIGITALINPUT]:
+            if signal.Type in [
+                SIGNAL_DIGITALOUTPUT, SIGNAL_DIGITALINPUT, # Older RobotStudio
+                IOSystemDomain.SignalType.DigitalInput, IOSystemDomain.SignalType.DigitalOutput # From RobotStudio 2022
+                ]:
                 return bool(signal.Value)
-            elif signal.Type in [SIGNAL_ANALOGINPUT, SIGNAL_ANALOGOUTPUT]:
+            elif signal.Type in [
+                SIGNAL_ANALOGINPUT, SIGNAL_ANALOGOUTPUT, 
+                IOSystemDomain.SignalType.AnalogInput, IOSystemDomain.SignalType.AnalogOutput
+                ]:
                 return signal.Value
-            elif signal.Type in [SIGNAL_GROUPOUTPUT, SIGNAL_GROUPINPUT]:
+            elif signal.Type in [
+                SIGNAL_GROUPOUTPUT, SIGNAL_GROUPINPUT, 
+                IOSystemDomain.SignalType.GroupInput, IOSystemDomain.SignalType.GroupOutput
+                ]:
                 return signal.GroupValue
         return None
 
     def set_signal_value(self, signal, new_value, datatype):
         # Return value
         if signal:
-            if signal.Type in [SIGNAL_DIGITALINPUT, SIGNAL_DIGITALOUTPUT, SIGNAL_ANALOGINPUT, SIGNAL_ANALOGOUTPUT]:
+            if signal.Type in [
+                SIGNAL_DIGITALINPUT, SIGNAL_DIGITALOUTPUT, SIGNAL_ANALOGINPUT, SIGNAL_ANALOGOUTPUT, # Older RobotStudio
+                IOSystemDomain.SignalType.DigitalInput, IOSystemDomain.SignalType.DigitalOutput, # From RobotStudio 2022
+                IOSystemDomain.SignalType.AnalogInput, IOSystemDomain.SignalType.AnalogOutput
+                ]:
                 signal.Value = new_value
                 return True
-            elif signal.Type in [SIGNAL_GROUPOUTPUT, SIGNAL_GROUPINPUT]:
+            elif signal.Type in [
+                SIGNAL_GROUPOUTPUT, SIGNAL_GROUPINPUT, 
+                IOSystemDomain.SignalType.GroupInput, IOSystemDomain.SignalType.GroupOutput
+                ]:
                 signal.WriteGroupValue(new_value)
                 return True
         return False
