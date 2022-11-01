@@ -243,6 +243,9 @@ class plcsim(driver):
                 self.send_block(fdr)
                 rec = self.receive_block()
                 assert (rec.opcode == 128 and rec.user == user and rec.fill_length_1 >= 64), "TODO"
+                # It seems that the response can be multiple.
+                while rec is not None:
+                    rec = self.receive_block()
 
                 # First telegram
                 self.PDU_COUNTER += 1
