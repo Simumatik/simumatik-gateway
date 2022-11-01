@@ -143,7 +143,8 @@ class s7protocol(driver):
         """
         varray = []
         for (var_id, new_value) in variables:
-            varray.append((var_id, self.variables[var_id]['area'], new_value))
+            if new_value != None:
+                varray.append((var_id, self.variables[var_id]['area'], new_value))
 
         res = []
         if len(varray)>0:
