@@ -17,8 +17,19 @@
 from multiprocessing import Pipe
 from typing import Optional
 
-from ..driver import driver
+from ..driver import VariableQuality, driver
+from py_openshowvar import openshowvar
 
+def axis_act_to_list(read_data):
+    result = read_data.decode()
+
+    result = result.replace("{E6AXIS:", "")
+    result = result.replace("}", "")
+
+    # print(result)
+
+    data = result.split(',')
+    return [float(x[4:]) for x in data[:6]]
 
 class development(driver):
     '''
@@ -38,7 +49,8 @@ class development(driver):
         driver.__init__(self, name, pipe, params)
 
         # Parameters
-        self.myparam = 3
+        self.ip = '192.127.138.128'
+        self.port = 7000
 
 
     def connect(self) -> bool:
@@ -48,13 +60,18 @@ class development(driver):
         """
         # Make sure to send a debug message if method returns False
         # self.sendDebugInfo('Error message here') 
+
+        self.connection = openshowvar('192.168.138.128', 7000)
+        if not self.connection.can_connect:
+            self.sendDebugInfo('Cannot connect to KRC4') 
+
         return True
 
 
     def disconnect(self):
         """ Disconnect driver.
         """
-        pass
+        self.connection.close()
 
 
     def loop(self):
@@ -69,15 +86,32 @@ class development(driver):
         : param variables: Variables to add in a dict following the setup format. (See documentation) 
         
         """
-        pass
-
+        for var_id in list(variables.keys()):
+            var_data = dict(variables[var_id])
+            try:
+                var_data['value'] = self.connection.read(var_id)
+                self.variables[var_id] = var_data 
+            except Exception as e:
+                self.sendDebugInfo(f'SETUP: {e} \"{var_id}\"')
 
     def readVariables(self, variables: list) -> list:
         """ Read given variable values. In case that the read is not possible or generates an error BAD quality should be returned.
         : param variables: List of variable ids to be read. 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        return []
+        res = []
+
+        for var_id in variables:
+            try:
+                var_value = self.connection.read(var_id)
+                if var_id == '$AXIS_ACT':
+                    var_value = axis_act_to_list(var_value)
+            except:
+                res.append((var_id, var_value, VariableQuality.ERROR))
+            else:
+                res.append((var_id, var_value, VariableQuality.GOOD))
+
+        return res
 
 
     def writeVariables(self, variables: list) -> list:
@@ -85,4 +119,6 @@ class development(driver):
         : param variables: List of tupples with variable ids and the values to be written (var_id, var_value). 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        return []
+        res = []
+
+        return res
