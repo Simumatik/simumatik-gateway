@@ -11,33 +11,36 @@ def readaxes():
 import time
 from py_openshowvar import openshowvar
 client = openshowvar('192.168.138.128', 7000)
-client.can_connect
+#client.can_connect
+#print(client.can_connect)
 
-print(client.can_connect)
-quit()
 #ov = client.read('$OV_PRO', debug=True)
 
-result = client.read('$AXIS_ACT', debug=True)
+result = client.write('$IOSIM_OPT', '1', debug=True)
+result = client.write('MY_OUTPUTS', '255', debug=True)
+
+
+result = client.write('$IN[1]', '0', debug=True)
+#result = client.read('$OUT[1]', debug=True)
+#result = client.read('MY_INPUTS', debug=True)
+#result = client.read('MY_OUTPUTS', debug=True)
+
+
 #print(result)
-result = result.decode()
-result = result.replace("{E6AXIS:", "")
-result = result.replace("}", "")
-# print(result)
-data = result.split(',')
-data = [float(x[4:]) for x in data[:6]]
-print(data)
+
+print(readaxes())
 
 
 
-counter = 0
-t = time.perf_counter()
-while time.perf_counter()-t < 100:
+# counter = 0
+# t = time.perf_counter()
+# while time.perf_counter()-t < 100:
 
 
-    print(readaxes())
+#     print(readaxes())
 
 
-    counter += 1
-    time.sleep(0.1)
+#     counter += 1
+#     time.sleep(0.1)
 
 client.close()

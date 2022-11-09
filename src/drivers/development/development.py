@@ -61,17 +61,18 @@ class development(driver):
         # Make sure to send a debug message if method returns False
         # self.sendDebugInfo('Error message here') 
 
-        self.connection = openshowvar('192.168.138.128', 7000)
-        if not self.connection.can_connect:
+        self._connection = openshowvar('192.168.138.128', 7000)
+        if not self._connection.can_connect:
             self.sendDebugInfo('Cannot connect to KRC4') 
+            print("self.sendDebugInfo('Cannot connect to KRC4')")
 
-        return True
+        return self._connection.can_connect
 
 
     def disconnect(self):
         """ Disconnect driver.
         """
-        self.connection.close()
+        self._connection.close()
 
 
     def loop(self):
@@ -89,7 +90,12 @@ class development(driver):
         for var_id in list(variables.keys()):
             var_data = dict(variables[var_id])
             try:
-                var_data['value'] = self.connection.read(var_id)
+                var_value = self._connection.read(var_id, debug=False)
+                if var_id == '$AXIS_ACT':
+                    var_value = axis_act_to_list(var_value)
+                    print(var_value)
+
+                var_data['value'] = None    
                 self.variables[var_id] = var_data 
             except Exception as e:
                 self.sendDebugInfo(f'SETUP: {e} \"{var_id}\"')
@@ -103,9 +109,10 @@ class development(driver):
 
         for var_id in variables:
             try:
-                var_value = self.connection.read(var_id)
+                var_value = self._connection.read(var_id, debug=False)
                 if var_id == '$AXIS_ACT':
                     var_value = axis_act_to_list(var_value)
+                    print(var_value)
             except:
                 res.append((var_id, var_value, VariableQuality.ERROR))
             else:
