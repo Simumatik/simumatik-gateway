@@ -69,7 +69,7 @@ class fanuc_roboguide(driver):
         : returns: True if connection established False if not
         """
         try:
-            self._connection = Core('shift-jis')
+            self._connection = Core()
             if self.port:
                 self._connection.PortNumber = self.port
             self._datatable = self._connection.get_DataTable()
