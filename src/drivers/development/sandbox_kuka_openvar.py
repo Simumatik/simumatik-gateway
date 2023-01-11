@@ -16,11 +16,10 @@ client = openshowvar('192.168.138.128', 7000)
 
 #ov = client.read('$OV_PRO', debug=True)
 
-result = client.write('$IOSIM_OPT', '1', debug=True)
-result = client.write('MY_OUTPUTS', '255', debug=True)
+result = client.write('MY_OUTPUTS', '128', debug=False)
+result = client.write('MY_INPUTS', '1596', debug=False)
 
-
-result = client.write('$IN[1]', '0', debug=True)
+#result = client.write('$IN[1]', '0', debug=True)
 #result = client.read('$OUT[1]', debug=True)
 #result = client.read('MY_INPUTS', debug=True)
 #result = client.read('MY_OUTPUTS', debug=True)
