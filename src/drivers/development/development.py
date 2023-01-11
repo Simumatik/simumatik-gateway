@@ -22,12 +22,13 @@ from ..driver import VariableQuality, driver
 from py_openshowvar import openshowvar
 
 def axis_act_to_list(read_data):
+    '''
+    Formats $AxisAct struct to list of floats with axis positions.
+    '''
     result = read_data.decode()
 
     result = result.replace("{E6AXIS:", "")
     result = result.replace("}", "")
-
-    # print(result)
 
     data = result.split(',')
     return [float(x[4:]) for x in data[:6]]
@@ -50,9 +51,8 @@ class development(driver):
         driver.__init__(self, name, pipe, params)
 
         # Parameters
-        self.ip = '192.127.138.128'
+        self.ip = '192.168.138.128'
         self.port = 7000
-
 
     def connect(self) -> bool:
         """ Connect driver.
@@ -62,7 +62,7 @@ class development(driver):
         # Make sure to send a debug message if method returns False
         # self.sendDebugInfo('Error message here') 
 
-        self._connection = openshowvar('192.168.138.128', 7000)
+        self._connection = openshowvar(self.ip, self.port)
         if not self._connection.can_connect:
             self.sendDebugInfo('Cannot connect to KRC4') 
             print("self.sendDebugInfo('Cannot connect to KRC4')")
@@ -88,13 +88,13 @@ class development(driver):
         : param variables: Variables to add in a dict following the setup format. (See documentation) 
         
         """
+        print("add")
         for var_id in list(variables.keys()):
             var_data = dict(variables[var_id])
             try:
                 var_value = self._connection.read(var_id, debug=False)
                 if var_id == '$AXIS_ACT':
                     var_value = axis_act_to_list(var_value)
-                    print(var_value)
 
                 var_data['value'] = None    
                 self.variables[var_id] = var_data 
@@ -113,9 +113,8 @@ class development(driver):
                 var_value = self._connection.read(var_id, debug=False)
                 if var_id == '$AXIS_ACT':
                     var_value = axis_act_to_list(var_value)
-                    print(var_value)
             except:
-                res.append((var_id, var_value, VariableQuality.ERROR))
+                res.append((var_id, var_value, VariableQuality.BAD))
             else:
                 res.append((var_id, var_value, VariableQuality.GOOD))
 
@@ -128,5 +127,13 @@ class development(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
+
+        for (var_id, new_value) in variables:
+            try:
+                self._connection.write(var_id, str(new_value), debug=False)
+            except Exception as e:
+                res.append((var_id, new_value, VariableQuality.BAD))
+            else:
+                res.append((var_id, new_value, VariableQuality.GOOD))
 
         return res
