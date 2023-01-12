@@ -33,7 +33,7 @@ def axis_act_to_list(read_data):
     data = result.split(',')
     return [float(x[4:]) for x in data[:6]]
 
-class development(driver):
+class kuka_officelite(driver):
     '''
     Driver that can be used for development. The driver can be used on a component just assigning the driver type "development".
     Feel free to add your code in the methods below.

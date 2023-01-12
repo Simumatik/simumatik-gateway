@@ -19,7 +19,7 @@ from os import path
 import time
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
-from drivers.development.development import development
+from drivers.kuka_officelite.kuka_officelite import kuka_officelite
 from drivers.driver import VariableOperation, VariableDatatype
 
 # Define your I/O variables here
@@ -31,7 +31,7 @@ VARIABLES = {
 
 # Add your custom logic in this test.
 print(1)
-d = development(None, 'test')
+d = kuka_officelite(None, 'test')
 print(2)
 if d.connect():
     print(3)

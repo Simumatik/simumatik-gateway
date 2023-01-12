@@ -24,25 +24,19 @@ from drivers.driver import VariableOperation, VariableDatatype
 
 # Define your I/O variables here
 VARIABLES = {
-    'MY_OUTPUTS':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
-    'MY_INPUTS':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
-    '$AXIS_ACT': {'datatype': VariableDatatype.FLOAT, 'size': 6, 'operation': VariableOperation.READ},
+    'inputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
+    'outputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
     }
 
 # Add your custom logic in this test.
-print(1)
 d = development(None, 'test')
-print(2)
 if d.connect():
-    print(3)
     d.addVariables(VARIABLES)
 
     counter = 0
     while time.perf_counter() < 5:
-        d.writeVariables([('MY_INPUTS', counter)])
-
-        print(d.readVariables(['MY_OUTPUTS']))
-        print(d.readVariables(['$AXIS_ACT']))
+        d.writeVariables([('inputs', counter)])
+        print(d.readVariables(['outputs']))
         time.sleep(0.1)
         counter += 1
 
