@@ -88,7 +88,6 @@ class kuka_officelite(driver):
         : param variables: Variables to add in a dict following the setup format. (See documentation) 
         
         """
-        print("add")
         for var_id in list(variables.keys()):
             var_data = dict(variables[var_id])
             try:
