@@ -176,12 +176,12 @@ class enip_generic_device(driver):
                 assert len(packet_hex)>8, 'Wrong telegram size'
                 assert packet_hex[4:8] == "0280", 'Invalid package header'
                 self.read_data = packet_hex[-(self.read_size*2):]
-                print("Read:", self.read_data)
+                #print("Read:", self.read_data)
                 # Send data
                 packet = EnipIOpacket(self.write_data, self.io_seq, self.id_io, self.cip_counter).pack()
                 self.udp_socket.sendto(packet, (self.plc_address, 2222))
                 self.io_seq += 1
-                print("Write:", self.write_data)
+                #print("Write:", self.write_data)
                 self.last_package_time = time.perf_counter()
             except:
                 try:
@@ -246,11 +246,18 @@ class enip_generic_device(driver):
         for var_id in variables:
             var_data = self.variables[var_id]
             index = var_data['index']
-            '''
             if var_data['datatype'] == VariableDatatype.BYTE:
-                value = int()
-                res.append((var_id, value, VariableQuality.GOOD))
-            '''
+                value = struct.unpack('B', self.write_data[index:index+1])
+            elif var_data['datatype'] == VariableDatatype.WORD:
+                value = struct.unpack('H', self.write_data[index:index+2])
+            elif var_data['datatype'] == VariableDatatype.FLOAT:
+                value = struct.unpack('f', self.write_data[index:index+4])
+            elif var_data['datatype'] == VariableDatatype.DWORD:
+                value = struct.unpack('I', self.write_data[index:index+4])
+            else:
+                res.append((var_id, var_data['value'], VariableQuality.BAD))
+                continue
+            res.append((var_id, value, VariableQuality.GOOD))
         return res
 
 
@@ -263,7 +270,6 @@ class enip_generic_device(driver):
         for (var_id, new_value) in variables:
             var_data = self.variables[var_id]
             index = var_data['index']
-            
             if var_data['datatype'] == VariableDatatype.BYTE:  
                 self.write_data = self.write_data[:index]+struct.pack('B', new_value)+self.write_data[index+1:]
             elif var_data['datatype'] == VariableDatatype.WORD:  
@@ -272,16 +278,10 @@ class enip_generic_device(driver):
                 self.write_data = self.write_data[:index]+struct.pack('f', new_value)+self.write_data[index+4:]
             elif var_data['datatype'] == VariableDatatype.DWORD:  
                 self.write_data = self.write_data[:index]+struct.pack('I', new_value)+self.write_data[index+4:]
-                
+            else:
+                res.append((var_id, new_value, VariableQuality.BAD))
+                continue
             res.append((var_id, new_value, VariableQuality.GOOD))
-            
-            '''
-            elif var_data['datatype'] == VariableDatatype.WORD:
-                self.write_data = self.write_data[:index]+'{:04x}'.format(new_value)+self.write_data[index+4:]
-            elif var_data['datatype'] == VariableDatatype.DWORD:
-                self.write_data = self.write_data[:index]+'{:08x}'.format(new_value)+self.write_data[index+8:]
-            res.append((var_id, new_value, VariableQuality.GOOD))
-            '''
         self.cip_counter += 1 # Very important to trigger the update in the controller
         return res
     

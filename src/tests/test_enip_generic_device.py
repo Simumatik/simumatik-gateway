@@ -29,15 +29,17 @@ VARIABLES = {
     'IW1':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
     'ID1':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.WRITE},
     'ID2':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.WRITE},
+    'QB0':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
     'QB1':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
-    #'IW1':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
-    #'QB1':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
+    'QW1':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
+    'QD1':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.READ},
+    'QD2':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.READ},
     }
 
 # Add your custom logic in this test.
 d = enip_generic_device(None, 'test')
 d.ip = "192.168.0.250"
-d.read_size = 1
+d.read_size = 12
 d.write_size = 12
 
 if d.connect():
@@ -54,7 +56,8 @@ if d.connect():
             ('ID1', counter),
             ('ID2', counter/3-100),
             ])
-        #d.readVariables(['QB1'])
+        res = d.readVariables(['QB0','QB1','QW1','QD1','QD2'])
+        print(res)
         if int(time.perf_counter())!=last_sec:
             counter += 1 
             last_sec = int(time.perf_counter())
