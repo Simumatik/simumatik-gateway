@@ -1,7 +1,3 @@
-from drivers.driver import driver, DriverStatus, DriverActions
-from multiprocessing import Pipe
-import socket
-import time
 import struct
 
 
@@ -265,6 +261,29 @@ class EncapsulationHeader:
 
 
 class EnipIOpacket():
+    def __init__(self, data:bytes, seq:int, id:int, count:int):
+        self.data = data
+        self.seq = seq
+        self.id = id
+        self.seq_count = count
+
+    def pack(self):
+        data_io = struct.pack('>H', self.seq_count) + self.data
+        res = struct.pack('HHH',
+                           2,
+                           0x8002,
+                           8,
+        )
+        res += struct.pack('>I', int(self.id, 16))
+        res += struct.pack('IHH',
+                           self.seq,
+                           0x00b1,
+                           len(data_io)
+                           )
+        return res+data_io
+
+    
+class EnipIOpacket_old():
     def __init__(self, data, seq, id, count):
         self.data = data
         self.seq = seq
@@ -291,193 +310,3 @@ class EnipIOpacket():
         return result
 
 
-class enip_driver(driver):
-
-    def __init__(self, name, pipe, **kwargs):
-        """ Constructor."""
-        # Initial parameters
-        self.driver_ip = '127.0.0.1'
-        self.connection_path = ''
-        self.read_size = 1
-        self.write_size = 1
-
-        # Object variables
-        self.tcp_socket = None
-        self.udp_socket = None
-        self.plc_socket = None
-        self.plc_address = ""
-
-        # Enip IO packet variables
-        self.io_seq = 0
-        self.cip_counter = -1
-        self.id_io = ""
-        self.write_data = "0"
-        self.read_data = "0"
-
-        # Initialize variable
-        self.input_data = ""
-        for _b in range(0, self.write_size):
-            self.input_data += '{:02x}'.format(0)
-
-        # Inherit
-        driver.__init__(self, name, pipe)
-
-    def check_input_updates(self):
-        if len(self.pending_updates.items)>0:
-            address, value = self.pending_updates.popitem()
-            # TODO: Add real check
-            if (address == "input_data"):
-                self.input_data = value.replace("0x", "")
-
-    def sendEnipIOpacket(self, data):
-        # TODO: Check write data size
-        # Check if data has changed
-        if (self.write_data != data):
-            self.write_data = data
-            self.cip_counter += 1
-            self.print_hex_bin("Write", self.write_data)
-        # Generate packet in hex
-        packet_hex = EnipIOpacket(
-            self.write_data, self.io_seq, self.id_io, self.cip_counter).pack()
-        # Send packet
-        self.udp_socket.sendto(bytes.fromhex(
-            packet_hex), (self.plc_address, 2222))
-        # Update variables
-        self.io_seq += 1
-
-    def listenEnipIOpacket(self):
-        # TODO: Check read data size
-        # Loop to listen until a valid enip packet is found
-        packet_hex = ""
-        while (packet_hex[4:8] != "0280"):
-            packet_hex = self.udp_socket.recv(4096).hex()
-        # Extract data: 1 byte -> 2 hex
-        data = packet_hex[-(self.read_size*2):]
-        if (self.read_data != data):
-            self.read_data = data
-            self.print_hex_bin("Read", self.read_data)
-            # Send PLC data through the pipe. Add 0x before every byte
-            send_data = "".join(["0x"+self.read_data[i:i+self.read_size*2] for i in range(0, len(self.read_data), self.read_size*2)])
-            self.sendUpdate({"output_data":send_data})
-        return self.read_data
-
-    def print_hex_bin(self, text, raw_data):
-        print(text, ': 0x' + str(raw_data) + " (" + bin(
-            int(raw_data, 16))[2:].zfill(int(len(raw_data))*4) + ")")
-
-    def generate_CM_res(self):
-        req_connection_manager = self.plc_socket.recv(4096).hex()
-        connection_manager_packet = EnipPacket.unpack(req_connection_manager)
-        # Save variable for later use
-        self.id_io = connection_manager_packet.specific_data.item_list[1].CM_item_data.id_t_o
-        # Modify third item to match response (from O->T to T->O)
-        connection_manager_packet.specific_data.item_list[2].id = "0080"
-        connection_manager_packet.specific_data.item_list[2].CM_item_data.sin_addr = "00000000"
-        # Create second item data from request and introduce it. TODO: Do not hardcode id_o_t
-        item_data = connection_manager_packet.specific_data.item_list[1].CM_item_data
-        item_data_new = CMitemResData00b2("41370000", item_data.id_t_o, item_data.conn_serial_num,
-                                            item_data.orig_vendor_id, item_data.orig_serial_num, item_data.rpi_o_t, item_data.rpi_t_o)
-        connection_manager_packet.specific_data.item_list[1].CM_item_data = item_data_new
-        # Send response packet
-        self.plc_socket.send(bytes.fromhex(connection_manager_packet.hex()))
-
-    def generate_RS_res(self):
-        req_register_session = self.plc_socket.recv(4096).hex()
-        register_session_packet = EnipPacket.unpack(req_register_session)
-        # Response is the same as request, but introducing the session handle ID (random)
-        register_session_packet.encapsulation_header.set_session_handle(
-            int(self.driver_ip.split('.')[3]))
-        # Send response
-        self.plc_socket.send(bytes.fromhex(register_session_packet.hex()))
-
-    def doSetup(self, setup_data):
-        # Inherit
-        if not driver.doSetup(self, setup_data):
-            return False
-        try:
-            print("DoSetup executed")
-            # Create TCP socket
-            self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.tcp_socket.bind((self.driver_ip, 44818))
-            self.tcp_socket.listen(1)
-            self.tcp_socket.settimeout(5)
-            print("TCP socket created")
-
-            # Wait for connection
-            (self.plc_socket, self.plc_address) = self.tcp_socket.accept()
-            # We just need the IP, not the port
-            self.plc_address = self.plc_address[0]
-            print("Connection established")
-
-            # First packet is the Register Session. Listen to the request and then generate the response
-            self.generate_RS_res()
-            print("RegisterSession response sent")
-
-            # Next packet is the CIP Connection Manager. Listen to the request and then generate the response
-            self.generate_CM_res()
-            print("CommunicationManager response sent")
-
-            # Handshake done. Change to UDP
-            self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.udp_socket.bind((self.driver_ip, 2222))
-            self.udp_socket.settimeout(1.0)
-            print("UDP socket created")
-
-            # Send initial packet to start communication
-            self.sendEnipIOpacket(self.input_data)
-            print("ENIP I/O packet sent")
-
-            # Wait until a ENIP IO packet is received from the PLC
-            self.listenEnipIOpacket()
-            print("ENIP I/O packet received")
-
-            # Setup OK
-            self.changeStatus(DriverStatus.RUNNING)
-
-        except Exception as e:
-            print("Exception in doSetup"+ str(e))
-            self.sendDebugInfo('Exception while running: ' + str(e))
-            self.changeStatus(DriverStatus.CLEANUP)
-
-    def doRun(self):
-        try:
-            # Update input_data
-            self.check_input_updates()
-
-            # Send write data to PLC
-            self.sendEnipIOpacket(self.input_data)
-
-            # Wait until a ENIP IO packet is received from the PLC
-            self.listenEnipIOpacket()
-
-        except Exception as e:
-            print("Exception in doRun"+ str(e))
-            self.sendDebugInfo('Exception while running: ' + str(e))
-            self.changeStatus(DriverStatus.CLEANUP)
-
-    def doCleanup(self):
-        print("doCleanup executed")
-        try:
-            # Close sockets
-            if self.udp_socket:
-                self.udp_socket.close()
-            if self.plc_socket:
-                self.plc_socket.close()
-            if self.tcp_socket:
-                self.tcp_socket.close()
-            # Reset attirbutes
-            self.plc_address = ""
-            self.io_seq = 0
-            self.cip_counter = -1
-            self.id_io = ""
-            self.write_data = "0"
-            self.read_data = "0"
-            self.input_data = ""
-            for _b in range(0, self.write_size):
-                self.input_data += '{:02x}'.format(0)
-
-        except Exception as e:
-            print("Exception in doCleanup")
-            self.sendDebugInfo('Exception during cleanup: ' + str(e))
-        finally:
-            self.changeStatus(DriverStatus.SETUP)

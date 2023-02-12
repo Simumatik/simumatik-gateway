@@ -7,6 +7,7 @@ from .driver import driver, DriverActions, DriverStatus
 from .allenbradley_logix.allenbradley_logix import allenbradley_logix
 from .cprog_cri.cprog_cri import cprog_cri
 from .development.development import development
+from .enip_generic_device.enip_generic_device import enip_generic_device
 from .hokuyo_uam.hokuyo_uam import hokuyo_uam
 from .micro800_http.micro800_http import micro800_http
 from .modbustcp_master.modbustcp_master import modbustcp_master
@@ -27,6 +28,7 @@ registered_drivers = {
   "allenbradley_logix": (allenbradley_logix, "1"),
   "cprog_cri": (cprog_cri, "1"),
   "development": (development,"1"),
+  "enip_generic_device": (enip_generic_device,"1"),
   "hokuyo_uam": (hokuyo_uam,"1"),
   "micro800_http": (micro800_http, "1"),
   "modbustcp_master": (modbustcp_master,"1"),
