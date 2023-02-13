@@ -16,7 +16,7 @@
 
 from multiprocessing import Pipe
 from typing import Optional
-import os, sys
+import sys
 import winreg
 import struct
 import ctypes
@@ -180,11 +180,12 @@ class omron_nexsocket(driver):
                 value_hex = struct.pack('L',new_value)
             elif datatype==VariableDatatype.QWORD:
                 value_hex = struct.pack('Q',new_value)
-            (response, error) = self.process_request(f'AsyncWriteMemText {tagRevision} 1 {tag_address},2,'+value_hex.hex())
+            (_, error) = self.process_request(f'AsyncWriteMemText {tagRevision} 1 {tag_address},2,'+value_hex.hex())
             if error is not None:
                 res.append((var_id, new_value, VariableQuality.BAD))
             else:
                 res.append((var_id, new_value, VariableQuality.GOOD))
+        return res
 
     def process_request(self, request):
         res = []

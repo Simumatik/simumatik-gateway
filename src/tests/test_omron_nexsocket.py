@@ -23,11 +23,11 @@ from drivers.omron_nexsocket.omron_nexsocket import omron_nexsocket
 from drivers.driver import VariableOperation, VariableDatatype
 
 VARIABLES = {
-    'VAR://test':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
-    'VAR://_CurrentTime':{'datatype': VariableDatatype.QWORD, 'size': 1, 'operation': VariableOperation.READ},
-    'VAR://test2':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
-    'VAR://test3':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
-    'VAR://test_B1':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
+    #'VAR://test':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
+    #'VAR://_CurrentTime':{'datatype': VariableDatatype.QWORD, 'size': 1, 'operation': VariableOperation.READ},
+    'VAR://Outputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
+    'VAR://Inputs':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
+    #'VAR://test_B1':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
     #'I1.2':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
     #'Q1.2':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
     #'IW2':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
@@ -48,9 +48,9 @@ if d.connect():
     d.addVariables(VARIABLES)
     counter = 0
     t = time.perf_counter()
-    while time.perf_counter()-t < 10:
+    while True:#time.perf_counter()-t < 10:
 
-        print(d.readVariables(['VAR://test', 'VAR://_CurrentTime', 'VAR://test2']), counter)
-        d.writeVariables([('VAR://test3', counter), ('VAR://test_B1', counter%256)])
+        print(d.readVariables(['VAR://Outputs']), counter)
+        d.writeVariables([('VAR://Inputs', counter%256)])
         counter += 1
     d.disconnect()
