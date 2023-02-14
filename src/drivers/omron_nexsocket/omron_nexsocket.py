@@ -30,7 +30,7 @@ REC_SIZE = 5000
 class omron_nexsocket(driver):
     '''
     Driver that can be used to communicate with the Omron NEX Simulator. It is based on the NexSocket.dll
-    The variable names whould include the complete path, i.e 'VAR://test'.
+    The variable names in Simumatik need to match exactly with the name in the Global Variables at Sysmac Studio.
     Parameters:
     ip: str
         IP address of the Sysmac Simulator. Default = '127.0.0.1'
@@ -65,7 +65,6 @@ class omron_nexsocket(driver):
                 if "Sysmac Studio" in result:
                     key = winreg.OpenKey(main_key, result)
                     OmronSysmac_path = winreg.QueryValueEx(key, "INSTALLPATH")[0]
-                    sys.path.append(OmronSysmac_path) # Add path to system path
                     break
 
             self._connection = ctypes.WinDLL(OmronSysmac_path+'\\MATLAB\\Win32\\NexSocket.dll')
@@ -99,7 +98,7 @@ class omron_nexsocket(driver):
         for var_id in list(variables.keys()):
             try:
                 var_data = dict(variables[var_id])
-                (response, error) = self.process_request(f'GetVarAddrText 1 {var_id}')
+                (response, error) = self.process_request(f'GetVarAddrText 1 VAR://{var_id}')
                 assert error is None and len(response)==3, error
                 tagRevision = response[0].decode('utf-8')
                 address = response[2].decode('utf-8')[:-1] # For some reason there is an extra space
@@ -117,12 +116,13 @@ class omron_nexsocket(driver):
                     assert byte_size==4, 'Wrong datatype definition in controller.'
                 elif var_data['datatype']==VariableDatatype.QWORD:
                     assert byte_size==8, 'Wrong datatype definition in controller.'
+                elif var_data['datatype']==VariableDatatype.FLOAT:
+                    assert byte_size==4, 'Wrong datatype definition in controller.'
                 var_data['tagRevision'] = tagRevision
                 var_data['address'] = address
                 var_data['byte_size'] = byte_size
                 var_data['value'] = self.defaultVariableValue(var_data['datatype'], var_data['size'])
                 self.variables[var_id] = var_data
-
             except Exception as e:
                 self.sendDebugVarInfo((f'SETUP: Bad variable definition: {var_id}, {e}', var_id))
 
@@ -133,26 +133,37 @@ class omron_nexsocket(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
+        payload = ''
         for var_id in variables:
             tagRevision = self.variables[var_id]['tagRevision']
             tag_address = self.variables[var_id]['address']
-            datatype = self.variables[var_id]['datatype']
-            (response, error) = self.process_request(f'AsyncReadMemText {tagRevision} 1 {tag_address},2')
+            if payload == '':
+                payload = f'AsyncReadMemText {tagRevision} {len(variables)}'
+            payload += f' {tag_address},2'
+        if variables:
+            (response, error) = self.process_request(payload)
             if error is None and len(response)==1:
-                value_hex = response[0]
-                if datatype==VariableDatatype.BOOL:
-                    value = value_hex == b'\x01'
-                elif datatype==VariableDatatype.BYTE:
-                    value = struct.unpack('B',value_hex)[0]
-                elif datatype==VariableDatatype.WORD:
-                    value = struct.unpack('H',value_hex)[0]
-                elif datatype==VariableDatatype.INTEGER:
-                    value = struct.unpack('h',value_hex)[0]
-                elif datatype==VariableDatatype.DWORD:
-                    value = struct.unpack('L',value_hex)[0]
-                elif datatype==VariableDatatype.QWORD:
-                    value = struct.unpack('Q',value_hex)[0]
-                res.append((var_id, value, VariableQuality.GOOD))
+                var_values = response[0]
+                for var_id in variables:
+                    datatype = self.variables[var_id]['datatype']
+                    size = max(1,self.variables[var_id]['byte_size']) # TO receive booleans
+                    value_hex = var_values[:size]
+                    var_values = var_values[size:]
+                    if datatype==VariableDatatype.BOOL:
+                        value = value_hex == b'\x01'
+                    elif datatype==VariableDatatype.BYTE:
+                        value = struct.unpack('B',value_hex)[0]
+                    elif datatype==VariableDatatype.WORD:
+                        value = struct.unpack('H',value_hex)[0]
+                    elif datatype==VariableDatatype.INTEGER:
+                        value = struct.unpack('h',value_hex)[0]
+                    elif datatype==VariableDatatype.DWORD:
+                        value = struct.unpack('L',value_hex)[0]
+                    elif datatype==VariableDatatype.QWORD:
+                        value = struct.unpack('Q',value_hex)[0]
+                    elif datatype==VariableDatatype.FLOAT:
+                        value = struct.unpack('f',value_hex)[0]
+                    res.append((var_id, value, VariableQuality.GOOD))
             else:
                 res.append((var_id, None, VariableQuality.BAD))
         return res
@@ -164,6 +175,7 @@ class omron_nexsocket(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
+        payload = ''
         for (var_id, new_value) in variables:
             tagRevision = self.variables[var_id]['tagRevision']
             tag_address = self.variables[var_id]['address']
@@ -180,11 +192,18 @@ class omron_nexsocket(driver):
                 value_hex = struct.pack('L',new_value)
             elif datatype==VariableDatatype.QWORD:
                 value_hex = struct.pack('Q',new_value)
-            (_, error) = self.process_request(f'AsyncWriteMemText {tagRevision} 1 {tag_address},2,'+value_hex.hex())
-            if error is not None:
-                res.append((var_id, new_value, VariableQuality.BAD))
-            else:
-                res.append((var_id, new_value, VariableQuality.GOOD))
+            elif datatype==VariableDatatype.FLOAT:
+                value_hex = struct.pack('f',new_value)
+            if payload == '':
+                payload = f'AsyncWriteMemText {tagRevision} {len(variables)}'
+            payload += f' {tag_address},2,'+value_hex.hex() 
+        if variables:
+            (response, error) = self.process_request(payload)
+            for (var_id, new_value) in variables: 
+                if error is not None:
+                    res.append((var_id, new_value, VariableQuality.BAD))
+                else:
+                    res.append((var_id, new_value, VariableQuality.GOOD))
         return res
 
     def process_request(self, request):
@@ -195,11 +214,11 @@ class omron_nexsocket(driver):
             assert sent_length>0, 'NexSocket connection error sending data.'
             while True:
                 response_length = self._connection.NexSock_receive(self._handle, self._res_buffer, REC_SIZE)
-                if response_length == 0:
+                if response_length == 0: # response end
                     break
-                elif response_length < 0:
+                elif response_length < 0: # response error
                     error = self._res_buffer.value.decode('utf-8')
-                else:
+                else: # response payload
                     res.append(self._res_buffer[:response_length])
         except Exception as e:
             error = e

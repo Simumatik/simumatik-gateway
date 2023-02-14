@@ -23,23 +23,21 @@ from drivers.omron_nexsocket.omron_nexsocket import omron_nexsocket
 from drivers.driver import VariableOperation, VariableDatatype
 
 VARIABLES = {
-    #'VAR://test':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
-    #'VAR://_CurrentTime':{'datatype': VariableDatatype.QWORD, 'size': 1, 'operation': VariableOperation.READ},
-    'VAR://Outputs':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
-    'VAR://Inputs':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
-    #'VAR://test_B1':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
-    #'I1.2':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
-    #'Q1.2':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
-    #'IW2':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
-    #'QW2':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
-    #'IW4':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
-    #'QW4':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
-    #'ID10':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.WRITE},
-    #'QD10':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.READ},
-    #'ID14':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
-    #'QD14':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
-    #'ID18':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.WRITE},
-    #'QD18':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.READ},
+    'Out_BOOL':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
+    'Out_BYTE':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
+    'Out_WORD':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
+    'Out_DWORD':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.READ},
+    'Out_QWORD':{'datatype': VariableDatatype.QWORD, 'size': 1, 'operation': VariableOperation.READ},
+    'Out_INTEGER':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
+    'Out_FLOAT':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.READ},
+    'In_BOOL':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
+    'In_BYTE':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
+    'In_WORD':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
+    'In_DWORD':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.WRITE},
+    'In_QWORD':{'datatype': VariableDatatype.QWORD, 'size': 1, 'operation': VariableOperation.WRITE},
+    'In_INTEGER':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
+    'In_FLOAT':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.WRITE},
+
     }
 
 d = omron_nexsocket(None, 'test')
@@ -48,9 +46,17 @@ if d.connect():
     d.addVariables(VARIABLES)
     counter = 0
     t = time.perf_counter()
-    while True:#time.perf_counter()-t < 10:
+    while time.perf_counter()-t < 10:
 
-        print(d.readVariables(['VAR://Outputs']), counter)
-        d.writeVariables([('VAR://Inputs', counter%256)])
+        res = d.readVariables(['Out_BOOL','Out_BYTE','Out_WORD','Out_DWORD','Out_QWORD','Out_INTEGER','Out_FLOAT'])
+        print(res, counter)
+        d.writeVariables([
+            ('In_BOOL', counter%2),
+            ('In_BYTE', counter%256),
+            ('In_WORD', counter),
+            ('In_DWORD', counter),
+            ('In_QWORD', counter),
+            ('In_INTEGER', counter-1000),
+            ('In_FLOAT', counter/3)])
         counter += 1
     d.disconnect()
