@@ -20,6 +20,7 @@ from typing import Optional
 from ..driver import driver, VariableOperation, VariableQuality
 
 # This driver is based on the RTDE provided by Universal Robots:
+# https://github.com/UniversalRobots/RTDE_Python_Client_Library
 # https://www.universal-robots.com/how-tos-and-faqs/how-to/ur-how-tos/real-time-data-exchange-rtde-guide-22229/
 from .rtde import rtde
 
