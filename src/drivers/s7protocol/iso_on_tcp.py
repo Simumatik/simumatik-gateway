@@ -367,7 +367,7 @@ def connectPLC(socket, rack=0, slot=0):
         # Send specific telegram
         request = b''
         params = [[b'\xC1',b'\x01\x00'],
-                  [b'\xC2',struct.pack('BB', rack, slot)],
+                  [b'\xC2',struct.pack('BB', rack+1, slot)],
                   [b'\xC0',b'\x09']]
         for param in params:
             request += param[0] + struct.pack('B', len(param[1])) + param[1]

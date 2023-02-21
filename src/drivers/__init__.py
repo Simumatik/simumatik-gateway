@@ -46,11 +46,13 @@ registered_drivers = {
 
 if platform.system() == "Windows":
     from .fanuc_roboguide.fanuc_roboguide import fanuc_roboguide
+    from .omron_nexsocket.omron_nexsocket import omron_nexsocket
     from .opcda_client.opcda_client import opcda_client
     from .plcsim.plcsim import plcsim
     from .robotware.robotware import robotware
     from .robodk_api.robodk_api import robodk_api
     registered_drivers.update({"fanuc_roboguide": (fanuc_roboguide, "1")})
+    registered_drivers.update({"omron_nexsocket": (omron_nexsocket, "1")})
     registered_drivers.update({"opcda_client": (opcda_client, "1")})
     registered_drivers.update({"plcsim": (plcsim, "1")})
     registered_drivers.update({"abb_driver": (robotware,"1")}) # TODO: Fix. Name is different to retrocompatibility
