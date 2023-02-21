@@ -18,8 +18,11 @@
 from multiprocessing import Pipe
 from typing import Optional
 
-from ..driver import VariableQuality, driver
-from py_openshowvar import openshowvar
+from ..driver import VariableQuality, VariableDatatype, driver
+#from py_openshowvar import openshowvar
+import socket
+import struct
+import random
 
 def axis_act_to_list(read_data):
     '''
@@ -32,6 +35,47 @@ def axis_act_to_list(read_data):
 
     data = result.split(',')
     return [float(x[4:]) for x in data[:6]]
+
+def pack_read_request(var_id, msg_id):
+    var_id_len = len(var_id)
+    flag = 0
+    req_len = var_id_len + 3
+
+    return struct.pack(
+        '!HHBH'+str(var_id_len)+'s',
+            msg_id,
+            req_len,
+            flag,
+            var_id_len,
+            var_id
+    ) 
+
+def pack_write_request(var_id, value, msg_id):
+    var_id_len = len(var_id)
+    value_len = len(value)
+    flag = 1
+    req_len = var_id_len + 3 + 2 + value_len
+    
+    return struct.pack(
+        '!HHBH'+str(var_id_len)+'s'+'H'+str(value_len)+'s',
+        msg_id,
+        req_len,
+        flag,
+        var_id_len,
+        var_id,
+        value_len,
+        value
+        )
+
+def read_response(response, msg_id):
+    if response is not None:
+        value_len = len(response) - struct.calcsize('!HHBH') - 3
+        result = struct.unpack('!HHBH'+str(value_len)+'s'+'3s', response)
+        recieved_msg_id, body_len, flag, value_len, value, isok = result
+        if recieved_msg_id == msg_id and result[-1].endswith(b'\x01'):
+            return value
+    return None
+
 
 class kuka_varproxy(driver):
     '''
@@ -49,10 +93,12 @@ class kuka_varproxy(driver):
         """
         # Inherit
         driver.__init__(self, name, pipe, params)
-
+        
         # Parameters
         self.ip = '192.168.138.128'
         self.port = 7000
+
+
 
     def connect(self) -> bool:
         """ Connect driver.
@@ -62,13 +108,16 @@ class kuka_varproxy(driver):
         # Make sure to send a debug message if method returns False
         # self.sendDebugInfo('Error message here') 
 
-        self._connection = openshowvar(self.ip, self.port)
-        if not self._connection.can_connect:
+        self.msg_id = random.randint(1, 100)
+        self._connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        try:
+            ret = self._connection.connect_ex((self.ip, self.port))
+            return ret == 0
+        except socket.error:
             self.sendDebugInfo('Cannot connect to KRC4') 
             print("self.sendDebugInfo('Cannot connect to KRC4')")
-
-        return self._connection.can_connect
-
+            return False
 
     def disconnect(self):
         """ Disconnect driver.
@@ -91,7 +140,10 @@ class kuka_varproxy(driver):
         for var_id in list(variables.keys()):
             var_data = dict(variables[var_id])
             try:
-                var_value = self._connection.read(var_id, debug=False)
+                self.msg_id = (self.msg_id + 1) % 65536
+                self._connection.send(pack_read_request(var_id.encode(), self.msg_id))
+                var_value = read_response(self._connection.recv(256), self.msg_id)
+                
                 if var_id == '$AXIS_ACT':
                     var_value = axis_act_to_list(var_value)
 
@@ -109,11 +161,23 @@ class kuka_varproxy(driver):
 
         for var_id in variables:
             try:
-                var_value = self._connection.read(var_id, debug=False)
+                self.msg_id = (self.msg_id + 1) % 65536
+                self._connection.send(pack_read_request(var_id.encode(), self.msg_id))
+                var_value = read_response(self._connection.recv(256), self.msg_id)
+
                 if var_id == '$AXIS_ACT':
                     var_value = axis_act_to_list(var_value)
-            except:
+                else:
+                    type = self.variables[var_id]['datatype']
+                    if type in [VariableDatatype.INTEGER, VariableDatatype.BYTE, VariableDatatype.WORD, VariableDatatype.DWORD, VariableDatatype.QWORD]:
+                        var_value = int(var_value)
+                    elif type == VariableDatatype.FLOAT:
+                        var_value = float(var_value)
+                        
+                    
+            except Exception as e:
                 res.append((var_id, var_value, VariableQuality.BAD))
+                print(f"read error e: {e}")
             else:
                 res.append((var_id, var_value, VariableQuality.GOOD))
 
@@ -129,9 +193,13 @@ class kuka_varproxy(driver):
 
         for (var_id, new_value) in variables:
             try:
-                self._connection.write(var_id, str(new_value), debug=False)
+                self.msg_id = (self.msg_id + 1) % 65536
+                self._connection.send(pack_write_request(var_id.encode(), str(new_value).encode(), self.msg_id))
+                var_value = read_response(self._connection.recv(256), self.msg_id)
+
             except Exception as e:
                 res.append((var_id, new_value, VariableQuality.BAD))
+                print(f"write error e: {e}")
             else:
                 res.append((var_id, new_value, VariableQuality.GOOD))
 

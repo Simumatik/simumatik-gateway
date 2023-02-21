@@ -24,26 +24,32 @@ from drivers.driver import VariableOperation, VariableDatatype
 
 # Define your I/O variables here
 VARIABLES = {
-    'MY_OUTPUTS':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
-    'MY_INPUTS':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
+    'Out_BOOL':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
+    'Out_INTEGER':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
+    'Out_FLOAT':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.READ},
+    'In_BOOL':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
+    'In_INTEGER':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
+    'In_FLOAT':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.WRITE},
     '$AXIS_ACT': {'datatype': VariableDatatype.FLOAT, 'size': 6, 'operation': VariableOperation.READ},
     }
 
 # Add your custom logic in this test.
-print(1)
+
 d = kuka_varproxy(None, 'test')
-print(2)
+d.ip = '192.168.138.133'
+
 if d.connect():
-    print(3)
     d.addVariables(VARIABLES)
-
     counter = 0
-    while time.perf_counter() < 5:
-        d.writeVariables([('MY_INPUTS', counter)])
+    t = time.perf_counter()
+    while time.perf_counter()-t < 10:
 
-        print(d.readVariables(['MY_OUTPUTS']))
-        print(d.readVariables(['$AXIS_ACT']))
-        time.sleep(0.1)
+        res = d.readVariables(['Out_BOOL','Out_INTEGER','Out_FLOAT'])
+        print(res, counter)
+        d.writeVariables([
+            ('In_BOOL', counter%2),
+            ('In_INTEGER', counter-1000),
+            ('In_FLOAT', counter/3)
+            ])
         counter += 1
-
     d.disconnect()

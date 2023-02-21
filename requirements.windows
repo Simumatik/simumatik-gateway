@@ -9,4 +9,3 @@ pythonnet==3.0.1
 pywin32==304
 roslibpy==1.3.0
 SimpleWebSocketServer==0.1.1
-py_openshowvar==1.1.7
