@@ -19,7 +19,6 @@ from multiprocessing import Pipe
 from typing import Optional
 
 from ..driver import VariableQuality, VariableDatatype, driver
-#from py_openshowvar import openshowvar
 import socket
 import struct
 import random
@@ -79,11 +78,12 @@ def read_response(response, msg_id):
 
 class kuka_varproxy(driver):
     '''
-    Driver that can be used for development. The driver can be used on a component just assigning the driver type "development".
-    Feel free to add your code in the methods below.
+    Driver that can be used for communication with a Kuka Varproxy server, installed on a KUKA Robot Controller
     Parameters:
-    myparam: int
-        This is just an example of a driver parameter. Default = 3
+    ip: string
+        The IP-address of the KukaVarProxy server.
+    port: int
+        The port number used to communicate with KukaVarProxy server
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
@@ -116,7 +116,6 @@ class kuka_varproxy(driver):
             return ret == 0
         except socket.error:
             self.sendDebugInfo('Cannot connect to KRC4') 
-            print("self.sendDebugInfo('Cannot connect to KRC4')")
             return False
 
     def disconnect(self):
@@ -143,9 +142,6 @@ class kuka_varproxy(driver):
                 self.msg_id = (self.msg_id + 1) % 65536
                 self._connection.send(pack_read_request(var_id.encode(), self.msg_id))
                 var_value = read_response(self._connection.recv(256), self.msg_id)
-                
-                if var_id == '$AXIS_ACT':
-                    var_value = axis_act_to_list(var_value)
 
                 var_data['value'] = None    
                 self.variables[var_id] = var_data 
@@ -167,17 +163,14 @@ class kuka_varproxy(driver):
 
                 if var_id == '$AXIS_ACT':
                     var_value = axis_act_to_list(var_value)
-                else:
-                    type = self.variables[var_id]['datatype']
-                    if type in [VariableDatatype.INTEGER, VariableDatatype.BYTE, VariableDatatype.WORD, VariableDatatype.DWORD, VariableDatatype.QWORD]:
-                        var_value = int(var_value)
-                    elif type == VariableDatatype.FLOAT:
-                        var_value = float(var_value)
+                elif self.variables[var_id]['datatype'] in [VariableDatatype.INTEGER, VariableDatatype.BYTE, VariableDatatype.WORD, VariableDatatype.DWORD, VariableDatatype.QWORD]:
+                    var_value = int(var_value)
+                elif self.variables[var_id]['datatype'] == VariableDatatype.FLOAT:
+                    var_value = float(var_value)
                         
                     
             except Exception as e:
                 res.append((var_id, var_value, VariableQuality.BAD))
-                print(f"read error e: {e}")
             else:
                 res.append((var_id, var_value, VariableQuality.GOOD))
 
@@ -199,7 +192,6 @@ class kuka_varproxy(driver):
 
             except Exception as e:
                 res.append((var_id, new_value, VariableQuality.BAD))
-                print(f"write error e: {e}")
             else:
                 res.append((var_id, new_value, VariableQuality.GOOD))
 
