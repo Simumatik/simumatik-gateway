@@ -29,7 +29,7 @@ registered_drivers = {
   "cprog_cri": (cprog_cri, "1"),
   "development": (development,"1"),
   "hokuyo_uam": (hokuyo_uam,"1"),
-  "kuka_officelite": (kuka_varproxy, "1"),
+  "kuka_varproxy": (kuka_varproxy, "1"),
   "micro800_http": (micro800_http, "1"),
   "modbustcp_master": (modbustcp_master,"1"),
   "mqtt_client": (mqtt_client,"1"),
