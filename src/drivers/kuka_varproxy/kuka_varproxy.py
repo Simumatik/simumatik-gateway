@@ -81,9 +81,9 @@ class kuka_varproxy(driver):
     Driver that can be used for communication with a Kuka Varproxy server, installed on a KUKA Robot Controller
     Parameters:
     ip: string
-        The IP-address of the KukaVarProxy server.
+        The IP-address of the KukaVarProxy server. Default = '192.168.138.1'
     port: int
-        The port number used to communicate with KukaVarProxy server
+        The port number used to communicate with KukaVarProxy server. Default = 7000
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
@@ -95,22 +95,16 @@ class kuka_varproxy(driver):
         driver.__init__(self, name, pipe, params)
         
         # Parameters
-        self.ip = '192.168.138.128'
+        self.ip = '192.168.138.1'
         self.port = 7000
-
 
 
     def connect(self) -> bool:
         """ Connect driver.
-        
         : returns: True if connection established False if not
         """
-        # Make sure to send a debug message if method returns False
-        # self.sendDebugInfo('Error message here') 
-
         self.msg_id = random.randint(1, 100)
         self._connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
         try:
             ret = self._connection.connect_ex((self.ip, self.port))
             return ret == 0
@@ -118,16 +112,11 @@ class kuka_varproxy(driver):
             self.sendDebugInfo('Cannot connect to KRC4') 
             return False
 
+
     def disconnect(self):
         """ Disconnect driver.
         """
         self._connection.close()
-
-
-    def loop(self):
-        """ Runs every iteration while the driver is active. Only use if strictly necessary.
-        """
-        pass
 
 
     def addVariables(self, variables: dict):
@@ -141,12 +130,12 @@ class kuka_varproxy(driver):
             try:
                 self.msg_id = (self.msg_id + 1) % 65536
                 self._connection.send(pack_read_request(var_id.encode(), self.msg_id))
-                var_value = read_response(self._connection.recv(256), self.msg_id)
-
+                read_response(self._connection.recv(256), self.msg_id)
                 var_data['value'] = None    
                 self.variables[var_id] = var_data 
             except Exception as e:
                 self.sendDebugInfo(f'SETUP: {e} \"{var_id}\"')
+
 
     def readVariables(self, variables: list) -> list:
         """ Read given variable values. In case that the read is not possible or generates an error BAD quality should be returned.
@@ -154,26 +143,21 @@ class kuka_varproxy(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
-
         for var_id in variables:
             try:
                 self.msg_id = (self.msg_id + 1) % 65536
                 self._connection.send(pack_read_request(var_id.encode(), self.msg_id))
                 var_value = read_response(self._connection.recv(256), self.msg_id)
-
                 if var_id == '$AXIS_ACT':
                     var_value = axis_act_to_list(var_value)
                 elif self.variables[var_id]['datatype'] in [VariableDatatype.INTEGER, VariableDatatype.BYTE, VariableDatatype.WORD, VariableDatatype.DWORD, VariableDatatype.QWORD]:
                     var_value = int(var_value)
                 elif self.variables[var_id]['datatype'] == VariableDatatype.FLOAT:
                     var_value = float(var_value)
-                        
-                    
             except Exception as e:
                 res.append((var_id, var_value, VariableQuality.BAD))
             else:
                 res.append((var_id, var_value, VariableQuality.GOOD))
-
         return res
 
 
@@ -183,16 +167,13 @@ class kuka_varproxy(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
-
         for (var_id, new_value) in variables:
             try:
                 self.msg_id = (self.msg_id + 1) % 65536
                 self._connection.send(pack_write_request(var_id.encode(), str(new_value).encode(), self.msg_id))
-                var_value = read_response(self._connection.recv(256), self.msg_id)
-
+                read_response(self._connection.recv(256), self.msg_id)
             except Exception as e:
                 res.append((var_id, new_value, VariableQuality.BAD))
             else:
                 res.append((var_id, new_value, VariableQuality.GOOD))
-
         return res
