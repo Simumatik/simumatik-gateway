@@ -76,7 +76,7 @@ class omron_nexsocket(driver):
             assert self._handle.value>0, f'Connection did not return valid handle ({self._handle}).'
             return True
         except Exception as e:
-            self.sendDebugInfo('Error during connection: {e}') 
+            self.sendDebugInfo(f'Error during connection: {e}') 
         return False
 
 
