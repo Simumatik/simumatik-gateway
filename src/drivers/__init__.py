@@ -1,7 +1,5 @@
 import platform
 
-from drivers.rosbridge.rosbridge import rosbridge
-
 from .driver import driver, DriverActions, DriverStatus
 
 from .allenbradley_logix.allenbradley_logix import allenbradley_logix
@@ -51,9 +49,11 @@ if platform.system() == "Windows":
     from .plcsim.plcsim import plcsim
     from .robotware.robotware import robotware
     from .robodk_api.robodk_api import robodk_api
+    from .yaskawa_plci.yaskawa_plci import yaskawa_plci
     registered_drivers.update({"fanuc_roboguide": (fanuc_roboguide, "1")})
     registered_drivers.update({"omron_nexsocket": (omron_nexsocket, "1")})
     registered_drivers.update({"opcda_client": (opcda_client, "1")})
     registered_drivers.update({"plcsim": (plcsim, "1")})
     registered_drivers.update({"abb_driver": (robotware,"1")}) # TODO: Fix. Name is different to retrocompatibility
     registered_drivers.update({"robodk_driver": (robodk_api, "1")}) # TODO: Fix. name is different to retrocompatibility
+    registered_drivers.update({"yaskawa_plci": (yaskawa_plci, "1")})
