@@ -33,7 +33,7 @@ def axis_act_to_list(read_data):
     result = result.replace("}", "")
 
     data = result.split(',')
-    return [float(x[4:]) for x in data[:6]]
+    return [float(x[4:]) for x in data]
 
 def pack_read_request(var_id, msg_id):
     var_id_len = len(var_id)
