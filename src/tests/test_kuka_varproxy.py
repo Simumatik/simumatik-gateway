@@ -30,7 +30,7 @@ VARIABLES = {
     'In_BOOL':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
     'In_INTEGER':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
     'In_FLOAT':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.WRITE},
-    '$AXIS_ACT': {'datatype': VariableDatatype.FLOAT, 'size': 6, 'operation': VariableOperation.READ},
+    '$AXIS_ACT': {'datatype': VariableDatatype.FLOAT, 'size': 12, 'operation': VariableOperation.READ},
     }
 
 # Add your custom logic in this test.
