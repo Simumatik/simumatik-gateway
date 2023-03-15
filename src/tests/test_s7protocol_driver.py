@@ -43,33 +43,24 @@ d = s7protocol(None, 'test')
 d.ip = '192.168.1.250'
 # For S-1200
 d.rack = 0
-d.slot = 2
+d.slot = 1
 # For Logo!
 #d.rack = 0
 #d.slot = 2
 if d.connect():
     d.addVariables(VARIABLES)
-
     counter = 0
-    while counter < 5:
-        d.writeVariables([('IB0', counter)])
-        d.writeVariables([('I1.2', counter%2)])
-        d.writeVariables([('IW2', counter)])
-        d.writeVariables([('IW4', -counter)])
-        d.writeVariables([('ID10', counter)])
-        d.writeVariables([('ID14', -16*counter)])
-        d.writeVariables([('ID18', 3.1415*counter)])
+    t = time.perf_counter()
+    while time.perf_counter()-t < 10:
 
-        time.sleep(1)
-
-        print(d.readVariables(['QB0']))
-        print(d.readVariables(['Q1.2']))
-        print(d.readVariables(['QW2']))
-        print(d.readVariables(['QW4']))
-        print(d.readVariables(['QD10']))
-        print(d.readVariables(['QD14']))
-        print(d.readVariables(['QD18']))
-
+        res = d.readVariables(['QB0','Q1.2','QW2','QD10','QW4','QW10000','QD18'])
+        print(res, counter)
+        d.writeVariables([
+            ('I1.2', counter%2),
+            ('IB0', counter%256),
+            ('IW2', counter),
+            ('ID10', counter),
+            ('IW4', counter-1000),
+            ('ID18', counter/3)])
         counter += 1
-
     d.disconnect()
