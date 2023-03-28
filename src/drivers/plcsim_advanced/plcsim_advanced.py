@@ -67,11 +67,9 @@ except:
 
 class plcsim_advanced(driver):
     '''
-    Driver that can be used for development. The driver can be used on a component just assigning the driver type "development".
-    Feel free to add your code in the methods below.
+    Driver that can be used together with a PLCSim Advanced Instance
     Parameters:
-    myparam: int
-        This is just an example of a driver parameter. Default = 3
+    instanceName : The name of the PLC Sim Advanced Instance
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
@@ -122,14 +120,11 @@ class plcsim_advanced(driver):
         
         """
         self.connection.UpdateTagList()
-        data = self.connection.TagInfos
-        print(data.Length)
 
         for var_id in list(variables.keys()):
             var_data = dict(variables[var_id])
             for tag in self.connection.TagInfos:
                 if var_id == tag.ToString():
-                    print(f"{tag.ToString()} {tag.PrimitiveDataType}")
                     var_data['PrimitiveDataType'] = tag.PrimitiveDataType
                     var_data['value'] = None
                     self.variables[var_id] = var_data
@@ -137,7 +132,6 @@ class plcsim_advanced(driver):
 
             if not "PrimitiveDataType" in var_data:
                 self.sendDebugVarInfo(('SETUP: Bad variable definition: {}'.format(var_id), var_id))
-                print('SETUP: Bad variable definition: {}'.format(var_id))
     
 
     def readVariables(self, variables: list) -> list:
