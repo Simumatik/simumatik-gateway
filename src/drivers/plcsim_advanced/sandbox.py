@@ -3,7 +3,7 @@ import os
 import clr
 import time
 
-NAME = "safetytest" #"drivertest"
+NAME = "drivertest"
 
 p = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(p)
@@ -28,23 +28,23 @@ else:
             connection = SimulationRuntimeManager.CreateInterface(NAME)
             
             # # Get operating state
-            # state = connection.OperatingState
-            # print(state)
+            state = connection.OperatingState
+            print(state)
 
-            # connection.UpdateTagList()
+            connection.UpdateTagList()
 
-            # data = connection.TagInfos
-            # print(data.Length)
+            data = connection.TagInfos
+            print(data.Length)
 
-            # for tag in connection.TagInfos:
-            #     print(f"{tag.ToString()} {tag.PrimitiveDataType}")
+            for tag in connection.TagInfos:
+                print(f"{tag.ToString()} {tag.PrimitiveDataType}")
 
-            for i in range(10):
-                connection.WriteBool('"ESTOP Ch1"', i%2==0)
-                connection.WriteBool("TestHighSafe", i%2==0)
-                connection.WriteBool("TestHigherSafe", i%2==0)
-                connection.WriteBool("Reset_Safety", i%2==0)
-                time.sleep(1)
+            # for i in range(10):
+            #     connection.WriteBool('"ESTOP Ch1"', i%2==0)
+            #     connection.WriteBool("TestHighSafe", i%2==0)
+            #     connection.WriteBool("TestHigherSafe", i%2==0)
+            #     connection.WriteBool("Reset_Safety", i%2==0)
+            #     time.sleep(1)
 
 
 
