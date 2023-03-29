@@ -27,6 +27,7 @@ from .universal_robots.universal_robots import universal_robots
 registered_drivers = {
   "allenbradley_logix": (allenbradley_logix, "1"),
   "cprog_cri": (cprog_cri, "1"),
+  "development": (development, "1"),
   "hokuyo_uam": (hokuyo_uam,"1"),
   "kuka_varproxy": (kuka_varproxy, "1"),
   "micro800_http": (micro800_http, "1"),
@@ -55,6 +56,6 @@ if platform.system() == "Windows":
     registered_drivers.update({"omron_nexsocket": (omron_nexsocket, "1")})
     registered_drivers.update({"opcda_client": (opcda_client, "1")})
     registered_drivers.update({"plcsim": (plcsim, "1")})
-    registered_drivers.update({"development": (plcsim_advanced,"1")})
+    registered_drivers.update({"plcsim_advanced": (plcsim_advanced,"1")})
     registered_drivers.update({"abb_driver": (robotware,"1")}) # TODO: Fix. Name is different to retrocompatibility
     registered_drivers.update({"robodk_driver": (robodk_api, "1")}) # TODO: Fix. name is different to retrocompatibility
