@@ -67,7 +67,7 @@ except:
 
 class plcsim_advanced(driver):
     '''
-    Driver that can be used together with a PLCSim Advanced Instance
+    Driver that can be used together with a local PLCSim Advanced Instance, using the Simulation Runtime API.
     Parameters:
     instanceName : The name of the PLC Sim Advanced Instance
     '''
