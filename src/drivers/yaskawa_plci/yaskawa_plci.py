@@ -35,7 +35,6 @@ try:
         while True:
             path,_,_ = winreg.EnumValue(main_key, i)
             i += 1
-            print(path)
             if "PlciDotNet" in path:
                 dll_path = '\\'.join(path.split('\\')[:-1])
                 sys.path.append(dll_path) # Add path to system pat
@@ -129,7 +128,6 @@ class yaskawa_plci(driver):
         except Exception as e:
             self.sendDebugInfo('Exception '+str(e))
                  
-
     def readVariables(self, variables: list) -> list:
         """ Read given variable values. In case that the read is not possible or generates an error BAD quality should be returned.
         : param variables: List of variable ids to be read. 
