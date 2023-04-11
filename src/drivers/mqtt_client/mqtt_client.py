@@ -59,7 +59,7 @@ class mqtt_client(driver):
         self.retain = True
         self.username = None
         self.password = None
-        self.enable_SSL_TLS = False
+        self.enable_ssl_tls = False
 
         # Interal vars
         self.new_values = {}
@@ -76,7 +76,7 @@ class mqtt_client(driver):
             self._connection = mqtt.Client(self._name, clean_session=not self.retain)
             self._connection.on_message = self.onMessage
             
-            if self.enable_SSL_TLS:
+            if self.enable_ssl_tls:
                 self._connection.tls_set(tls_version=ssl.PROTOCOL_TLSv1_2)
 
             #self._connection.on_log = self.onLog
