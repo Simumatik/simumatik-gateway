@@ -17,6 +17,7 @@
 import paho.mqtt.client as mqtt
 from multiprocessing import Pipe
 from typing import Optional
+import ssl
 
 from ..driver import driver, VariableOperation, VariableQuality
 
@@ -58,6 +59,7 @@ class mqtt_client(driver):
         self.retain = True
         self.username = None
         self.password = None
+        self.enable_SSL_TLS = False
 
         # Interal vars
         self.new_values = {}
@@ -73,6 +75,10 @@ class mqtt_client(driver):
 
             self._connection = mqtt.Client(self._name, clean_session=not self.retain)
             self._connection.on_message = self.onMessage
+            
+            if self.enable_SSL_TLS:
+                self._connection.tls_set(tls_version=ssl.PROTOCOL_TLSv1_2)
+
             #self._connection.on_log = self.onLog
             if self.username is not None:
                 self._connection.username_pw_set(self.username, self.password)
