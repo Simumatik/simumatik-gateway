@@ -66,7 +66,7 @@ class robotware(driver):
     This driver uses the RobotWare API to connect to a robot controller.
     
     The driver will always provide access to the robot axis through the variable called "Axis" (float[6]).
-    Optional variable definitions are used to access Station Parameters in RobotDK to be read or written by the driver.
+    Optional variable definitions are used to access Input and Output signals to be read or written by the driver.
 
     controller: str
         Robot name in RobotWare. Default = '', will take the first that founds.
