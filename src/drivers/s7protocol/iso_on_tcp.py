@@ -468,8 +468,8 @@ def getAreaFromString(vaddress, vdtype):
                             1,
                             0,
                             area,
-                            int(tstart/0x1000),
-                            int(tstart%0x1000))
+                            int(tstart/0x10000),
+                            int(tstart%0x10000))
 
         # 'Area', 'Start', 'Count', 'Type', 'DB', 'Formated'
         return DataArea(Area=area, Type=datatype, DB=0, Start=start, Count=1, Formated=areaformated)
