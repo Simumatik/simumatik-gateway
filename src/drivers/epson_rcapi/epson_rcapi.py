@@ -77,6 +77,8 @@ class epson_rcapi(driver):
 
         # Parameters
         self.connection_name = ''
+        self.server_instance = 0
+        self.project = ''
 
 
     def connect(self) -> bool:
@@ -89,11 +91,18 @@ class epson_rcapi(driver):
                 raise Exception('Yaskawa Plci DLL not found')
 
             self._connection = RCAPINet.Spel()
+            self._connection.ServerInstance = self.server_instance
+            #self._connection.CommandTask = 1
             self._connection.Initialize()
+            #self._connection.Connect(self.connection_name)
+            
             res = self._connection.GetConnectionInfo()
             for i in res:
-                if (i.ConnectionName == self.connection_name) or (self.connection_name=="" and i.ConnectionName!="USB"):
+                if i.ConnectionName == self.connection_name:
+                    self._connection.Project = self.project
                     self._connection.Connect(i.ConnectionNumber)
+                    self._connection.robot = 1
+                    self._connection.Start(0)
                     self.sendDebugInfo(f'Connected to {i.ConnectionName}')
                     return True
 

@@ -23,21 +23,22 @@ from drivers.modbustcp_master.modbustcp_master import modbustcp_master
 from drivers.driver import VariableOperation, VariableDatatype
 
 VARIABLES = {
-    '1':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
-    '201':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
-    '10001':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
-    '10301':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
+    #'1':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
+    #'201':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
+    #'10001':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
+    #'10301':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
     '30001':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
-    '30031':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
+    #'30031':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
     '40001':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
-    '40041':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
+    #'40041':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
     }
 
 d = modbustcp_master(None, 'test')
-d.host = 'localhost'
+d.host = '192.168.1.253'
 d.port = 502
 
 if d.connect():
+    d._connection.open()
     res = d.addVariables(VARIABLES)
     print(d.variables)
 
@@ -45,8 +46,8 @@ if d.connect():
     start = time.perf_counter()
     while time.perf_counter()-start < 5:
         d.writeVariables([('1', counter%2), ('40001', counter)])
-        print(d.readVariables(['10001', '30001']))
-        #time.sleep(0.1)
+        print(d.readVariables(['30001']))
+        time.sleep(0.1)
         counter += 1
 
     d.disconnect()

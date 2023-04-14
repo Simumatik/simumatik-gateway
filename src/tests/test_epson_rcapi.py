@@ -37,15 +37,19 @@ VARIABLES = {
     }
 
 d = epson_rcapi('test', None)
+d.server_instance = 1
 d.connection_name = 'C4 Sample'
+d.project = 'C:\EpsonRC70\projects\SimulatorDemos\C4_sample\C4_sample.sprj'
 if d.connect():
     '''
     d.addVariables(VARIABLES)
     
     counter = 0
     '''
-    while time.perf_counter() < 10:
-        res = d._connection.Agl(1)
+    while True:#time.perf_counter() < 10:
+        for i in range(5):
+            res = d._connection.Agl(i+1)
+            print(i+1, res)
         '''
         d.writeVariables([('inputs', counter)])
         print(d.readVariables(['Axis', 'outputs']))
