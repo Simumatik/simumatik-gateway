@@ -76,10 +76,12 @@ class twincat_ads(driver):
         Any error adding a variable should be communicated to the server using sendDebugInfo() method.
         : param variables: Variables to add in a dict following the setup format. (See documentation) 
         """
-        for var_id in list(variables.keys()):
-            var_data = dict(variables[var_id])
+        for var_id, var_data in variables.items():
             try:
-                var_data['value'] = self._connection.read_by_name(var_id)
+                # Try to read, throws exception if the variable is not found
+                self._connection.read_by_name(var_id)
+
+                var_data['value'] = None # Force first update
                 self.variables[var_id] = var_data 
             except Exception as e:
                 self.sendDebugInfo(f'SETUP: {e} \"{var_id}\"')
