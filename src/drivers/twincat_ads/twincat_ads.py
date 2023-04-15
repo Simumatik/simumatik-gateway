@@ -58,7 +58,8 @@ class twincat_ads(driver):
 
         # Check connection status.
         state = self._connection.read_state()
-        if state[0] == 5:
+        # State 5: Run, State 6: Stop
+        if state[0] == 5 or state[0] == 6:
             return True
         else:
             self.sendDebugInfo(f"Driver not connected, ADS state = {state[0]}") 
@@ -85,7 +86,7 @@ class twincat_ads(driver):
                 self.variables[var_id] = var_data 
             except Exception as e:
                 self.sendDebugInfo(f'SETUP: {e} \"{var_id}\"')
-                
+
                 
     def readVariables(self, variables: list) -> list:
         """ Read given variable values. In case that the read is not possible or generates an error BAD quality should be returned.
