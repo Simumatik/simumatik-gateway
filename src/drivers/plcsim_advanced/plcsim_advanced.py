@@ -61,7 +61,7 @@ try:
         else: # 32-Bit OS
             clr.FindAssembly("Siemens.Simatic.Simulation.Runtime.Api.x86")
             clr.AddReference("Siemens.Simatic.Simulation.Runtime.Api.x86")
-        from Siemens.Simatic.Simulation.Runtime import SimulationRuntimeManager, EOperatingState, EPrimitiveDataType
+        from Siemens.Simatic.Simulation.Runtime import SimulationRuntimeManager, SDataValue, SDataValueByName, EOperatingState, EPrimitiveDataType
 except:
     pass
 
@@ -82,6 +82,7 @@ class plcsim_advanced(driver):
 
         # Parameters
         self.instanceName = "s7-1500"
+        
 
 
     def connect(self) -> bool:
@@ -122,61 +123,73 @@ class plcsim_advanced(driver):
         self._connection.UpdateTagList()
 
         for var_id in list(variables.keys()):
-            var_data = dict(variables[var_id])
-            for tag in self._connection.TagInfos:
-                if var_id == tag.ToString():
-                    var_data['PrimitiveDataType'] = tag.PrimitiveDataType
-                    var_data['value'] = None
-                    self.variables[var_id] = var_data
-                    break
-
-            if not "PrimitiveDataType" in var_data:
+            try:
+                var_data = dict(variables[var_id])
+                var_data['sdatavalue'] = SDataValueByName()
+                var_data['sdatavalue'].Name = var_id
+                var_data['sdatavalue'].DataValue = self._connection.Read(var_data['sdatavalue'].Name)
+                var_data['PrimitiveDataType'] = var_data['sdatavalue'].DataValue.Type
+                var_data['value'] = None
+                self.variables[var_id] = var_data
+            except Exception as e:
+                print(e)
                 self.sendDebugVarInfo(('SETUP: Bad variable definition: {}'.format(var_id), var_id))
-
+    
 
     def readVariables(self, variables: list) -> list:
         """ Read given variable values. In case that the read is not possible or generates an error BAD quality should be returned.
         : param variables: List of variable ids to be read. 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
+        signals = []
         res = []
 
         for var_id in variables:
             try:
-                data_type = self.variables[var_id]['PrimitiveDataType'] 
-                if data_type == EPrimitiveDataType.Bool:
-                    value = self._connection.ReadBool(var_id)
-                elif data_type == EPrimitiveDataType.Int8:
-                    value = self._connection.ReadInt8(var_id)
-                elif data_type == EPrimitiveDataType.Int16:
-                    value = self._connection.ReadInt16(var_id)
-                elif data_type == EPrimitiveDataType.Int32:
-                    value = self._connection.ReadInt32(var_id)
-                elif data_type == EPrimitiveDataType.Int64:
-                    value = self._connection.ReadInt64(var_id)    
-                elif data_type == EPrimitiveDataType.UInt8:
-                    value = self._connection.ReadUInt8(var_id)
-                elif data_type == EPrimitiveDataType.UInt16:
-                    value = self._connection.ReadUInt16(var_id)
-                elif data_type == EPrimitiveDataType.UInt32:
-                    value = self._connection.ReadUInt32(var_id)
-                elif data_type == EPrimitiveDataType.UInt64:
-                    value = self._connection.ReadUInt64(var_id)
-                elif data_type == EPrimitiveDataType.Float:
-                    value = self._connection.ReadFloat(var_id)
-                elif data_type == EPrimitiveDataType.Double:
-                    value = self._connection.ReadDouble(var_id)
-                elif data_type == EPrimitiveDataType.Char:
-                    value = self._connection.ReadChar(var_id)
-                else:
-                    value = self._connection.ReadUInt16(var_id)
+                #sdatavalue = SDataValue()
+                #sdatavalue.Type = self.variables[var_id]['PrimitiveDataType']
+
+                # datavalue = SDataValueByName()
+                # datavalue.Name = var_id
+                # datavalue.DataValue = self.variables['var_id']['sdatavalue'].DataValue
+
+                signals.append(self.variables[var_id]['sdatavalue'])
             except Exception as e:
+                print(e) 
+        try:
+            signals = self._connection.ReadSignals(signals)
+            for signal in signals:
+                var_id = signal.Name
+                if signal.DataValue.Type == EPrimitiveDataType.Bool:
+                    value = signal.DataValue.Bool
+                elif signal.DataValue.Type == EPrimitiveDataType.Int8:
+                    value = signal.DataValue.Int8
+                elif signal.DataValue.Type == EPrimitiveDataType.Int16:
+                    value = signal.DataValue.Int16
+                elif signal.DataValue.Type == EPrimitiveDataType.Int32:
+                    value = signal.DataValue.Int32
+                elif signal.DataValue.Type == EPrimitiveDataType.Int64:
+                    value = signal.DataValue.Int64
+                elif signal.DataValue.Type == EPrimitiveDataType.UInt8:
+                    value = signal.DataValue.UInt8
+                elif signal.DataValue.Type == EPrimitiveDataType.UInt16:
+                    value = signal.DataValue.UInt16
+                elif signal.DataValue.Type == EPrimitiveDataType.UInt32:
+                    value = signal.DataValue.UInt32
+                elif signal.DataValue.Type == EPrimitiveDataType.UInt64:
+                    value = signal.DataValue.UInt64
+                elif signal.DataValue.Type == EPrimitiveDataType.Float:
+                    value = signal.DataValue.Float
+                elif signal.DataValue.Type == EPrimitiveDataType.Double:
+                    value = signal.DataValue.Double
+                elif signal.DataValue.Type == EPrimitiveDataType.Char:
+                    value = signal.DataValue.Char
+                res.append((var_id, value, VariableQuality.GOOD))  
+        except Exception as e:
+            for var_id in variables:
                 res.append((var_id, None, VariableQuality.BAD))
-            else:
-                res.append((var_id, value, VariableQuality.GOOD))    
 
         return res
-
 
     def writeVariables(self, variables: list) -> list:
         """ Write given variable values. In case that the write is not possible or generates an error BAD quality should be returned.
@@ -184,37 +197,51 @@ class plcsim_advanced(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
-
+        signals = []
         for (var_id, value) in variables:
             try:
-                data_type = self.variables[var_id]['PrimitiveDataType']
-                if data_type == EPrimitiveDataType.Bool:
-                    self._connection.WriteBool(var_id, value)
-                elif data_type == EPrimitiveDataType.Int8:
-                    self._connection.WriteInt8(var_id, value)
-                elif data_type == EPrimitiveDataType.Int16:
-                    self._connection.WriteInt16(var_id, value)
-                elif data_type == EPrimitiveDataType.Int32:
-                    self._connection.WriteInt32(var_id, value)
-                elif data_type == EPrimitiveDataType.Int64:
-                    self._connection.WriteInt64(var_id, value)
-                elif data_type == EPrimitiveDataType.UInt8:
-                    self._connection.WriteUInt8(var_id, value)    
-                elif data_type == EPrimitiveDataType.UInt16:
-                    self._connection.WriteUInt16(var_id, value)
-                elif data_type == EPrimitiveDataType.UInt32:
-                    self._connection.WriteUInt32(var_id, value)
-                elif data_type == EPrimitiveDataType.UInt64:
-                    self._connection.WriteUInt64(var_id, value)
-                elif data_type == EPrimitiveDataType.Float:
-                    self._connection.WriteFloat(var_id, value)  
-                elif data_type == EPrimitiveDataType.Double:
-                    self._connection.WriteDouble(var_id, value)    
-                elif data_type== EPrimitiveDataType.Char:
-                    self._connection.WriteChar(var_id, value) 
-            except:
+                sdatavalue = SDataValue()
+                sdatavalue.Type = self.variables[var_id]['PrimitiveDataType']
+                
+                if sdatavalue.Type == EPrimitiveDataType.Bool:
+                    sdatavalue.Bool = value
+                elif sdatavalue.Type == EPrimitiveDataType.Int8:
+                    sdatavalue.Int8 = value
+                elif sdatavalue.Type == EPrimitiveDataType.Int16:
+                    sdatavalue.Int16 = value
+                elif sdatavalue.Type == EPrimitiveDataType.Int32:
+                    sdatavalue.Int32 = value
+                elif sdatavalue.Type == EPrimitiveDataType.Int64:
+                    sdatavalue.Int64 = value
+                elif sdatavalue.Type == EPrimitiveDataType.UInt8:
+                    sdatavalue.UInt8 = value    
+                elif sdatavalue.Type == EPrimitiveDataType.UInt16:
+                    sdatavalue.UInt16 = value
+                elif sdatavalue.Type == EPrimitiveDataType.UInt32:
+                    sdatavalue.UInt32 = value
+                elif sdatavalue.Type == EPrimitiveDataType.UInt64:
+                    sdatavalue.UInt64 = value
+                elif sdatavalue.Type == EPrimitiveDataType.Float:
+                    sdatavalue.Float = value  
+                elif sdatavalue.Type == EPrimitiveDataType.Double:
+                    sdatavalue.Double = value    
+                elif sdatavalue.Type== EPrimitiveDataType.Char:
+                    sdatavalue.Char = value
+
+
+                self.variables[var_id]['sdatavalue'].DataValue = sdatavalue
+                # datavalue = SDataValueByName()
+                # datavalue.Name = var_id
+                # datavalue.DataValue = sdatavalue
+
+                signals.append(self.variables[var_id]['sdatavalue'])
+                        
+            except Exception as e:
                 res.append((var_id, None, VariableQuality.BAD))
             else:
-                res.append((var_id, value, VariableQuality.GOOD))    
-
+                res.append((var_id, value, VariableQuality.GOOD))  
+        try:
+            self._connection.WriteSignals(signals)
+        except Exception as e:
+            print("error ", e)
         return res

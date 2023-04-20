@@ -31,25 +31,15 @@ VARIABLES = {
     'WordIn':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
     'WordOut':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
     'WordInHighAdress':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
-    'WordOuthighAdress':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
+    'WordOutHighAdress':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
     'IntIn':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
     'IntOut':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
-    'SIntIn':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
-    'SIntOut':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
     'DWordIN':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.WRITE},
     'DWordOut':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.READ},
     'DIntIn':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
     'DIntOut':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
-    'LIntIn':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
-    'LIntOut':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
-    'ULintIn':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
-    'ULintOut':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
     'RealIn':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.WRITE},
     'RealOut':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.READ},
-    'LRealIn':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
-    'LRealOut':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
-    'CharIn':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
-    'CharOut':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
     }
 
 
@@ -66,7 +56,7 @@ if d.connect():
     t = time.perf_counter()
     while time.perf_counter()-t < 5:
         res = d.readVariables(['ByteOut', 'BoolOut', 'WordOut', 'WordOutHighAdress', 'IntOut', 'RealOut'])
-        print(res, counter)
+        #print(res, counter)
         d.writeVariables([
             ('BoolIn', counter%2),
             ('ByteIn', counter%256),
@@ -76,5 +66,5 @@ if d.connect():
             ('RealIn', counter/3),
             ])
         counter += 1
-
+    print(counter)
     d.disconnect()
