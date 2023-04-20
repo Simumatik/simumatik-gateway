@@ -24,31 +24,31 @@ from typing import Optional
 
 from ..driver import driver, VariableQuality
 
-class EPrimitiveDataType(int, Enum):
-    Unspecific = 0,
-    Struct = 1,
-    Bool = 2,
-    Int8 = 3,
-    Int16 = 4,
-    Int32 = 5,
-    Int64 = 6,
-    UInt8 = 7,
-    UInt16 = 8,
-    UInt32 = 9,
-    UInt64 = 10,
-    Float = 11,
-    Double = 12,
-    Char = 13,
-    WChar = 14
-class EOperatingState(int, Enum):
-    InvalidOperatingState = 0
-    Off = 1
-    Booting = 2
-    Stop = 3
-    Startup = 4
-    Run = 5
-    Freeze = 6
-    ShuttingDown = 7
+# class EPrimitiveDataType(int, Enum):
+#     Unspecific = 0,
+#     Struct = 1,
+#     Bool = 2,
+#     Int8 = 3,
+#     Int16 = 4,
+#     Int32 = 5,
+#     Int64 = 6,
+#     UInt8 = 7,
+#     UInt16 = 8,
+#     UInt32 = 9,
+#     UInt64 = 10,
+#     Float = 11,
+#     Double = 12,
+#     Char = 13,
+#     WChar = 14
+# class EOperatingState(int, Enum):
+#     InvalidOperatingState = 0
+#     Off = 1
+#     Booting = 2
+#     Stop = 3
+#     Startup = 4
+#     Run = 5
+#     Freeze = 6
+#     ShuttingDown = 7
 
 try:
     if os.name == 'nt':# Just try on windows
@@ -61,7 +61,7 @@ try:
         else: # 32-Bit OS
             clr.FindAssembly("Siemens.Simatic.Simulation.Runtime.Api.x86")
             clr.AddReference("Siemens.Simatic.Simulation.Runtime.Api.x86")
-        from Siemens.Simatic.Simulation.Runtime import SimulationRuntimeManager
+        from Siemens.Simatic.Simulation.Runtime import SimulationRuntimeManager, EOperatingState, EPrimitiveDataType
 except:
     pass
 
@@ -95,8 +95,8 @@ class plcsim_advanced(driver):
             if SimulationRuntimeManager.RegisteredInstanceInfo.Length > 0:
                 for instance in SimulationRuntimeManager.RegisteredInstanceInfo:
                     if instance.Name == self.instanceName:
-                        self.connection = SimulationRuntimeManager.CreateInterface(self.instanceName)
-                        if self.connection.OperatingState == EOperatingState.Run:
+                        self._connection = SimulationRuntimeManager.CreateInterface(self.instanceName)
+                        if self._connection.get_OperatingState() == EOperatingState.Run:
                             return True
                         self.sendDebugInfo("PLC Sim Advanced operating state is not in 'Run'")
                 self.sendDebugInfo(f"No PLC Sim Advanced instance with name {self.instanceName} found")
@@ -119,11 +119,11 @@ class plcsim_advanced(driver):
         : param variables: Variables to add in a dict following the setup format. (See documentation) 
         
         """
-        self.connection.UpdateTagList()
+        self._connection.UpdateTagList()
 
         for var_id in list(variables.keys()):
             var_data = dict(variables[var_id])
-            for tag in self.connection.TagInfos:
+            for tag in self._connection.TagInfos:
                 if var_id == tag.ToString():
                     var_data['PrimitiveDataType'] = tag.PrimitiveDataType
                     var_data['value'] = None
@@ -132,7 +132,7 @@ class plcsim_advanced(driver):
 
             if not "PrimitiveDataType" in var_data:
                 self.sendDebugVarInfo(('SETUP: Bad variable definition: {}'.format(var_id), var_id))
-    
+
 
     def readVariables(self, variables: list) -> list:
         """ Read given variable values. In case that the read is not possible or generates an error BAD quality should be returned.
@@ -145,29 +145,31 @@ class plcsim_advanced(driver):
             try:
                 data_type = self.variables[var_id]['PrimitiveDataType'] 
                 if data_type == EPrimitiveDataType.Bool:
-                    value = self.connection.ReadBool(var_id)
+                    value = self._connection.ReadBool(var_id)
                 elif data_type == EPrimitiveDataType.Int8:
-                    value = self.connection.ReadInt8(var_id)
+                    value = self._connection.ReadInt8(var_id)
                 elif data_type == EPrimitiveDataType.Int16:
-                    value = self.connection.ReadInt16(var_id)
+                    value = self._connection.ReadInt16(var_id)
                 elif data_type == EPrimitiveDataType.Int32:
-                    value = self.connection.ReadInt32(var_id)
+                    value = self._connection.ReadInt32(var_id)
                 elif data_type == EPrimitiveDataType.Int64:
-                    value = self.connection.ReadInt64(var_id)    
+                    value = self._connection.ReadInt64(var_id)    
                 elif data_type == EPrimitiveDataType.UInt8:
-                    value = self.connection.ReadUInt8(var_id)
+                    value = self._connection.ReadUInt8(var_id)
                 elif data_type == EPrimitiveDataType.UInt16:
-                    value = self.connection.ReadUInt16(var_id)
+                    value = self._connection.ReadUInt16(var_id)
                 elif data_type == EPrimitiveDataType.UInt32:
-                    value = self.connection.ReadUInt32(var_id)
+                    value = self._connection.ReadUInt32(var_id)
                 elif data_type == EPrimitiveDataType.UInt64:
-                    value = self.connection.ReadUInt64(var_id)
+                    value = self._connection.ReadUInt64(var_id)
                 elif data_type == EPrimitiveDataType.Float:
-                    value = self.connection.ReadFloat(var_id)
+                    value = self._connection.ReadFloat(var_id)
                 elif data_type == EPrimitiveDataType.Double:
-                    value = self.connection.ReadDouble(var_id)
+                    value = self._connection.ReadDouble(var_id)
                 elif data_type == EPrimitiveDataType.Char:
-                    value = self.connection.ReadChar(var_id)
+                    value = self._connection.ReadChar(var_id)
+                else:
+                    value = self._connection.ReadUInt16(var_id)
             except Exception as e:
                 res.append((var_id, None, VariableQuality.BAD))
             else:
@@ -187,29 +189,29 @@ class plcsim_advanced(driver):
             try:
                 data_type = self.variables[var_id]['PrimitiveDataType']
                 if data_type == EPrimitiveDataType.Bool:
-                    self.connection.WriteBool(var_id, value)
+                    self._connection.WriteBool(var_id, value)
                 elif data_type == EPrimitiveDataType.Int8:
-                    self.connection.WriteInt8(var_id, value)
+                    self._connection.WriteInt8(var_id, value)
                 elif data_type == EPrimitiveDataType.Int16:
-                    self.connection.WriteInt16(var_id, value)
+                    self._connection.WriteInt16(var_id, value)
                 elif data_type == EPrimitiveDataType.Int32:
-                    self.connection.WriteInt32(var_id, value)
+                    self._connection.WriteInt32(var_id, value)
                 elif data_type == EPrimitiveDataType.Int64:
-                    self.connection.WriteInt64(var_id, value)
+                    self._connection.WriteInt64(var_id, value)
                 elif data_type == EPrimitiveDataType.UInt8:
-                    self.connection.WriteUInt8(var_id, value)    
+                    self._connection.WriteUInt8(var_id, value)    
                 elif data_type == EPrimitiveDataType.UInt16:
-                    self.connection.WriteUInt16(var_id, value)
+                    self._connection.WriteUInt16(var_id, value)
                 elif data_type == EPrimitiveDataType.UInt32:
-                    self.connection.WriteUInt32(var_id, value)
+                    self._connection.WriteUInt32(var_id, value)
                 elif data_type == EPrimitiveDataType.UInt64:
-                    self.connection.WriteUInt64(var_id, value)
+                    self._connection.WriteUInt64(var_id, value)
                 elif data_type == EPrimitiveDataType.Float:
-                    self.connection.WriteFloat(var_id, value)  
+                    self._connection.WriteFloat(var_id, value)  
                 elif data_type == EPrimitiveDataType.Double:
-                    self.connection.WriteDouble(var_id, value)    
+                    self._connection.WriteDouble(var_id, value)    
                 elif data_type== EPrimitiveDataType.Char:
-                    self.connection.WriteChar(var_id, value) 
+                    self._connection.WriteChar(var_id, value) 
             except:
                 res.append((var_id, None, VariableQuality.BAD))
             else:
