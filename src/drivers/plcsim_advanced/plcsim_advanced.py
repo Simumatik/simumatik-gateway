@@ -228,8 +228,12 @@ class plcsim_advanced(driver):
                 res.append((var_id, None, VariableQuality.BAD))
             else:
                 res.append((var_id, value, VariableQuality.GOOD))  
+
         try:
             self._connection.WriteSignals(signals)
         except Exception as e:
-            print("error ", e)
+            res = []
+            for var_id in variables:
+                res.append((var_id, None, VariableQuality.BAD))
+                
         return res
