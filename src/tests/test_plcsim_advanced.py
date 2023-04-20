@@ -50,13 +50,11 @@ print("Connecting to PLC sim advanced")
 if d.connect():
     d.addVariables(VARIABLES)
 
-    #quit()
-
     counter = 0
     t = time.perf_counter()
     while time.perf_counter()-t < 5:
         res = d.readVariables(['ByteOut', 'BoolOut', 'WordOut', 'WordOutHighAdress', 'IntOut', 'RealOut'])
-        #print(res, counter)
+        print(res, counter)
         d.writeVariables([
             ('BoolIn', counter%2),
             ('ByteIn', counter%256),
@@ -66,5 +64,6 @@ if d.connect():
             ('RealIn', counter/3),
             ])
         counter += 1
+        
     print(counter)
     d.disconnect()
