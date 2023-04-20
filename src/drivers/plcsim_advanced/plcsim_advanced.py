@@ -125,10 +125,10 @@ class plcsim_advanced(driver):
         for var_id in list(variables.keys()):
             try:
                 var_data = dict(variables[var_id])
-                var_data['sdatavalue'] = SDataValueByName()
-                var_data['sdatavalue'].Name = var_id
-                var_data['sdatavalue'].DataValue = self._connection.Read(var_data['sdatavalue'].Name)
-                var_data['PrimitiveDataType'] = var_data['sdatavalue'].DataValue.Type
+                var_data['SDataValueByName'] = SDataValueByName()
+                var_data['SDataValueByName'].Name = var_id
+                var_data['SDataValueByName'].DataValue = self._connection.Read(var_data['SDataValueByName'].Name)
+                var_data['PrimitiveDataType'] = var_data['SDataValueByName'].DataValue.Type
                 var_data['value'] = None
                 self.variables[var_id] = var_data
             except Exception as e:
@@ -144,19 +144,10 @@ class plcsim_advanced(driver):
         signals = []
         res = []
 
-        for var_id in variables:
-            try:
-                #sdatavalue = SDataValue()
-                #sdatavalue.Type = self.variables[var_id]['PrimitiveDataType']
-
-                # datavalue = SDataValueByName()
-                # datavalue.Name = var_id
-                # datavalue.DataValue = self.variables['var_id']['sdatavalue'].DataValue
-
-                signals.append(self.variables[var_id]['sdatavalue'])
-            except Exception as e:
-                print(e) 
         try:
+            for var_id in variables:
+                signals.append(self.variables[var_id]['SDataValueByName'])
+        
             signals = self._connection.ReadSignals(signals)
             for signal in signals:
                 var_id = signal.Name
@@ -186,6 +177,7 @@ class plcsim_advanced(driver):
                     value = signal.DataValue.Char
                 res.append((var_id, value, VariableQuality.GOOD))  
         except Exception as e:
+            res = []
             for var_id in variables:
                 res.append((var_id, None, VariableQuality.BAD))
 
@@ -229,12 +221,8 @@ class plcsim_advanced(driver):
                     sdatavalue.Char = value
 
 
-                self.variables[var_id]['sdatavalue'].DataValue = sdatavalue
-                # datavalue = SDataValueByName()
-                # datavalue.Name = var_id
-                # datavalue.DataValue = sdatavalue
-
-                signals.append(self.variables[var_id]['sdatavalue'])
+                self.variables[var_id]['SDataValueByName'].DataValue = sdatavalue
+                signals.append(self.variables[var_id]['SDataValueByName'])
                         
             except Exception as e:
                 res.append((var_id, None, VariableQuality.BAD))
