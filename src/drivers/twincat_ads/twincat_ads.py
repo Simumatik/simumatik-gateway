@@ -52,18 +52,11 @@ class twincat_ads(driver):
             import pyads
             self._connection = pyads.Connection(self.net_id, self.port)
             self._connection.open()
+            return True
         except Exception as e:
             self.sendDebugInfo(f"Connection with {self.net_id} cannot be established.")
             return False
 
-        # Check connection status.
-        state = self._connection.read_state()
-        # State 5: Run, State 6: Stop
-        if state[0] == 5 or state[0] == 6:
-            return True
-        else:
-            self.sendDebugInfo(f"Driver not connected, ADS state = {state[0]}") 
-            return False
 
     def disconnect(self):
         """ Disconnect driver.
