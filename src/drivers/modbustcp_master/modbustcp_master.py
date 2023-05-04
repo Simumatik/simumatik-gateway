@@ -122,7 +122,7 @@ class modbustcp_master(driver):
                     var_data['value'] = res[0]
                     
                 # Holding Registers
-                elif (40000<reg_number<50000 and not self.use_relative_addresses) or (self.use_relative_addresses and var_data['operation']==VariableOperation.WRITE and var_data['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER])):
+                elif (40000<reg_number<50000 and not self.use_relative_addresses) or (self.use_relative_addresses and var_data['operation']==VariableOperation.WRITE and var_data['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER]):
                     assert var_data['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER], f'Datatype must be word or integer.' 
                     if var_data['operation']==VariableOperation.WRITE:
                         if not self.use_relative_addresses:
