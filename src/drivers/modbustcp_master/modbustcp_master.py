@@ -41,6 +41,7 @@ class modbustcp_master(driver):
     host            : String    : the slave ip address, default 127.0.0.1
     port            : Int       : the slave port to connect to, default 502
     unit_id         : Int       : the device unit id. Any int from 0 to 255 is valid., default 1
+    use_relative_addresses: Boolean : use relative registen numbers instead of absolute ones (base on the ranges in the table above). Default False
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
@@ -54,6 +55,7 @@ class modbustcp_master(driver):
         self.host = '127.0.0.1'
         self.port = 502
         self.unit_id = 1
+        self.use_relative_addresses = False
 
 
     def connect(self) -> bool:
@@ -87,7 +89,7 @@ class modbustcp_master(driver):
             try:
                 reg_number = int(var_id)
                 # Status/Coil
-                if 0<reg_number<10000:
+                if (0<reg_number<10000 and not self.use_relative_addresses) or (self.use_relative_addresses and var_data['operation']==VariableOperation.WRITE and var_data['datatype'] == VariableDatatype.BOOL):
                     assert var_data['datatype'] == VariableDatatype.BOOL, f'Datatype must be boolean.' 
                     if var_data['operation']==VariableOperation.WRITE:
                         assert self._connection.write_single_coil(reg_number, False), f'Error accessing coil.'
@@ -98,30 +100,42 @@ class modbustcp_master(driver):
                         var_data['value'] = res[0]
                     
                 # Input Contact
-                elif 10000<reg_number<20000:
+                elif (10000<reg_number<20000 and not self.use_relative_addresses) or (self.use_relative_addresses and var_data['operation']==VariableOperation.READ and var_data['datatype'] == VariableDatatype.BOOL):
                     assert var_data['datatype'] == VariableDatatype.BOOL, f'Datatype must be boolean.'
                     assert var_data['operation'] == VariableOperation.READ, f'Only read operations allowed with Input Contacts.'
-                    res = self._connection.read_discrete_inputs(reg_number-10000)
+                    if not self.use_relative_addresses:
+                        res = self._connection.read_discrete_inputs(reg_number-10000)
+                    else:
+                        res = self._connection.read_discrete_inputs(reg_number)
                     assert res is not None, f'Error accessing Input Contact.'
                     var_data['value'] = res[0]
 
                 # Input Registers
-                elif 30000<reg_number<40000:
+                elif (30000<reg_number<40000 and not self.use_relative_addresses)  or (self.use_relative_addresses and var_data['operation']==VariableOperation.READ and var_data['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER]):
                     assert var_data['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER], f'Datatype must be word or integer.'
                     assert var_data['operation'] == VariableOperation.READ, f'Only read operations allowed with Input Register.'
-                    res = self._connection.read_input_registers(reg_number-30000)
+                    if not self.use_relative_addresses:
+                        res = self._connection.read_input_registers(reg_number-30000)
+                    else:
+                        res = self._connection.read_input_registers(reg_number)
                     assert res is not None, f'Error accessing Input Register.'
                     var_data['value'] = res[0]
                     
                 # Holding Registers
-                elif 40000<reg_number<50000:
+                elif (40000<reg_number<50000 and not self.use_relative_addresses) or (self.use_relative_addresses and var_data['operation']==VariableOperation.WRITE and var_data['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER])):
                     assert var_data['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER], f'Datatype must be word or integer.' 
                     if var_data['operation']==VariableOperation.WRITE:
-                        assert self._connection.write_single_register(reg_number-40000, 0), f'Error accessing Holding Registers.'
+                        if not self.use_relative_addresses:
+                            assert self._connection.write_single_register(reg_number-40000, 0), f'Error accessing Holding Registers.'
+                        else:
+                            assert self._connection.write_single_register(reg_number, 0), f'Error accessing Holding Registers.'
                         var_data['value'] = 0
                     elif var_data['operation']==VariableOperation.READ:
-                        res = self._connection.read_holding_registers(reg_number-40000)
-                        assert res is not None, f'Error accessing coil.'
+                        if not self.use_relative_addresses:
+                            res = self._connection.read_holding_registers(reg_number-40000)
+                        else:
+                            res = self._connection.read_holding_registers(reg_number)
+                        assert res is not None, f'Error accessing Holding register.'
                         var_data['value'] = res[0]
 
                 self.variables[var_id] = var_data 
@@ -138,14 +152,18 @@ class modbustcp_master(driver):
         for var_id in variables:
             reg_number = int(var_id)
             value = None
-            if 0<reg_number<10000:
+            if (0<reg_number<10000 and not self.use_relative_addresses):
                 value = self._connection.read_coils(reg_number-1)
-            elif 10000<reg_number<20000:
+            elif (10000<reg_number<20000 and not self.use_relative_addresses):
                 value = self._connection.read_discrete_inputs(reg_number-10001)
-            elif 30000<reg_number<40000:
+            elif (self.use_relative_addresses and self.variables[var_id]['datatype'] == VariableDatatype.BOOL):
+                value = self._connection.read_discrete_inputs(reg_number)
+            elif (30000<reg_number<40000 and not self.use_relative_addresses):
                 value = self._connection.read_input_registers(reg_number-30001)
-            elif 40000<reg_number<50000:
+            elif (40000<reg_number<50000 and not self.use_relative_addresses):
                 value = self._connection.read_holding_registers(reg_number-40001)
+            elif (self.use_relative_addresses and self.variables[var_id]['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER]):
+                value = self._connection.read_input_registers(reg_number)
             if value is not None:
                 res.append((var_id, value[0], VariableQuality.GOOD))
             else:
@@ -164,10 +182,14 @@ class modbustcp_master(driver):
         for (var_id, new_value) in variables:
             reg_number = int(var_id)
             success = False
-            if 0<reg_number<10000:
+            if (0<reg_number<10000 and not self.use_relative_addresses):
                 success = self._connection.write_single_coil(reg_number-1, new_value)
-            elif 40000<reg_number<50000:
+            elif  (self.use_relative_addresses and self.variables[var_id]['datatype'] == VariableDatatype.BOOL):
+                success = self._connection.write_single_coil(reg_number, new_value)
+            elif (40000<reg_number<50000 and not self.use_relative_addresses): 
                 success = self._connection.write_single_register(reg_number-40001, new_value)
+            elif (self.use_relative_addresses and self.variables[var_id]['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER]):
+                success = self._connection.write_single_register(reg_number, new_value)
             if success:
                 res.append((var_id, new_value, VariableQuality.GOOD))
             else:
