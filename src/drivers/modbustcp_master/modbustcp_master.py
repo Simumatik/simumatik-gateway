@@ -40,6 +40,7 @@ class modbustcp_master(driver):
     Parameters:
     host            : String    : the slave ip address, default 127.0.0.1
     port            : Int       : the slave port to connect to, default 502
+    unit_id         : Int       : the device unit id. Any int from 0 to 255 is valid., default 1
     '''
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
@@ -52,6 +53,7 @@ class modbustcp_master(driver):
         
         self.host = '127.0.0.1'
         self.port = 502
+        self.unit_id = 1
 
 
     def connect(self) -> bool:
@@ -61,7 +63,7 @@ class modbustcp_master(driver):
         """
         # Create connection
         try:
-            self._connection = ModbusClient(host=self.host, auto_open=True, auto_close=False)
+            self._connection = ModbusClient(host=self.host, port=self.port, unit_id=self.unit_id, auto_open=True, auto_close=False)
         except Exception as e:
             self.sendDebugInfo(f"Connection with {self.host} cannot be established.")
             return False
