@@ -24,32 +24,6 @@ from typing import Optional
 
 from ..driver import driver, VariableQuality
 
-# class EPrimitiveDataType(int, Enum):
-#     Unspecific = 0,
-#     Struct = 1,
-#     Bool = 2,
-#     Int8 = 3,
-#     Int16 = 4,
-#     Int32 = 5,
-#     Int64 = 6,
-#     UInt8 = 7,
-#     UInt16 = 8,
-#     UInt32 = 9,
-#     UInt64 = 10,
-#     Float = 11,
-#     Double = 12,
-#     Char = 13,
-#     WChar = 14
-# class EOperatingState(int, Enum):
-#     InvalidOperatingState = 0
-#     Off = 1
-#     Booting = 2
-#     Stop = 3
-#     Startup = 4
-#     Run = 5
-#     Freeze = 6
-#     ShuttingDown = 7
-
 try:
     if os.name == 'nt':# Just try on windows
         import clr
@@ -61,7 +35,7 @@ try:
         else: # 32-Bit OS
             clr.FindAssembly("Siemens.Simatic.Simulation.Runtime.Api.x86")
             clr.AddReference("Siemens.Simatic.Simulation.Runtime.Api.x86")
-        from Siemens.Simatic.Simulation.Runtime import SimulationRuntimeManager, SDataValue, SDataValueByName, EOperatingState, EPrimitiveDataType
+        from Siemens.Simatic.Simulation.Runtime import SimulationRuntimeManager, SDataValue, SDataValueByName, EPrimitiveDataType
 except:
     pass
 
@@ -97,9 +71,7 @@ class plcsim_advanced(driver):
                 for instance in SimulationRuntimeManager.RegisteredInstanceInfo:
                     if instance.Name == self.instanceName:
                         self._connection = SimulationRuntimeManager.CreateInterface(self.instanceName)
-                        if self._connection.get_OperatingState() == EOperatingState.Run:
-                            return True
-                        self.sendDebugInfo("PLC Sim Advanced operating state is not in 'Run'")
+                        return True
                 self.sendDebugInfo(f"No PLC Sim Advanced instance with name {self.instanceName} found")
             else: 
                 self.sendDebugInfo("No PLC Sim Advanced instance running")
