@@ -53,12 +53,9 @@ class plcsim_advanced(driver):
         """
         # Inherit
         driver.__init__(self, name, pipe, params)
-
         # Parameters
         self.instanceName = "s7-1500"
         
-
-
     def connect(self) -> bool:
         """ Connect driver.
         
@@ -77,14 +74,12 @@ class plcsim_advanced(driver):
                 self.sendDebugInfo("No PLC Sim Advanced instance running")
         except Exception as e:
             self.sendDebugInfo(f"Connection failed, {e}")
-            
         return False
 
     def disconnect(self):
         """ Disconnect driver.
         """
         pass
-
 
     def addVariables(self, variables: dict):
         """ Add variables to the driver. Correctly added variables will be added to internal dictionary 'variables'.
@@ -93,7 +88,6 @@ class plcsim_advanced(driver):
         
         """
         self._connection.UpdateTagList()
-
         for var_id in list(variables.keys()):
             try:
                 var_data = dict(variables[var_id])
@@ -107,7 +101,6 @@ class plcsim_advanced(driver):
                 print(e)
                 self.sendDebugVarInfo(('SETUP: Bad variable definition: {}'.format(var_id), var_id))
     
-
     def readVariables(self, variables: list) -> list:
         """ Read given variable values. In case that the read is not possible or generates an error BAD quality should be returned.
         : param variables: List of variable ids to be read. 
@@ -115,11 +108,9 @@ class plcsim_advanced(driver):
         """
         signals = []
         res = []
-
         try:
             for var_id in variables:
                 signals.append(self.variables[var_id]['SDataValueByName'])
-        
             signals = self._connection.ReadSignals(signals)
             for signal in signals:
                 var_id = signal.Name
@@ -152,7 +143,6 @@ class plcsim_advanced(driver):
             res = []
             for var_id in variables:
                 res.append((var_id, None, VariableQuality.BAD))
-
         return res
 
     def writeVariables(self, variables: list) -> list:
@@ -166,7 +156,6 @@ class plcsim_advanced(driver):
             try:
                 sdatavalue = SDataValue()
                 sdatavalue.Type = self.variables[var_id]['PrimitiveDataType']
-                
                 if sdatavalue.Type == EPrimitiveDataType.Bool:
                     sdatavalue.Bool = value
                 elif sdatavalue.Type == EPrimitiveDataType.Int8:
@@ -191,21 +180,16 @@ class plcsim_advanced(driver):
                     sdatavalue.Double = value    
                 elif sdatavalue.Type== EPrimitiveDataType.Char:
                     sdatavalue.Char = value
-
-
                 self.variables[var_id]['SDataValueByName'].DataValue = sdatavalue
-                signals.append(self.variables[var_id]['SDataValueByName'])
-                        
+                signals.append(self.variables[var_id]['SDataValueByName'])     
             except Exception as e:
                 res.append((var_id, None, VariableQuality.BAD))
             else:
                 res.append((var_id, value, VariableQuality.GOOD))  
-
         try:
             self._connection.WriteSignals(signals)
         except Exception as e:
             res = []
             for var_id in variables:
                 res.append((var_id, None, VariableQuality.BAD))
-                
         return res
