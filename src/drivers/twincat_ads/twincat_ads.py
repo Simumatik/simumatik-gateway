@@ -37,10 +37,8 @@ class twincat_ads(driver):
         """
         # Inherit
         driver.__init__(self, name, pipe, params)
-        
         self.net_id = '192.168.0.1.1.1'
         self.port = 851
-
 
     def connect(self) -> bool:
         """ Connect driver.
@@ -52,16 +50,9 @@ class twincat_ads(driver):
             import pyads
             self._connection = pyads.Connection(self.net_id, self.port)
             self._connection.open()
+            return True
         except Exception as e:
             self.sendDebugInfo(f"Connection with {self.net_id} cannot be established.")
-            return False
-
-        # Check connection status.
-        state = self._connection.read_state()
-        if state[0] == 5:
-            return True
-        else:
-            self.sendDebugInfo(f"Driver not connected, ADS state = {state[0]}") 
             return False
 
     def disconnect(self):
@@ -70,20 +61,20 @@ class twincat_ads(driver):
         if self._connection:
             self._connection.close()
 
-
     def addVariables(self, variables: dict):
         """ Add variables to the driver. Correctly added variables will be added to internal dictionary 'variables'.
         Any error adding a variable should be communicated to the server using sendDebugInfo() method.
         : param variables: Variables to add in a dict following the setup format. (See documentation) 
         """
-        for var_id in list(variables.keys()):
-            var_data = dict(variables[var_id])
+        for var_id, var_data in variables.items():
             try:
-                var_data['value'] = self._connection.read_by_name(var_id)
+                # Try to read, throws exception if the variable is not found
+                self._connection.read_by_name(var_id)
+                var_data['value'] = None # Force first update
                 self.variables[var_id] = var_data 
             except Exception as e:
                 self.sendDebugInfo(f'SETUP: {e} \"{var_id}\"')
-                
+
                 
     def readVariables(self, variables: list) -> list:
         """ Read given variable values. In case that the read is not possible or generates an error BAD quality should be returned.
@@ -103,9 +94,7 @@ class twincat_ads(driver):
                     res.append((var_id, None, VariableQuality.BAD))
                 else:
                     res.append((var_id, value, VariableQuality.GOOD))
-
         return res
-
 
     def writeVariables(self, variables: list) -> list:
         """ Write given variable values. In case that the write is not possible or generates an error BAD quality should be returned.
@@ -114,7 +103,6 @@ class twincat_ads(driver):
         """
         res = []
         dictionary = {var_id:var_value for (var_id, var_value) in variables}    
-
         try:
             self._connection.write_list_by_name(dictionary)
         except:
@@ -123,5 +111,4 @@ class twincat_ads(driver):
         else:
             for (var_id, var_value)  in variables: 
                 res.append((var_id, var_value, VariableQuality.GOOD))
-
         return res
