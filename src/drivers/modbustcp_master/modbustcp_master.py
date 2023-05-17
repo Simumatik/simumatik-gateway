@@ -51,12 +51,10 @@ class modbustcp_master(driver):
         """
         # Inherit
         driver.__init__(self, name, pipe, params)
-        
         self.host = '127.0.0.1'
         self.port = 502
         self.unit_id = 1
         self.use_relative_addresses = False
-
 
     def connect(self) -> bool:
         """ Connect driver.
@@ -69,7 +67,6 @@ class modbustcp_master(driver):
         except Exception as e:
             self.sendDebugInfo(f"Connection with {self.host} cannot be established.")
             return False
-
         return True
 
     def disconnect(self):
@@ -77,7 +74,6 @@ class modbustcp_master(driver):
         """
         if self._connection:
             self._connection.close()
-
 
     def addVariables(self, variables: dict):
         """ Add variables to the driver. Correctly added variables will be added to internal dictionary 'variables'.
@@ -97,8 +93,7 @@ class modbustcp_master(driver):
                     elif var_data['operation']==VariableOperation.READ:
                         res = self._connection.read_coils(reg_number)
                         assert res is not None, f'Error accessing coil.'
-                        var_data['value'] = res[0]
-                    
+                        var_data['value'] = res[0]     
                 # Input Contact
                 elif (10000<reg_number<20000 and not self.use_relative_addresses) or (self.use_relative_addresses and var_data['operation']==VariableOperation.READ and var_data['datatype'] == VariableDatatype.BOOL):
                     assert var_data['datatype'] == VariableDatatype.BOOL, f'Datatype must be boolean.'
@@ -109,7 +104,6 @@ class modbustcp_master(driver):
                         res = self._connection.read_discrete_inputs(reg_number)
                     assert res is not None, f'Error accessing Input Contact.'
                     var_data['value'] = res[0]
-
                 # Input Registers
                 elif (30000<reg_number<40000 and not self.use_relative_addresses)  or (self.use_relative_addresses and var_data['operation']==VariableOperation.READ and var_data['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER]):
                     assert var_data['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER], f'Datatype must be word or integer.'
@@ -120,7 +114,6 @@ class modbustcp_master(driver):
                         res = self._connection.read_input_registers(reg_number)
                     assert res is not None, f'Error accessing Input Register.'
                     var_data['value'] = res[0]
-                    
                 # Holding Registers
                 elif (40000<reg_number<50000 and not self.use_relative_addresses) or (self.use_relative_addresses and var_data['operation']==VariableOperation.WRITE and var_data['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER]):
                     assert var_data['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER], f'Datatype must be word or integer.' 
@@ -142,7 +135,6 @@ class modbustcp_master(driver):
             except Exception as e:
                 self.sendDebugVarInfo((f'SETUP: Bad variable definition: {e}', var_id))
                 
-                
     def readVariables(self, variables: list) -> list:
         """ Read given variable values. In case that the read is not possible or generates an error BAD quality should be returned.
         : param variables: List of variable ids to be read. 
@@ -163,14 +155,12 @@ class modbustcp_master(driver):
             elif (40000<reg_number<50000 and not self.use_relative_addresses):
                 value = self._connection.read_holding_registers(reg_number-40001)
             elif (self.use_relative_addresses and self.variables[var_id]['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER]):
-                value = self._connection.read_input_registers(reg_number)
+                value = self._connection.read_holding_register(reg_number)
             if value is not None:
                 res.append((var_id, value[0], VariableQuality.GOOD))
             else:
                 res.append((var_id, None, VariableQuality.BAD))
-
         return res
-
 
     def writeVariables(self, variables: list) -> list:
         """ Write given variable values. In case that the write is not possible or generates an error BAD quality should be returned.
@@ -178,7 +168,6 @@ class modbustcp_master(driver):
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
         res = []
-
         for (var_id, new_value) in variables:
             reg_number = int(var_id)
             success = False
@@ -194,5 +183,4 @@ class modbustcp_master(driver):
                 res.append((var_id, new_value, VariableQuality.GOOD))
             else:
                 res.append((var_id, new_value, VariableQuality.BAD))
-
         return res
