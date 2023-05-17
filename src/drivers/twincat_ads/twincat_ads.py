@@ -37,7 +37,6 @@ class twincat_ads(driver):
         """
         # Inherit
         driver.__init__(self, name, pipe, params)
-        
         self.net_id = '192.168.0.1.1.1'
         self.port = 851
 
@@ -71,7 +70,6 @@ class twincat_ads(driver):
             try:
                 # Try to read, throws exception if the variable is not found
                 self._connection.read_by_name(var_id)
-
                 var_data['value'] = None # Force first update
                 self.variables[var_id] = var_data 
             except Exception as e:
@@ -113,5 +111,4 @@ class twincat_ads(driver):
         else:
             for (var_id, var_value)  in variables: 
                 res.append((var_id, var_value, VariableQuality.GOOD))
-
         return res
