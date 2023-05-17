@@ -6,6 +6,8 @@ block_cipher = None
 a = Analysis(['src\\gateway.py'],
              pathex=['C:\\Git\\simumatik-gateway'],
              binaries=[('src\\drivers\\fanuc_roboguide\\RobotInterfaceDotNet.dll','.'),
+                ('src\\drivers\\plcsim_advanced\\Siemens.Simatic.Simulation.Runtime.Api.x64.dll','.'),
+                ('src\\drivers\\plcsim_advanced\\Siemens.Simatic.Simulation.Runtime.Api.x86.dll','.'),
                 ('src\\drivers\\robodk_api\\robodk.py','.'),
                 ('src\\drivers\\robodk_api\\robolink.py','.'),
              ],
