@@ -155,7 +155,7 @@ class modbustcp_master(driver):
             elif (40000<reg_number<50000 and not self.use_relative_addresses):
                 value = self._connection.read_holding_registers(reg_number-40001)
             elif (self.use_relative_addresses and self.variables[var_id]['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER]):
-                value = self._connection.read_holding_register(reg_number)
+                value = self._connection.read_holding_registers(reg_number)
             if value is not None:
                 res.append((var_id, value[0], VariableQuality.GOOD))
             else:
