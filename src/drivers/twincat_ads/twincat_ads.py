@@ -41,7 +41,6 @@ class twincat_ads(driver):
         self.net_id = '192.168.0.1.1.1'
         self.port = 851
 
-
     def connect(self) -> bool:
         """ Connect driver.
         
@@ -57,13 +56,11 @@ class twincat_ads(driver):
             self.sendDebugInfo(f"Connection with {self.net_id} cannot be established.")
             return False
 
-
     def disconnect(self):
         """ Disconnect driver.
         """
         if self._connection:
             self._connection.close()
-
 
     def addVariables(self, variables: dict):
         """ Add variables to the driver. Correctly added variables will be added to internal dictionary 'variables'.
@@ -99,9 +96,7 @@ class twincat_ads(driver):
                     res.append((var_id, None, VariableQuality.BAD))
                 else:
                     res.append((var_id, value, VariableQuality.GOOD))
-
         return res
-
 
     def writeVariables(self, variables: list) -> list:
         """ Write given variable values. In case that the write is not possible or generates an error BAD quality should be returned.
@@ -110,7 +105,6 @@ class twincat_ads(driver):
         """
         res = []
         dictionary = {var_id:var_value for (var_id, var_value) in variables}    
-
         try:
             self._connection.write_list_by_name(dictionary)
         except:
