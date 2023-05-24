@@ -425,10 +425,14 @@ def getAreaFromString(vaddress, vdtype):
         elif vaddress[p:p+2] == "DB":
             try:
                 area = AREA_DB
-                db_address, var_address = vaddress.split('.')
+                db_address, var_address = vaddress.split('.', 1)
                 db_number = int(db_address[2:])
                 assert var_address[0:2]=='DB'
-                vaddress = var_address[2:]
+                if var_address[0:3]=='DBX':
+                    vaddress = var_address[3:]
+                else:
+                    vaddress = var_address[2:]
+                
                 p = 0
             except:
                 return None
