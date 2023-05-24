@@ -23,21 +23,26 @@ from drivers.s7protocol.s7protocol import s7protocol
 from drivers.driver import VariableOperation, VariableDatatype
 
 VARIABLES = {
-    'IB0':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
-    'QB0':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
-    'I1.2':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
-    'Q1.2':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
-    'IW2':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
-    'QW2':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
-    'IW4':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
-    'QW4':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
-    'ID10':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.WRITE},
-    'QD10':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.READ},
-    'ID14':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
-    'QD14':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
-    'ID18':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.WRITE},
-    'QD18':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.READ},
+    'DB11.DBB0':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
+    'DB5.DBD68':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
     }
+'''
+'IB0':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
+'QB0':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
+'I1.2':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
+'Q1.2':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
+'IW2':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
+'QW2':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
+'IW4':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
+'QW4':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
+'ID10':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.WRITE},
+'QD10':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.READ},
+'ID14':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
+'QD14':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
+'ID18':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.WRITE},
+'QD18':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.READ},
+'''
+
 
 d = s7protocol(None, 'test')
 d.ip = '192.168.1.250'
@@ -47,20 +52,22 @@ d.slot = 1
 # For Logo!
 #d.rack = 0
 #d.slot = 2
-if d.connect():
+if True:#d.connect():
     d.addVariables(VARIABLES)
     counter = 0
     t = time.perf_counter()
     while time.perf_counter()-t < 10:
 
-        res = d.readVariables(['QB0','Q1.2','QW2','QD10','QW4','QW10000','QD18'])
+        res = d.readVariables(['DB5.DBD68'])#'QB0','Q1.2','QW2','QD10','QW4','QW10000','QD18'])
         print(res, counter)
         d.writeVariables([
-            ('I1.2', counter%2),
-            ('IB0', counter%256),
-            ('IW2', counter),
-            ('ID10', counter),
-            ('IW4', counter-1000),
-            ('ID18', counter/3)])
+            ('DB11.DBB0', counter%2),
+            #('I1.2', counter%2),
+            #('IB0', counter%256),
+            #('IW2', counter),
+            #('ID10', counter),
+            #('IW4', counter-1000),
+            #('ID18', counter/3)]
+            ])
         counter += 1
     d.disconnect()
