@@ -16,8 +16,6 @@
 
 import sys 
 import os
-import clr
-from enum import Enum
 
 from multiprocessing import Pipe
 from typing import Optional

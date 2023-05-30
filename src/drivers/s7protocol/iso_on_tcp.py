@@ -409,6 +409,7 @@ def getAreaFromString(vaddress, vdtype):
     try:
         # Get area
         p = 0
+        db_number = 0
         if vaddress[p] == "I":
             area = AREA_INPUT
             p = 1
@@ -421,6 +422,20 @@ def getAreaFromString(vaddress, vdtype):
         elif vaddress[p] == "M":
             area = AREA_FLAG
             p = 1
+        elif vaddress[p:p+2] == "DB":
+            try:
+                area = AREA_DB
+                db_address, var_address = vaddress.split('.', 1)
+                db_number = int(db_address[2:])
+                assert var_address[0:2]=='DB'
+                if var_address[0:3]=='DBX':
+                    vaddress = var_address[3:]
+                else:
+                    vaddress = var_address[2:]
+                
+                p = 0
+            except:
+                return None
         else:
             return None
 
@@ -428,22 +443,22 @@ def getAreaFromString(vaddress, vdtype):
         # TODO: Some datatypes are missing
         if vaddress[p] == "B" and vdtype == VariableDatatype.BYTE:
             datatype = S7_Byte
-            p = 2
+            p += 1
         elif vaddress[p] == "W" and vdtype == VariableDatatype.WORD:
             datatype = S7_Word
-            p = 2
+            p += 1
         elif vaddress[p] == "W" and vdtype == VariableDatatype.INTEGER:
             datatype = S7_Int
-            p = 2
+            p += 1
         elif vaddress[p] == "D" and vdtype == VariableDatatype.DWORD:
             datatype = S7_DoubleWord
-            p = 2
+            p += 1
         elif vaddress[p] == "D" and vdtype == VariableDatatype.INTEGER:
             datatype = S7_DoubleInt
-            p = 2
+            p += 1
         elif vaddress[p] == "D" and vdtype == VariableDatatype.FLOAT:
             datatype = S7_Real
-            p = 2
+            p += 1
         elif vaddress[p:].find('.') and vdtype == VariableDatatype.BOOL:
             datatype = S7_Bit
         else:
@@ -466,13 +481,13 @@ def getAreaFromString(vaddress, vdtype):
         areaformated += struct.pack('!BHHBBH',
                             datatype,
                             1,
-                            0,
+                            db_number,
                             area,
                             int(tstart/0x10000),
                             int(tstart%0x10000))
 
         # 'Area', 'Start', 'Count', 'Type', 'DB', 'Formated'
-        return DataArea(Area=area, Type=datatype, DB=0, Start=start, Count=1, Formated=areaformated)
+        return DataArea(Area=area, Type=datatype, DB=db_number, Start=start, Count=1, Formated=areaformated)
 
     except Exception as e:
         return None      
