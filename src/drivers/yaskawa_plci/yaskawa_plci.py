@@ -56,7 +56,8 @@ except:
 # Driver that connects to yaskawa_plci
 class yaskawa_plci(driver):
     '''
-    This driver uses the Yaskawa plci API to connect to a controller.
+    This driver uses the Yaskawa plci API to connect to a controller. Link below:
+    https://mobile.yaskawa.com/downloads/search-index/details?showType=details&docnum=AN.MPIEC.29
     If the variable path is not specified with the @ character, the driver will assume is a global variable and will add the prefix "@GlobalVariables.".
     
     ip: str
