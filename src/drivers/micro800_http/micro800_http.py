@@ -38,24 +38,19 @@ class micro800_http(driver):
         """
         # Inherit
         driver.__init__(self, name, pipe, params)
-
         # Parameters
         self.port = 54321
-                
         # Internal variables
         self._output_vars = []
         self._input_vars = []
 
-
     def connect(self) -> bool:
         """ Connect driver.
-        
         : returns: True if connection established False if not
         """
         try:
             # Redefine URL with actual port
             self._connection = f"http://localhost:{self.port}/"
-
             # Get available outputs
             req = request.Request(self._connection+"/outputs", method="GET")
             r = request.urlopen(req)
@@ -66,7 +61,6 @@ class micro800_http(driver):
             else:
                 self.sendDebugInfo('Output data not available.')
                 return False
-
             # Get available inputs
             req = request.Request(self._connection+"/inputs", method="GET")
             r = request.urlopen(req)
@@ -77,26 +71,20 @@ class micro800_http(driver):
             else:
                 self.sendDebugInfo('Input data not available.')
                 return False
-            
             return True
-
         except Exception as e:
             self.sendDebugInfo('Exception '+str(e))
-
         return False
-
 
     def disconnect(self):
         """ Disconnect driver.
         """
         pass
 
-
     def addVariables(self, variables: dict):
         """ Add variables to the driver. Correctly added variables will be added to internal dictionary 'variables'.
         Any error adding a variable should be communicated to the server using sendDebugInfo() method.
         : param variables: Variables to add in a dict following the setup format. (See documentation) 
-        
         """
         for var_id, var_data in variables.items():
             if var_id in self._output_vars or var_id in self._input_vars:
@@ -104,7 +92,6 @@ class micro800_http(driver):
                 self.variables[var_id] = var_data
             else:
                 self.sendDebugVarInfo((f'SETUP: Variable not found: {var_id}', var_id))
-
 
     def readVariables(self, variables: list) -> list:
         """ Read given variable values. In case that the read is not possible or generates an error BAD quality should be returned.
@@ -120,16 +107,16 @@ class micro800_http(driver):
             if content:
                 for var_data in json.loads(content):
                     if var_data['Name'] in variables:
-                        res.append((var_data['Name'], var_data['Value'], VariableQuality.GOOD))
+                        var_id = var_data['Name']
+                        new_value_str = var_data['Value']
+                        new_value =  self.getValueFromString(self.variables[var_id]['datatype'], new_value_str)
+                        res.append((var_id, new_value, VariableQuality.GOOD))
                         variables.remove(var_data['Name'])
                     if not len(variables):
                         break
-
         except Exception as e:
             self.sendDebugInfo('SETUP failed: Exception '+str(e))
-        
         return res
-
 
     def writeVariables(self, variables: list) -> list:
         """ Write given variable values. In case that the write is not possible or generates an error BAD quality should be returned.
@@ -138,9 +125,8 @@ class micro800_http(driver):
         """
         # Send POST Request
         data = []
-        
         for (var_id, new_value) in variables:
-            data.append({'Name':var_id, 'Value':new_value})
+            data.append({'Name':var_id, 'Value':str(new_value)})
         try:
             data_json = json.dumps(data)
             req = request.Request(self._connection+"/inputs", method="POST")
@@ -149,7 +135,6 @@ class micro800_http(driver):
             quality = VariableQuality.GOOD
         except Exception as e:
             quality = VariableQuality.BAD
-
         res = []
         for (var_id, new_value) in variables:
             res.append((var_id, new_value, quality))

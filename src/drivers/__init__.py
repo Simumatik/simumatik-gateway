@@ -1,7 +1,5 @@
 import platform
 
-from drivers.rosbridge.rosbridge import rosbridge
-
 from .driver import driver, DriverActions, DriverStatus
 
 from .allenbradley_logix.allenbradley_logix import allenbradley_logix
@@ -9,6 +7,7 @@ from .cprog_cri.cprog_cri import cprog_cri
 from .development.development import development
 from .enip_generic_device.enip_generic_device import enip_generic_device
 from .hokuyo_uam.hokuyo_uam import hokuyo_uam
+from .kuka_varproxy.kuka_varproxy import kuka_varproxy
 from .micro800_http.micro800_http import micro800_http
 from .modbustcp_master.modbustcp_master import modbustcp_master
 from .mqtt_client.mqtt_client import mqtt_client
@@ -30,6 +29,7 @@ registered_drivers = {
   "development": (development,"1"),
   "enip_generic_device": (enip_generic_device,"1"),
   "hokuyo_uam": (hokuyo_uam,"1"),
+  "kuka_varproxy": (kuka_varproxy, "1"),
   "micro800_http": (micro800_http, "1"),
   "modbustcp_master": (modbustcp_master,"1"),
   "mqtt_client": (mqtt_client,"1"),
@@ -46,12 +46,18 @@ registered_drivers = {
 
 if platform.system() == "Windows":
     from .fanuc_roboguide.fanuc_roboguide import fanuc_roboguide
+    from .omron_nexsocket.omron_nexsocket import omron_nexsocket
     from .opcda_client.opcda_client import opcda_client
     from .plcsim.plcsim import plcsim
+    from .plcsim_advanced.plcsim_advanced import plcsim_advanced
     from .robotware.robotware import robotware
     from .robodk_api.robodk_api import robodk_api
+    from .yaskawa_plci.yaskawa_plci import yaskawa_plci
+    registered_drivers.update({"abb_driver": (robotware,"1")}) # TODO: Fix. Name is different to retrocompatibility
     registered_drivers.update({"fanuc_roboguide": (fanuc_roboguide, "1")})
+    registered_drivers.update({"omron_nexsocket": (omron_nexsocket, "1")})
     registered_drivers.update({"opcda_client": (opcda_client, "1")})
     registered_drivers.update({"plcsim": (plcsim, "1")})
-    registered_drivers.update({"abb_driver": (robotware,"1")}) # TODO: Fix. Name is different to retrocompatibility
+    registered_drivers.update({"plcsim_advanced": (plcsim_advanced,"1")})
     registered_drivers.update({"robodk_driver": (robodk_api, "1")}) # TODO: Fix. name is different to retrocompatibility
+    registered_drivers.update({"yaskawa_plci": (yaskawa_plci, "1")})
