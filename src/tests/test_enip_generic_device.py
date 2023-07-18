@@ -52,14 +52,8 @@ setup = {DriverActions.SETUP: {'parameters': {'driver_ip':'<IP_ADDRESS>', 'conne
 VARIABLES = {
     'IB0':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
     'IB1':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.WRITE},
-    'IW1':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
-    'ID1':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.WRITE},
-    'ID2':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.WRITE},
     'QB0':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
     'QB1':{'datatype': VariableDatatype.BYTE, 'size': 1, 'operation': VariableOperation.READ},
-    'QW1':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
-    'QD1':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.READ},
-    'QD2':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.READ},
     }
 
 # Add your custom logic in this test.
@@ -74,21 +68,15 @@ if d.connect():
     counter = 0
     last_sec = int(time.perf_counter())
     while True: #time.perf_counter() < 100:
-        d.loop()
-        '''
-        d.writeVariables([
-            ('IB0', counter % 256),
-            ('IB1', (counter+1) % 256),
-            ('IW1', counter),
-            ('ID1', counter),
-            ('ID2', counter/3-100),
-            ])
-        res = d.readVariables(['QB0','QB1','QW1','QD1','QD2'])
-        
-        print(res)
+        d.loop()        
         if int(time.perf_counter())!=last_sec:
+            d.writeVariables([
+                ('IB0', counter % 256),
+                ('IB1', (counter+1) % 256)
+                ])
+            res = d.readVariables(['QB0','QB1'])
+            #print(res)
             counter += 1 
             last_sec = int(time.perf_counter())
-        '''
 
     d.disconnect()

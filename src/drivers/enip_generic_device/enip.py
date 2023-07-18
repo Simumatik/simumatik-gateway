@@ -49,29 +49,32 @@ class CM_UnconnectedDataItem():
         self.request_path = request_path
         self.request_data = request_data
         # Get next known data (36 bytes -> 72 hex)
-        (self.timeout, self.id_o_t, self.id_t_o, self.conn_serial_num, 
-         self.orig_vendor_id, self.orig_serial_num, 
-         self.timeout_mult, self.reserved_1, self.reserved_2,
-         self.rpi_o_t, self.param_o_t, self.rpi_t_o, self.param_t_o, 
-         self.trigger, self.path_size) = struct.unpack('HIIHHIBBHIHIHBB', self.request_data[:36]+b'\x00'*4)
+        (self.prio_tick, self.timeout) = struct.unpack('BB', self.request_data[:2])
+        (self.id_o_t, self.id_t_o) = struct.unpack('II', self.request_data[2:10])
+        (self.conn_serial_num, self.orig_vendor_id, self.orig_serial_num) = struct.unpack('HHI', self.request_data[10:18])
+        (self.timeout_mult, res_1, res_2, res_3) = struct.unpack('BBBB', self.request_data[18:22])
+        (self.rpi_o_t, self.param_o_t) = struct.unpack('IH', self.request_data[22:28])
+        (self.rpi_t_o, self.param_t_o) = struct.unpack('IH', self.request_data[28:34])
+        (self.trigger, self.path_size) = struct.unpack('BB', self.request_data[34:36])
         # Remaining data
-        self.path = self.request_data[36:]
+        self.path = self.request_data[36:36+self.path_size]
+        pass
 
     def __str__(self):
         return f'Service: {hex(self.service)}, request path size: {self.request_path_size}, request path: {self.request_path}, request data: {self.request_data}'
 
     def hex(self):
         packet_hex = struct.pack('BBBB', 212, 0, 0, 0) # Reply service, reserved, status, reserved
-        packet_hex += self.request_path
+        #packet_hex += self.request_path
         packet_hex += struct.pack('IIHHIIIBB',
-                                  self.id_o_t,
+                                  0x00003741,
                                   self.id_t_o,
                                   self.conn_serial_num,
                                   self.orig_vendor_id,
                                   self.orig_serial_num,
                                   self.rpi_o_t,
                                   self.rpi_t_o,
-                                  0,+
+                                  0,
                                   0)
         return packet_hex
 
@@ -108,7 +111,7 @@ class CMitem():
 
     def hex(self):
         data_hex = self.data.hex()
-        return struct.pack('HH', self.type_id, self.length) + data_hex
+        return struct.pack('HH', self.type_id, len(data_hex)) + data_hex
 
 class EncapsulatedPacket():
     def __init__(self, items):
@@ -197,20 +200,21 @@ class EncapsulationHeader:
 
     def hex(self, len_data_hex):
         self.length = len_data_hex
-        return struct.pack(
-            'HHIIQI', 
+        res = struct.pack(
+            'HHII', 
             self.command,
             self.length,
             self.session_handle,
-            self.status,
-            self.context,
-            self.options
-            )[:ENIP_HEADER_SIZE]# For some reason this pack will return 28 bytes
+            self.status)
+        return res+self.context+self.options
 
     @staticmethod
     def unpack(raw_data):
         # For some reason this unpack requires 28 bytes
-        (command, length, session, status, context, options) = struct.unpack('HHIIQI', raw_data+b'\x00'*4)
+        (command, length) = struct.unpack('HH', raw_data[:4])
+        (session, status) = struct.unpack('II', raw_data[4:12]) 
+        context = raw_data[12:20]
+        options = raw_data[20:24]
         return EncapsulationHeader(command, session, status, context, options, length)
     
 class RegisterSessionData:
@@ -259,28 +263,20 @@ class SendRRData():
 
 
 class EnipIOpacket():
-    def __init__(self, data:bytes, seq:int, id:int, count:int):
+    def __init__(self, data:bytes, cip_counter:int, connection_id:int, seq_count:int):
         self.data = data
-        self.seq = seq
-        self.id = id
-        self.seq_count = count
+        self.cip_counter = cip_counter
+        self.connection_id = connection_id
+        self.seq_count = seq_count
 
     def pack(self):
-        data_io = struct.pack('>H', self.seq_count) + self.data
-        res = struct.pack('HHH',
-                           2,
-                           CM_SequencedAddressItem_Type,
-                           8,
-        )
-        res += struct.pack('>I', self.id)
-        res += struct.pack('IHH',
-                           self.seq,
-                           CM_ConnectedDataItem_Type,
-                           len(data_io)
-                           )
-        return res+data_io
+        # Item count
+        res = struct.pack('H',2)   
+        res += struct.pack('HHII',CM_SequencedAddressItem_Type, 8, self.connection_id, self.seq_count)
+        res += struct.pack('HH',CM_ConnectedDataItem_Type, 2+len(self.data))
+        res += struct.pack('H', self.cip_counter) + self.data
+        return res
 
-    
 class EnipIOpacket_old():
     def __init__(self, data, seq, id, count):
         self.data = data
