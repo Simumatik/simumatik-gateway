@@ -64,7 +64,7 @@ VARIABLES = {
 
 # Add your custom logic in this test.
 d = enip_generic_device(None, 'test')
-d.ip = "192.168.0.215"
+d.ip = "192.168.1.3"
 d.read_size = 12
 d.write_size = 12
 

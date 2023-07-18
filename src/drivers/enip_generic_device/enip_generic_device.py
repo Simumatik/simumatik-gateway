@@ -20,7 +20,7 @@ import socket
 import struct
 from enum import Enum 
 import time
-from .enip import EnipPacket, EnipIOpacket
+from .enip import EnipPacket, EnipIOpacket, RegisterSessionData, SendRRData
 
 from ..driver import driver, VariableDatatype, VariableOperation, VariableQuality
 
@@ -72,8 +72,6 @@ class enip_generic_device(driver):
         self._state = STATE.RESET
 
         # Enip IO packet variables
-        self.io_seq = 0
-        self.cip_counter = 0
         self.id_io = 0
 
     def connect(self) -> bool:
@@ -120,10 +118,14 @@ class enip_generic_device(driver):
             try:
                 message = self.plc_socket.recv(MAX_TELEGRAM_SIZE)
                 assert message, 'no request'
-                package = EnipPacket.process(message, self._handle)
-                self.plc_socket.send(package.hex())
+                package = EnipPacket.process(message)
+                print("UCMM Request:\n", package)
+                reply = package.reply(self._handle)
+                print("UCMM Reply:\n", package)
+                self.plc_socket.send(reply)
                 self.last_package_time = time.perf_counter()
-                self._state = STATE.COMMUNICATION_MANAGER
+                if isinstance(package.specific_data, RegisterSessionData):
+                    self._state = STATE.COMMUNICATION_MANAGER
             except Exception as e:
                 if time.perf_counter() - self.last_package_time > CONNECTION_TIMEOUT:
                     self._state = STATE.WAITING_CONNECTION
@@ -132,11 +134,14 @@ class enip_generic_device(driver):
             try:
                 message = self.plc_socket.recv(4096)
                 assert message, 'no request'
-                package = EnipPacket.process(message, self._handle)
-                self.plc_socket.send(package.hex())
+                package = EnipPacket.process(message)
+                print("UCMM Request:\n", package)
+                reply = package.reply(self._handle)
+                print("UCMM Reply:\n", package)
+                self.plc_socket.send(reply)
                 self.last_package_time = time.perf_counter()
-                if package.encapsulation_header.command == 0x6f:
-                    self.id_io = package.specific_data.encapsulated_packet.items[1].CM_item_data.id_t_o
+                if isinstance(package.specific_data, SendRRData):
+                    self.id_io = package.specific_data.encapsulated_packet.items[1].data.id_t_o
                     self._state = STATE.CONNECTTION_STABLISHED
             except Exception as e:
                 if time.perf_counter() - self.last_package_time > CONNECTION_TIMEOUT:
@@ -146,11 +151,12 @@ class enip_generic_device(driver):
             try:
                 self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 self.udp_socket.bind((self.ip, 2222))
-                self.udp_socket.settimeout(1.0)
+                self.udp_socket.settimeout(5.0)
                 # Send data
-                packet = EnipIOpacket(self.write_data, self.io_seq, self.id_io, self.cip_counter).pack()
-                self.udp_socket.sendto(packet, (self.plc_address, 2222))
-                self.io_seq += 1
+                self.io_seq = 1
+                self.cip_counter = 1
+                packet = EnipIOpacket(self.write_data, self.io_seq, self.id_io, self.cip_counter)
+                self.udp_socket.sendto(packet.pack(), (self.plc_address, 2222))
                 self.last_package_time = time.perf_counter()
                 self._state = STATE.CONNECTION_RUNNING
             except Exception as e:
@@ -168,9 +174,9 @@ class enip_generic_device(driver):
                     payload = packet_hex[-(self.read_size*2):] # For some reason characters come flipped
                     self.read_data = bytes.fromhex(payload)
                     # Send data
-                    packet = EnipIOpacket(self.write_data, self.io_seq, self.id_io, self.cip_counter).pack()
-                    self.udp_socket.sendto(packet, (self.plc_address, 2222))
                     self.io_seq += 1
+                    packet = EnipIOpacket(self.write_data, self.io_seq, self.id_io, self.cip_counter)
+                    self.udp_socket.sendto(packet.pack(), (self.plc_address, 2222))
                     self.last_package_time = time.perf_counter()
             except Exception as e:
                 try:
