@@ -78,7 +78,7 @@ class enip_generic_device(driver):
     def change_state(self, newstate):
         if newstate in STATE:
             self._state = newstate
-            self.sendDebugInfo(f'State changed to {self._state}')
+            self.sendDebugInfo(f'{self._state}')
 
     def connect(self) -> bool:
         """ Connect driver.
@@ -182,7 +182,7 @@ class enip_generic_device(driver):
     
         elif self._state == STATE.CONNECTION_RUNNING:
             try:
-                if time.perf_counter()-self.last_package_time>=self.rpi*1e-3:
+                while True: # Try to receive as many telegrams as possible and answer them 
                     # Receive data
                     message = self.udp_socket.recv(4096)
                     packet_hex = message.hex() # Convert from \x00 to 00
