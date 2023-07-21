@@ -20,21 +20,20 @@ import socket
 import struct
 from enum import Enum 
 import time
-from .enip import EnipPacket, EnipIOpacket, RegisterSessionData, SendRRData
+from .enip import EnipPacket, EnipIOpacket, RegisterSessionData, SendRRData, CMitem, CM_SocketAddressInfo
 
 from ..driver import driver, VariableDatatype, VariableOperation, VariableQuality
 
 
 MAX_TELEGRAM_SIZE = 4096
 DEFAULT_ENIP_PORT = 44818
-CONNECTION_TIMEOUT = 1
+MAX_CIP_COUNTER = 0xffff
 
 class STATE(str, Enum):
-    WAITING_CONNECTION = 'waiting connection'
-    REGISTERING_SESSION = 'registering session'
-    COMMUNICATION_MANAGER = 'communication manager setup'
-    CONNECTTION_STABLISHED = 'connection stablished'
-    CONNECTION_RUNNING = 'connection running'
+    WAITING_CONNECTION = 'Waiting connection'
+    REGISTERING_SESSION = 'Rregistering session'
+    CONNECTTION_STABLISHED = 'Connection stablished'
+    CONNECTION_RUNNING = 'Connection running'
     RESET = 'reset'
 
 class enip_generic_device(driver):
@@ -59,7 +58,6 @@ class enip_generic_device(driver):
 
         # Parameters
         self.ip = '127.0.0.1'
-        self.cip_counter = 0
         self.read_size = 1
         self.write_size = 1
         self.device_id = "41370000"
@@ -68,6 +66,8 @@ class enip_generic_device(driver):
         # Object variables
         self.udp_socket = None
         self.plc_socket = None
+        self.cip_counter = 0
+        self.connection_timeout = 2
         self.plc_address = ""
         self.last_package_time = None
         self.change_state(STATE.RESET)
@@ -78,7 +78,7 @@ class enip_generic_device(driver):
     def change_state(self, newstate):
         if newstate in STATE:
             self._state = newstate
-            print(f'State changed to {self._state}')
+            self.sendDebugInfo(f'State changed to {self._state}')
 
     def connect(self) -> bool:
         """ Connect driver.
@@ -90,7 +90,7 @@ class enip_generic_device(driver):
             self._connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self._connection.bind((self.ip, DEFAULT_ENIP_PORT))
             self._connection.listen(1)
-            self._connection.settimeout(CONNECTION_TIMEOUT)
+            self._connection.settimeout(1)
             self.sendDebugInfo(f'Listening for connections at {self.ip}:{DEFAULT_ENIP_PORT}')
             self._handle = int(self.ip.split('.')[3])
             return True
@@ -110,81 +110,93 @@ class enip_generic_device(driver):
     def loop(self):
         """ Runs every iteration while the driver is active. Only use if strictly necessary.
         """
-        if self.plc_socket is None:
-            try:
-                (self.plc_socket, self.plc_address) = self._connection.accept()
-                self.plc_address = self.plc_address[0]
-                self.sendDebugInfo(f'Status {self._state}: {self.plc_address}')
-                self.last_package_time = time.perf_counter()
-            except:
-                pass
-
-        else:
-            if self._state in [STATE.REGISTERING_SESSION, STATE.WAITING_CONNECTION]:
-                # TCP Connection handler
-                try:
-                    message = self.plc_socket.recv(MAX_TELEGRAM_SIZE)
-                    assert message, 'no request'
-                    package = EnipPacket.process(message)
-                    #print("UCMM Request:\n", package)
-                    if isinstance(package.specific_data, RegisterSessionData):
-                        reply = package.reply(self._handle)
-                    elif isinstance(package.specific_data, SendRRData):
-                        reply = package.reply(self._handle)
-                        self.id_io = package.specific_data.encapsulated_packet.items[1].data.id_t_o
-                        if self._state != STATE.CONNECTION_RUNNING:
-                            self.change_state(STATE.CONNECTTION_STABLISHED)
-                    #print("UCMM Reply:\n", package)
-                    self.plc_socket.send(reply)
-                    self.last_package_time = time.perf_counter()
-                except Exception as e:
-                    pass
         
-            if self._state == STATE.CONNECTTION_STABLISHED:
-                try:
-                    self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                    self.udp_socket.bind((self.ip, 2222))
-                    self.udp_socket.settimeout(1.0)
-                    # Send data
-                    self.io_seq = 1
-                    self.cip_counter = 1
-                    packet = EnipIOpacket(self.write_data, self.io_seq, self.id_io, self.cip_counter)
-                    self.udp_socket.sendto(packet.pack(), (self.plc_address, 2222))
-                    self.last_package_time = time.perf_counter()
-                    self.change_state(STATE.CONNECTION_RUNNING)
-                except Exception as e:
-                    if time.perf_counter() - self.last_package_time > CONNECTION_TIMEOUT:
-                        self.change_state(STATE.RESET)
-        
-            elif self._state == STATE.CONNECTION_RUNNING:
-                try:
-                    if time.perf_counter()-self.last_package_time>=self.rpi*1e-3*0.5:
-                        # Receive data
-                        message = self.udp_socket.recv(4096)
-                        packet_hex = message.hex() # Convert from \x00 to 00
-                        assert len(packet_hex)>8+self.read_size*2, 'Wrong telegram size'
-                        assert packet_hex[4:8] == "0280", 'Invalid package header'
-                        payload = packet_hex[-(self.read_size*2):] # For some reason characters come flipped
-                        self.read_data = bytes.fromhex(payload)
-                        # Send data
-                        self.io_seq += 1
-                        packet = EnipIOpacket(self.write_data, self.cip_counter, self.id_io, self.io_seq)
-                        self.udp_socket.sendto(packet.pack(), (self.plc_address, 2222))
-                        self.last_package_time = time.perf_counter()
-                except Exception as e:
-                    if time.perf_counter() - self.last_package_time > CONNECTION_TIMEOUT:
-                        self.change_state(STATE.RESET)
-
         if self._state == STATE.RESET:
             if self.udp_socket:
                 self.udp_socket.close()
                 self.udp_socket = None
             if self.plc_socket:
                 self.plc_socket.close()
-                self.plc_socke = None
+                self.plc_socket = None
             self.write_data = self.write_size*bytes.fromhex('00')
             self.read_data = self.read_size*bytes.fromhex('00')
-            self.change_state(STATE.REGISTERING_SESSION)
+            self.change_state(STATE.WAITING_CONNECTION)
+
+        elif self._state == STATE.WAITING_CONNECTION:
+            try:
+                (self.plc_socket, self.plc_address) = self._connection.accept()
+                self.plc_address = self.plc_address[0]
+                self.sendDebugInfo(f'Status {self._state}: {self.plc_address}')
+                self.last_package_time = time.perf_counter()
+                self.change_state(STATE.REGISTERING_SESSION)
+            except:
+                pass
+
+        elif self._state in [STATE.REGISTERING_SESSION, STATE.WAITING_CONNECTION]:
+            # TCP Connection handler
+            try:
+                message = self.plc_socket.recv(MAX_TELEGRAM_SIZE)
+                assert message, 'no request'
+                package = EnipPacket.process(message)
+                #print("UCMM Request:\n", package)
+                if isinstance(package.specific_data, RegisterSessionData):
+                    reply = package.reply(self._handle)
+                elif isinstance(package.specific_data, SendRRData):
+                    package.specific_data.encapsulated_packet.items.append(CMitem(0x8000, 16, CM_SocketAddressInfo(2, 2222, 0, 0).hex()))
+                    plc_ip = 0
+                    plc_address = self.plc_address.split('.')
+                    plc_address.reverse()
+                    for sip in plc_address:
+                        plc_ip = plc_ip*256+int(sip) 
+                    package.specific_data.encapsulated_packet.items.append(CMitem(0x8001, 16, CM_SocketAddressInfo(2, 2222, plc_ip, 0).hex()))
+                    reply = package.reply(self._handle)
+                    self.id_io = package.specific_data.encapsulated_packet.items[1].data.id_t_o
+                    self.rpi = int(package.specific_data.encapsulated_packet.items[1].data.rpi_t_o*1e-3)
+                    # Actual Time Out value = 2time_tick x Time_out_tick
+                    tick = package.specific_data.encapsulated_packet.items[1].data.prio_tick
+                    timeout = package.specific_data.encapsulated_packet.items[1].data.timeout
+                    self.connection_timeout = 2**tick * timeout * 1e-3
+                    if self._state != STATE.CONNECTION_RUNNING:
+                        self.change_state(STATE.CONNECTTION_STABLISHED)
+                #print("UCMM Reply:\n", package)
+                self.plc_socket.send(reply)
+                self.last_package_time = time.perf_counter()
+            except Exception as e:
+                pass
+    
+        elif self._state == STATE.CONNECTTION_STABLISHED:
+            try:
+                self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                self.udp_socket.bind((self.ip, 2222))
+                self.udp_socket.settimeout(0.0)
+                self.udp_address = self.plc_address # TODO: Check if somethings needs to be done for Multicast
+                # Send data
+                self.io_seq = 1
+                self.cip_counter = 1
+                self.udp_socket.sendto(EnipIOpacket(self.write_data, self.cip_counter, self.id_io, self.io_seq), (self.udp_address, 2222))
+                self.last_package_time = time.perf_counter()
+                self.change_state(STATE.CONNECTION_RUNNING)
+            except Exception as e:
+                if time.perf_counter() - self.last_package_time > self.connection_timeout:
+                    self.change_state(STATE.RESET)
+    
+        elif self._state == STATE.CONNECTION_RUNNING:
+            try:
+                if time.perf_counter()-self.last_package_time>=self.rpi*1e-3:
+                    # Receive data
+                    message = self.udp_socket.recv(4096)
+                    packet_hex = message.hex() # Convert from \x00 to 00
+                    assert len(packet_hex)>8+self.read_size*2, 'Wrong telegram size'
+                    assert packet_hex[4:8] == "0280", 'Invalid package header'
+                    payload = packet_hex[-(self.read_size*2):] # The data may be preceed of status info
+                    self.read_data = bytes.fromhex(payload)
+                    # Send data
+                    self.io_seq += 1
+                    self.udp_socket.sendto(EnipIOpacket(self.write_data, self.cip_counter, self.id_io, self.io_seq), (self.udp_address, 2222))
+                    self.last_package_time = time.perf_counter()
+            except Exception as e:
+                if time.perf_counter() - self.last_package_time > self.connection_timeout:
+                    self.change_state(STATE.RESET)
 
 
     def addVariables(self, variables: dict):
@@ -278,6 +290,9 @@ class enip_generic_device(driver):
                 res.append((var_id, new_value, VariableQuality.GOOD))
             except Exception as e:
                 res.append((var_id, new_value, VariableQuality.BAD))
-        self.cip_counter += 1 # Very important to trigger the update in the controller
+        if self.cip_counter<MAX_CIP_COUNTER: 
+            self.cip_counter += 1 # Very important to trigger the update in the controller
+        else:
+            self.cip_counter = 1
         return res
     
