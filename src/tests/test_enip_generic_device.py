@@ -58,16 +58,16 @@ VARIABLES = {
 
 # Add your custom logic in this test.
 d = enip_generic_device(None, 'test')
-d.ip = "192.168.1.106"
-d.read_size = 22
-d.write_size = 44
+d.ip = "192.168.0.150"
+d.read_size = 10
+d.write_size = 10
 scan_cycle = 8e-3
 last_scan = 0
 
 if d.connect():
     d.addVariables(VARIABLES)
     counter = 0
-    while time.perf_counter() < 10:
+    while True:#time.perf_counter() < 10:
         now = time.perf_counter()
         d.loop()        
         if now-last_scan>=scan_cycle:

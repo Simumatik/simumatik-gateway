@@ -60,8 +60,7 @@ class enip_generic_device(driver):
         self.ip = '127.0.0.1'
         self.read_size = 1
         self.write_size = 1
-        self.device_id = "41370000"
-        self.rpi = 10
+        self.rpi = 0
 
         # Object variables
         self.udp_socket = None
@@ -93,6 +92,7 @@ class enip_generic_device(driver):
             self._connection.settimeout(1)
             self.sendDebugInfo(f'Listening for connections at {self.ip}:{DEFAULT_ENIP_PORT}')
             self._handle = int(self.ip.split('.')[3])
+            self.rpi = 0 # Force RPI to 0 because we want the loop wo be as fast as possible, no sleep
             return True
 
         except Exception as e:
@@ -110,7 +110,6 @@ class enip_generic_device(driver):
     def loop(self):
         """ Runs every iteration while the driver is active. Only use if strictly necessary.
         """
-        
         if self._state == STATE.RESET:
             if self.udp_socket:
                 self.udp_socket.close()
@@ -142,6 +141,7 @@ class enip_generic_device(driver):
                 if isinstance(package.specific_data, RegisterSessionData):
                     reply = package.reply(self._handle)
                 elif isinstance(package.specific_data, SendRRData):
+                    # Add CMItems
                     package.specific_data.encapsulated_packet.items.append(CMitem(0x8000, 16, CM_SocketAddressInfo(2, 2222, 0, 0).hex()))
                     plc_ip = 0
                     plc_address = self.plc_address.split('.')
@@ -150,9 +150,12 @@ class enip_generic_device(driver):
                         plc_ip = plc_ip*256+int(sip) 
                     package.specific_data.encapsulated_packet.items.append(CMitem(0x8001, 16, CM_SocketAddressInfo(2, 2222, plc_ip, 0).hex()))
                     reply = package.reply(self._handle)
+                    # TODO: Check if somethings needs to be done for Multicast
+                    self.udp_address = self.plc_address
+                    # TODO: Modify vendor data
+                    # Extract T-O ID
                     self.id_io = package.specific_data.encapsulated_packet.items[1].data.id_t_o
-                    self.rpi = int(package.specific_data.encapsulated_packet.items[1].data.rpi_t_o*1e-3)
-                    # Actual Time Out value = 2time_tick x Time_out_tick
+                    # Extract connection TimeOut: Actual Time Out value = 2^time_tick x Time_out_tick
                     tick = package.specific_data.encapsulated_packet.items[1].data.prio_tick
                     timeout = package.specific_data.encapsulated_packet.items[1].data.timeout
                     self.connection_timeout = 2**tick * timeout * 1e-3
@@ -169,8 +172,6 @@ class enip_generic_device(driver):
                 self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 self.udp_socket.bind((self.ip, 2222))
                 self.udp_socket.settimeout(0.0)
-                self.udp_address = self.plc_address # TODO: Check if somethings needs to be done for Multicast
-                # Send data
                 self.io_seq = 1
                 self.cip_counter = 1
                 self.udp_socket.sendto(EnipIOpacket(self.write_data, self.cip_counter, self.id_io, self.io_seq), (self.udp_address, 2222))
@@ -212,7 +213,7 @@ class enip_generic_device(driver):
                     assert var_data['datatype'] == VariableDatatype.BYTE, "B should be used for BYTE type variables."
                     byte_size = 1
                 elif var_id[1]=="W":
-                    assert var_data['datatype'] in [VariableDatatype.WORD], "W should be used for WORD type variables."
+                    assert var_data['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER], "W should be used for WORD type variables."
                     byte_size = 2
                 elif var_id[1]=="D":
                     assert var_data['datatype'] in [VariableDatatype.DWORD, VariableDatatype.FLOAT], "D should be used for DWORD or FLOAT type variables."
@@ -231,7 +232,6 @@ class enip_generic_device(driver):
                 var_data['byte_size'] = byte_size
                 var_data['value'] = self.defaultVariableValue(var_data['datatype'], var_data['size'])
                 self.variables[var_id] = dict(var_data)
-
             except Exception as e:
                 self.sendDebugVarInfo((f'SETUP: Variable definition is wrong: {var_id}, {e}', var_id))
 
