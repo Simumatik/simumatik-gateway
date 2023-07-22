@@ -5,6 +5,7 @@ from .driver import driver, DriverActions, DriverStatus
 from .allenbradley_logix.allenbradley_logix import allenbradley_logix
 from .cprog_cri.cprog_cri import cprog_cri
 from .development.development import development
+from .enip_generic_device.enip_generic_device import enip_generic_device
 from .hokuyo_uam.hokuyo_uam import hokuyo_uam
 from .kuka_varproxy.kuka_varproxy import kuka_varproxy
 from .micro800_http.micro800_http import micro800_http
@@ -25,7 +26,8 @@ from .universal_robots.universal_robots import universal_robots
 registered_drivers = {
   "allenbradley_logix": (allenbradley_logix, "1"),
   "cprog_cri": (cprog_cri, "1"),
-  "development": (development, "1"),
+  "development": (development,"1"),
+  "enip_generic_device": (enip_generic_device,"1"),
   "hokuyo_uam": (hokuyo_uam,"1"),
   "kuka_varproxy": (kuka_varproxy, "1"),
   "micro800_http": (micro800_http, "1"),
