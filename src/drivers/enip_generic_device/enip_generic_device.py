@@ -213,7 +213,7 @@ class enip_generic_device(driver):
                     assert var_data['datatype'] == VariableDatatype.BYTE, "B should be used for BYTE type variables."
                     byte_size = 1
                 elif var_id[1]=="W":
-                    assert var_data['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER], "W should be used for WORD type variables."
+                    assert var_data['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER], "W should be used for WORD or INTEGER type variables."
                     byte_size = 2
                 elif var_id[1]=="D":
                     assert var_data['datatype'] in [VariableDatatype.DWORD, VariableDatatype.FLOAT], "D should be used for DWORD or FLOAT type variables."
@@ -250,7 +250,7 @@ class enip_generic_device(driver):
                 value_hex = self.read_data[index:index+byte_size]
                 if var_data['datatype'] == VariableDatatype.BYTE:
                     value = struct.unpack('B', value_hex)[0]
-                elif var_data['datatype'] == VariableDatatype.WORD:
+                elif var_data['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER]:
                     value = struct.unpack('H', value_hex)[0]
                 elif var_data['datatype'] == VariableDatatype.FLOAT:
                     value = struct.unpack('f', value_hex)[0]
@@ -278,7 +278,7 @@ class enip_generic_device(driver):
                 byte_size = var_data['byte_size']
                 if var_data['datatype'] == VariableDatatype.BYTE:  
                     value_hex = struct.pack('B', new_value)
-                elif var_data['datatype'] == VariableDatatype.WORD:  
+                elif var_data['datatype'] in [VariableDatatype.WORD, VariableDatatype.INTEGER]:  
                     value_hex = struct.pack('H', new_value)
                 elif var_data['datatype'] == VariableDatatype.FLOAT:  
                     value_hex = struct.pack('f', new_value)
