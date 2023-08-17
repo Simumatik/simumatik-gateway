@@ -30,7 +30,7 @@ from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 
 
 # Version
-version = "4.1.2"
+version = "4.1.3"
 MAX_TELEGRAM_LENGTH = 2**13 # (8K)
 MAX_UPDATES_PER_TELEGRAM = 100
 
@@ -91,7 +91,7 @@ class gateway():
         # Get URL
         self.server_address = None
         self.sync_mode = True
-        self.sync_period = 0.1
+        self.sync_period = 0.0
         self.sync_telegrams = {}
         self.sync_last_telegram = 0
         # UDP Telegrams
@@ -109,6 +109,7 @@ class gateway():
         self.variables = {} # {driver_object: {var_name: [handles]}}
         self.driver_statuses = {} # {driver_handle: status}
         self.driver_infos = {} # {driver_handle: info}
+        self.driver_updates = {} # {var_name: value}
         self.status = GatewayStatus.STANDBY
         self.error_msg = ''
         
@@ -249,7 +250,8 @@ class gateway():
             self.server_address = None
             self.message_id = 0 
             self.sync_telegrams = {}
-            self.sync_period = 0.1  
+            self.sync_period = 0.0
+            self.driver_updates = {}
         except Exception as e:
             logger.error('Exception during cleanup: '+str(e))
             
@@ -301,14 +303,17 @@ class gateway():
                             data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
                         except:
                             break
-                elif telegram_command in ['SYNC','UPDATE']:
+                elif 'UPDATE' == telegram_command:
+                    self.last_processed_update = telegram_id
+                    res = self.do_driver_updates(telegram_data)
+                elif 'SYNC' == telegram_command:
                     self.last_processed_update = telegram_id
                     if telegram_id in self.sync_telegrams:
                         send_time = self.sync_telegrams.pop(telegram_id)
                         delta_sync = (now-send_time)*0.5
                         self.sync_period = self.sync_period * 0.9 + delta_sync * 0.1 
-                        #print(f"Sync period: {self.sync_period}, {delta_sync}")
-                    res = self.do_driver_updates(telegram_data)
+                    if telegram_data:
+                        res = self.do_driver_updates(telegram_data)
                 elif 'POLLING' == telegram_command:
                     self.last_poll_received = now
                 needs_sleep = False
@@ -325,7 +330,6 @@ class gateway():
 
         # Check updates from drivers
         try:
-            updates = {}
             var_info = {}
             for driver_object, pipe in self.drivers.items():
                 if driver_object.is_alive() and pipe:
@@ -336,7 +340,7 @@ class gateway():
                             logger.debug(f'Driver {driver_object.name} output data updated: {data}')
                             for var_name, var_value in data.items():
                                 for handle in self.variables[driver_object][var_name]:
-                                    updates[handle] = var_value
+                                    self.driver_updates[handle] = var_value
                             
                         elif action == DriverActions.STATUS:
                             logger.debug(f'Driver {driver_object.name} status changed: {data}')
@@ -356,23 +360,33 @@ class gateway():
                             
                         needs_sleep = False
 
-            # Send telegrams
-            if (not self.sync_mode) or (self.sync_mode and len(self.sync_telegrams)<2 and now-self.sync_last_telegram>=self.sync_period):
+            # Send telegrams ASYNC
+            if not self.sync_mode:
+                update_slice = {}
+                while self.driver_updates:
+                    (key, value) = self.driver_updates.popitem()
+                    update_slice[key] = value
+                    if len(update_slice)>=MAX_UPDATES_PER_TELEGRAM or len(self.driver_updates)==0:                
+                        self.send_message(id=self.get_new_message_id(), command="UPDATE", data=update_slice)
+                        update_slice = {}
+
+            # Send telegrams SYNC
+            elif len(self.sync_telegrams)<2 and now-self.sync_last_telegram>=self.sync_period:
                 telegram_id = self.get_new_message_id()
-                if updates:
+                if self.driver_updates:
                     update_slice = {}
-                    while updates:
-                        (key, value) = updates.popitem()
+                    while self.driver_updates:
+                        (key, value) = self.driver_updates.popitem()
                         update_slice[key] = value
-                        if len(update_slice)>=MAX_UPDATES_PER_TELEGRAM or len(updates)==0:                
+                        if len(update_slice)>=MAX_UPDATES_PER_TELEGRAM or len(self.driver_updates)==0:                
                             self.send_message(id=telegram_id, command="SYNC" if self.sync_mode else "UPDATE", data=update_slice)
+                            #print(f"{now} - SYNC sent with ID {telegram_id}. {update_slice}")
                             update_slice = {}
                 elif self.sync_mode:
                     self.send_message(id=telegram_id, command="SYNC", data={})
-                if self.sync_mode:
-                    #print(f"Sync telegram sent: {telegram_id}")
-                    self.sync_telegrams[telegram_id] = now
-                    self.sync_last_telegram = now
+                    #print(f"{now} - SYNC sent with ID {telegram_id}")
+                self.sync_telegrams[telegram_id] = now
+                self.sync_last_telegram = now
             
             if self.driver_statuses: 
                 self.send_message(id=self.get_new_message_id(), command="STATUS", data=self.driver_statuses)
