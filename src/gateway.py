@@ -371,7 +371,7 @@ class gateway():
                         update_slice = {}
 
             # Send telegrams SYNC
-            elif len(self.sync_telegrams)<2 and now-self.sync_last_telegram>=self.sync_period:
+            elif len(self.sync_telegrams)<2 and now-self.sync_last_telegram>=self.sync_period and len(self.drivers):
                 telegram_id = self.get_new_message_id()
                 if self.driver_updates:
                     update_slice = {}
