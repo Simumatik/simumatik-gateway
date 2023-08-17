@@ -371,7 +371,7 @@ class gateway():
                         update_slice = {}
 
             # Send telegrams SYNC
-            elif len(self.sync_telegrams)<2 and now-self.sync_last_telegram>=self.sync_period and len(self.drivers):
+            elif len(self.sync_telegrams)<2 and now-self.sync_last_telegram>=self.sync_period:# and len(self.drivers):
                 telegram_id = self.get_new_message_id()
                 if self.driver_updates:
                     update_slice = {}
@@ -380,11 +380,11 @@ class gateway():
                         update_slice[key] = value
                         if len(update_slice)>=MAX_UPDATES_PER_TELEGRAM or len(self.driver_updates)==0:                
                             self.send_message(id=telegram_id, command="SYNC" if self.sync_mode else "UPDATE", data=update_slice)
-                            #print(f"{now} - SYNC sent with ID {telegram_id}. {update_slice}")
+                            print(f"{now} - SYNC sent with ID {telegram_id}. {update_slice}")
                             update_slice = {}
                 elif self.sync_mode:
                     self.send_message(id=telegram_id, command="SYNC", data={})
-                    #print(f"{now} - SYNC sent with ID {telegram_id}")
+                    print(f"{now} - SYNC sent with ID {telegram_id}")
                 self.sync_telegrams[telegram_id] = now
                 self.sync_last_telegram = now
             
