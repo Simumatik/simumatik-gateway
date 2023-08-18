@@ -36,6 +36,9 @@ MAX_UPDATES_PER_TELEGRAM = 100
 
 # Settings
 poll_time = 1 # seconds
+MINIMUM_SYNC_PERIOD = 0.002
+STANDBY_SYNC_PERIOD = 0.1
+MAX_SYNC_TELEGRAM = 10000
 
 # Global
 WebSocketConnections = []
@@ -91,8 +94,9 @@ class gateway():
         # Get URL
         self.server_address = None
         self.sync_mode = False
-        self.sync_period = 0.0
-        self.sync_telegram_id = 0
+        self.sync_period = STANDBY_SYNC_PERIOD
+        self.sync_telegrams = {}
+        self.sync_telegram_counter = 0
         self.sync_last_telegram = 0
         # UDP Telegrams
         self.udp_socket = None
@@ -249,8 +253,10 @@ class gateway():
             self.udp_socket = None
             self.server_address = None
             self.message_id = 0 
-            self.sync_telegram_id = 0
-            self.sync_period = 0.0
+            self.sync_telegrams = {}
+            self.sync_period = STANDBY_SYNC_PERIOD
+            self.sync_last_telegram = 0
+            self.sync_telegram_counter = 0
             self.driver_updates = {}
         except Exception as e:
             logger.error('Exception during cleanup: '+str(e))
@@ -261,10 +267,9 @@ class gateway():
         # Flag if sleep is needed
         needs_sleep = True
         self.loop_counter += 1
-        now = time.perf_counter()
 
         # Send polling message within the interval
-        if (now-self.last_poll_sent) >= poll_time:
+        if (time.perf_counter()-self.last_poll_sent) >= poll_time:
             try:
                 polling_data = {
                     "LAST_PROC_UPDATE": self.last_processed_update, 
@@ -273,9 +278,14 @@ class gateway():
                     "CYCLES": round(1000/self.loop_counter,2),
                     }
                 self.send_message(id=self.get_new_message_id(), command="POLLING", data=polling_data)
-                self.last_poll_sent = now
+                self.last_poll_sent = time.perf_counter()
                 needs_sleep = False
                 self.loop_counter = 0
+                #print(self.sync_period, self.sync_telegrams)
+                # Clean lost sync packages
+                for id in list(self.sync_telegrams.keys()):
+                    if id < self.sync_telegram_counter:
+                        self.sync_telegrams.pop(id)
             except:
                 self.status = GatewayStatus.ERROR
                 self.error_msg = 'Exception sending polling telegram'
@@ -309,20 +319,23 @@ class gateway():
                     res = self.do_driver_updates(telegram_data)
                 elif 'SYNC' == telegram_command:
                     self.last_processed_update = telegram_id
-                    if telegram_id >= self.sync_telegram_id:
-                        self.sync_period = self.sync_period * 0.9 + (now-self.sync_last_telegram) * 0.1 
-                        self.sync_telegram_id = 0
-                        if telegram_data:
-                            res = self.do_driver_updates(telegram_data)
+                    if telegram_id in self.sync_telegrams:
+                        sent_time = self.sync_telegrams.pop(telegram_id)
+                        delta = (time.perf_counter()-sent_time)
+                        last_period = max(delta * 0.5, MINIMUM_SYNC_PERIOD if len(self.drivers) else STANDBY_SYNC_PERIOD)
+                        #print(f"SYNC received with ID {self.sync_telegram_counter}, {delta}")
+                        self.sync_period = self.sync_period * 0.9 + last_period * 0.1
+                    if telegram_data:
+                        res = self.do_driver_updates(telegram_data)
                 elif 'POLLING' == telegram_command:
-                    self.last_poll_received = now
+                    self.last_poll_received = time.perf_counter()
                 needs_sleep = False
         except:
             # No data received
             pass
 
         # Check receiving poll messages
-        if (now-self.last_poll_received)>(4*poll_time):
+        if (time.perf_counter()-self.last_poll_received)>(4*poll_time):
             self.status = GatewayStatus.ERROR
             self.error_msg = "Polling msg was not received on time"
             logger.error(self.error_msg)
@@ -371,22 +384,26 @@ class gateway():
                         update_slice = {}
 
             # Send telegrams SYNC
-            elif self.sync_telegram_id == 0:# and (now-self.sync_last_telegram>=self.sync_period) and len(self.drivers):
-                telegram_id = self.get_new_message_id()
+            if self.sync_mode and (time.perf_counter()-self.sync_last_telegram>=self.sync_period):
                 if self.driver_updates:
                     update_slice = {}
                     while self.driver_updates:
                         (key, value) = self.driver_updates.popitem()
                         update_slice[key] = value
-                        if len(update_slice)>=MAX_UPDATES_PER_TELEGRAM or len(self.driver_updates)==0:                
-                            self.send_message(id=telegram_id, command="SYNC" if self.sync_mode else "UPDATE", data=update_slice)
-                            #print(f"{now} - SYNC sent with ID {telegram_id}. {update_slice}")
+                        if len(update_slice)>=MAX_UPDATES_PER_TELEGRAM or len(self.driver_updates)==0:   
+                            self.sync_telegram_counter = self.sync_telegram_counter + 1 if self.sync_telegram_counter<MAX_SYNC_TELEGRAM else 1             
+                            self.send_message(id=self.sync_telegram_counter, command="SYNC" if self.sync_mode else "UPDATE", data=update_slice)
+                            #print(f"SYNC sent with ID {self.sync_telegram_counter}")
+                            self.sync_last_telegram = time.perf_counter()
+                            self.sync_telegrams[self.sync_telegram_counter] = time.perf_counter()
+                            
                             update_slice = {}
                 elif self.sync_mode:
-                    self.send_message(id=telegram_id, command="SYNC", data={})
-                    #print(f"{now} - SYNC sent with ID {telegram_id}")
-                self.sync_telegram_id = telegram_id
-                self.sync_last_telegram = now
+                    self.sync_telegram_counter = self.sync_telegram_counter + 1 if self.sync_telegram_counter<MAX_SYNC_TELEGRAM else 1
+                    self.send_message(id=self.sync_telegram_counter, command="SYNC", data={})
+                    #print(f"SYNC sent with ID {self.sync_telegram_counter}")
+                    self.sync_last_telegram = time.perf_counter()
+                    self.sync_telegrams[self.sync_telegram_counter] = time.perf_counter()
             
             if self.driver_statuses: 
                 self.send_message(id=self.get_new_message_id(), command="STATUS", data=self.driver_statuses)
