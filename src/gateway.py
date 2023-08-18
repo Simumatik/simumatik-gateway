@@ -92,7 +92,7 @@ class gateway():
         self.server_address = None
         self.sync_mode = False
         self.sync_period = 0.0
-        self.sync_telegrams = {}
+        self.sync_telegram_id = 0
         self.sync_last_telegram = 0
         # UDP Telegrams
         self.udp_socket = None
@@ -249,7 +249,7 @@ class gateway():
             self.udp_socket = None
             self.server_address = None
             self.message_id = 0 
-            self.sync_telegrams = {}
+            self.sync_telegram_id = 0
             self.sync_period = 0.0
             self.driver_updates = {}
         except Exception as e:
@@ -298,22 +298,22 @@ class gateway():
                     self.clean_drivers()
                     self.send_message(id=telegram_id, command='CLEAN', data='SUCCESS')
                     # Clean telegram pipe
-                    while True:
-                        try:
-                            data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
-                        except:
-                            break
+                    if not self.sync_mode:
+                        while True:
+                            try:
+                                data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
+                            except:
+                                break
                 elif 'UPDATE' == telegram_command:
                     self.last_processed_update = telegram_id
                     res = self.do_driver_updates(telegram_data)
                 elif 'SYNC' == telegram_command:
                     self.last_processed_update = telegram_id
-                    if telegram_id in self.sync_telegrams:
-                        send_time = self.sync_telegrams.pop(telegram_id)
-                        delta_sync = (now-send_time)*0.5
-                        self.sync_period = self.sync_period * 0.9 + delta_sync * 0.1 
-                    if telegram_data:
-                        res = self.do_driver_updates(telegram_data)
+                    if telegram_id >= self.sync_telegram_id:
+                        self.sync_period = self.sync_period * 0.9 + (now-self.sync_last_telegram) * 0.1 
+                        self.sync_telegram_id = 0
+                        if telegram_data:
+                            res = self.do_driver_updates(telegram_data)
                 elif 'POLLING' == telegram_command:
                     self.last_poll_received = now
                 needs_sleep = False
@@ -371,7 +371,7 @@ class gateway():
                         update_slice = {}
 
             # Send telegrams SYNC
-            elif len(self.sync_telegrams)<2 and now-self.sync_last_telegram>=self.sync_period:# and len(self.drivers):
+            elif self.sync_telegram_id == 0:# and (now-self.sync_last_telegram>=self.sync_period) and len(self.drivers):
                 telegram_id = self.get_new_message_id()
                 if self.driver_updates:
                     update_slice = {}
@@ -385,7 +385,7 @@ class gateway():
                 elif self.sync_mode:
                     self.send_message(id=telegram_id, command="SYNC", data={})
                     #print(f"{now} - SYNC sent with ID {telegram_id}")
-                self.sync_telegrams[telegram_id] = now
+                self.sync_telegram_id = telegram_id
                 self.sync_last_telegram = now
             
             if self.driver_statuses: 
