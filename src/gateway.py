@@ -90,7 +90,7 @@ class gateway():
         ''' Constructor '''
         # Get URL
         self.server_address = None
-        self.sync_mode = True
+        self.sync_mode = False
         self.sync_period = 0.0
         self.sync_telegrams = {}
         self.sync_last_telegram = 0
@@ -202,7 +202,6 @@ class gateway():
                 command="REGISTER",
                 data={
                     "SERVER_KEY": 'server key obtained from the user',
-                    "MODE": 'Sync' if self.sync_mode else 'async',
                     "GATEWAY": {
                         "VERSION": version,
                         "HEARTBEAT": poll_time,
@@ -222,8 +221,9 @@ class gateway():
             data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
             if data != None and address == self.server_address:
                 response_json = json.loads(data.decode('utf-8'))
-                if response_json.get("COMMAND", "") == "REGISTER" and response_json.get("DATA", 'FAILED') == 'SUCCESS':
+                if response_json.get("COMMAND", "") == "REGISTER" and response_json.get("DATA", 'FAILED') in ['SUCCESS', 'SUCCESS_SYNC', 'SUCCESS_ASYNC']:
                     # From now on, no timeout is set in the socket
+                    self.sync_mode = response_json.get("DATA") == 'SUCCESS_SYNC'
                     self.udp_socket.setblocking(0)
                     self.last_poll_sent = now
                     self.last_poll_received = now
