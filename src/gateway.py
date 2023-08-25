@@ -294,42 +294,43 @@ class gateway():
 
         # Check incomming telegrams
         try:
-            data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
-            # Process data if data received and address is valid 
-            if (data != None and address == self.server_address):
-                request_json = json.loads(data.decode('utf-8'))
-                telegram_id = request_json.get("ID")
-                telegram_command = request_json.get("COMMAND", '')
-                telegram_data = request_json.get("DATA", None)
-                if 'SETUP' == telegram_command:
-                    result = self.do_driver_setup(telegram_data)
-                    self.send_message(id=telegram_id, command='SETUP', data=result)
-                elif 'CLEAN' == telegram_command:
-                    self.clean_drivers()
-                    self.send_message(id=telegram_id, command='CLEAN', data='SUCCESS')
-                    # Clean telegram pipe
-                    if not self.sync_mode:
-                        while True:
-                            try:
-                                data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
-                            except:
-                                break
-                elif 'UPDATE' == telegram_command:
-                    self.last_processed_update = telegram_id
-                    res = self.do_driver_updates(telegram_data)
-                elif 'SYNC' == telegram_command:
-                    self.last_processed_update = telegram_id
-                    if telegram_id in self.sync_telegrams:
-                        sent_time = self.sync_telegrams.pop(telegram_id)
-                        delta = (time.perf_counter()-sent_time)
-                        last_period = max(delta * 0.5, MINIMUM_SYNC_PERIOD if len(self.drivers) else STANDBY_SYNC_PERIOD)
-                        #print(f"SYNC received with ID {self.sync_telegram_counter}, {delta}")
-                        self.sync_period = self.sync_period * 0.9 + last_period * 0.1
-                    if telegram_data:
+            while True:
+                data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
+                # Process data if data received and address is valid 
+                if (data != None and address == self.server_address):
+                    request_json = json.loads(data.decode('utf-8'))
+                    telegram_id = request_json.get("ID")
+                    telegram_command = request_json.get("COMMAND", '')
+                    telegram_data = request_json.get("DATA", None)
+                    if 'SETUP' == telegram_command:
+                        result = self.do_driver_setup(telegram_data)
+                        self.send_message(id=telegram_id, command='SETUP', data=result)
+                    elif 'CLEAN' == telegram_command:
+                        self.clean_drivers()
+                        self.send_message(id=telegram_id, command='CLEAN', data='SUCCESS')
+                        # Clean telegram pipe
+                        if not self.sync_mode:
+                            while True:
+                                try:
+                                    data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
+                                except:
+                                    break
+                    elif 'UPDATE' == telegram_command:
+                        self.last_processed_update = telegram_id
                         res = self.do_driver_updates(telegram_data)
-                elif 'POLLING' == telegram_command:
-                    self.last_poll_received = time.perf_counter()
-                needs_sleep = False
+                    elif 'SYNC' == telegram_command:
+                        self.last_processed_update = telegram_id
+                        if telegram_id in self.sync_telegrams:
+                            sent_time = self.sync_telegrams.pop(telegram_id)
+                            delta = (time.perf_counter()-sent_time)
+                            last_period = max(delta * 0.5, MINIMUM_SYNC_PERIOD if len(self.drivers) else STANDBY_SYNC_PERIOD)
+                            #print(f"SYNC received with ID {self.sync_telegram_counter}, {delta}")
+                            self.sync_period = self.sync_period * 0.9 + last_period * 0.1
+                        if telegram_data:
+                            res = self.do_driver_updates(telegram_data)
+                    elif 'POLLING' == telegram_command:
+                        self.last_poll_received = time.perf_counter()
+                    needs_sleep = False
         except:
             # No data received
             pass
