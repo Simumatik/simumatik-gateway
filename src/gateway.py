@@ -145,7 +145,7 @@ class gateway():
             pipe.send(json.dumps({DriverActions.EXIT: None}))
 
 
-    def run(self, ip:str='127.0.0.1', port:int=2323):
+    def run(self, ip:str='0.0.0.0', port:int=2323):
         ''' Main loop'''
 
         # Launch Websocket server
@@ -599,4 +599,4 @@ class gateway():
 # Testing
 if __name__ == '__main__':
     g = gateway()
-    g.run(ip='127.0.0.1', port=2323)
+    g.run(ip='0.0.0.0', port=2323)
