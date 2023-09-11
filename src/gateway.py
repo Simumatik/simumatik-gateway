@@ -30,12 +30,15 @@ from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 
 
 # Version
-version = "4.1.2"
+version = "4.2.1"
 MAX_TELEGRAM_LENGTH = 2**13 # (8K)
 MAX_UPDATES_PER_TELEGRAM = 100
 
 # Settings
 poll_time = 1 # seconds
+MINIMUM_SYNC_PERIOD = 0.002
+STANDBY_SYNC_PERIOD = 0.1
+MAX_SYNC_TELEGRAM = 10000
 
 # Global
 WebSocketConnections = []
@@ -90,6 +93,11 @@ class gateway():
         ''' Constructor '''
         # Get URL
         self.server_address = None
+        self.sync_mode = False
+        self.sync_period = STANDBY_SYNC_PERIOD
+        self.sync_telegrams = {}
+        self.sync_telegram_counter = 0
+        self.sync_last_telegram = 0
         # UDP Telegrams
         self.udp_socket = None
         self.message_id = 0
@@ -105,6 +113,7 @@ class gateway():
         self.variables = {} # {driver_object: {var_name: [handles]}}
         self.driver_statuses = {} # {driver_handle: status}
         self.driver_infos = {} # {driver_handle: info}
+        self.driver_updates = {} # {var_name: value}
         self.status = GatewayStatus.STANDBY
         self.error_msg = ''
         
@@ -136,7 +145,7 @@ class gateway():
             pipe.send(json.dumps({DriverActions.EXIT: None}))
 
 
-    def run(self, ip:str='127.0.0.1', port:int=2323):
+    def run(self, ip:str='0.0.0.0', port:int=2323):
         ''' Main loop'''
 
         # Launch Websocket server
@@ -183,6 +192,7 @@ class gateway():
 
     def doConnect(self):
         """ Executed to connect the gateway to the server."""
+        now = time.perf_counter()
         try:
             # Create UDP socket
             self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -215,11 +225,12 @@ class gateway():
             data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
             if data != None and address == self.server_address:
                 response_json = json.loads(data.decode('utf-8'))
-                if response_json.get("COMMAND", "") == "REGISTER" and response_json.get("DATA", 'FAILED') == 'SUCCESS':
+                if response_json.get("COMMAND", "") == "REGISTER" and response_json.get("DATA", 'FAILED') in ['SUCCESS', 'SUCCESS_SYNC', 'SUCCESS_ASYNC']:
                     # From now on, no timeout is set in the socket
+                    self.sync_mode = response_json.get("DATA") == 'SUCCESS_SYNC'
                     self.udp_socket.setblocking(0)
-                    self.last_poll_sent = time.time()
-                    self.last_poll_received = time.time()
+                    self.last_poll_sent = now
+                    self.last_poll_received = now
                     self.status = GatewayStatus.CONNECTED
                     logger.debug("Gateway connected")
                     return
@@ -241,7 +252,12 @@ class gateway():
                 self.udp_socket.close()
             self.udp_socket = None
             self.server_address = None
-            self.message_id = 0   
+            self.message_id = 0 
+            self.sync_telegrams = {}
+            self.sync_period = STANDBY_SYNC_PERIOD
+            self.sync_last_telegram = 0
+            self.sync_telegram_counter = 0
+            self.driver_updates = {}
         except Exception as e:
             logger.error('Exception during cleanup: '+str(e))
             
@@ -253,17 +269,23 @@ class gateway():
         self.loop_counter += 1
 
         # Send polling message within the interval
-        if (time.time()-self.last_poll_sent) >= poll_time:
+        if (time.perf_counter()-self.last_poll_sent) >= poll_time:
             try:
                 polling_data = {
                     "LAST_PROC_UPDATE": self.last_processed_update, 
+                    "SYNC_PERIOD": self.sync_period, 
                     "DRIVER_COUNT": len(self.drivers),
                     "CYCLES": round(1000/self.loop_counter,2),
                     }
                 self.send_message(id=self.get_new_message_id(), command="POLLING", data=polling_data)
-                self.last_poll_sent = time.time()
+                self.last_poll_sent = time.perf_counter()
                 needs_sleep = False
                 self.loop_counter = 0
+                #print(self.sync_period, self.sync_telegrams)
+                # Clean lost sync packages
+                for id in list(self.sync_telegrams.keys()):
+                    if id < self.sync_telegram_counter:
+                        self.sync_telegrams.pop(id)
             except:
                 self.status = GatewayStatus.ERROR
                 self.error_msg = 'Exception sending polling telegram'
@@ -272,37 +294,49 @@ class gateway():
 
         # Check incomming telegrams
         try:
-            data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
-            # Process data if data received and address is valid 
-            if (data != None and address == self.server_address):
-                request_json = json.loads(data.decode('utf-8'))
-                telegram_id = request_json.get("ID")
-                telegram_command = request_json.get("COMMAND", '')
-                telegram_data = request_json.get("DATA", None)
-                if 'SETUP' == telegram_command:
-                    result = self.do_driver_setup(telegram_data)
-                    self.send_message(id=telegram_id, command='SETUP', data=result)
-                elif 'CLEAN' == telegram_command:
-                    self.clean_drivers()
-                    self.send_message(id=telegram_id, command='CLEAN', data='SUCCESS')
-                    # Clean telegram pipe
-                    while True:
-                        try:
-                            data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
-                        except:
-                            break
-                elif 'UPDATE' == telegram_command:
-                    self.last_processed_update = telegram_id
-                    res = self.do_driver_updates(telegram_data)
-                elif 'POLLING' == telegram_command:
-                    self.last_poll_received = time.time()
-                needs_sleep = False
+            while True:
+                data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
+                # Process data if data received and address is valid 
+                if (data != None and address == self.server_address):
+                    request_json = json.loads(data.decode('utf-8'))
+                    telegram_id = request_json.get("ID")
+                    telegram_command = request_json.get("COMMAND", '')
+                    telegram_data = request_json.get("DATA", None)
+                    if 'SETUP' == telegram_command:
+                        result = self.do_driver_setup(telegram_data)
+                        self.send_message(id=telegram_id, command='SETUP', data=result)
+                    elif 'CLEAN' == telegram_command:
+                        self.clean_drivers()
+                        self.send_message(id=telegram_id, command='CLEAN', data='SUCCESS')
+                        # Clean telegram pipe
+                        if not self.sync_mode:
+                            while True:
+                                try:
+                                    data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
+                                except:
+                                    break
+                    elif 'UPDATE' == telegram_command:
+                        self.last_processed_update = telegram_id
+                        res = self.do_driver_updates(telegram_data)
+                    elif 'SYNC' == telegram_command:
+                        self.last_processed_update = telegram_id
+                        if telegram_id in self.sync_telegrams:
+                            sent_time = self.sync_telegrams.pop(telegram_id)
+                            delta = (time.perf_counter()-sent_time)
+                            last_period = max(delta * 0.5, MINIMUM_SYNC_PERIOD if len(self.drivers) else STANDBY_SYNC_PERIOD)
+                            #print(f"SYNC received with ID {self.sync_telegram_counter}, {delta}")
+                            self.sync_period = self.sync_period * 0.9 + last_period * 0.1
+                        if telegram_data:
+                            res = self.do_driver_updates(telegram_data)
+                    elif 'POLLING' == telegram_command:
+                        self.last_poll_received = time.perf_counter()
+                    needs_sleep = False
         except:
             # No data received
             pass
 
         # Check receiving poll messages
-        if (time.time()-self.last_poll_received)>(4*poll_time):
+        if (time.perf_counter()-self.last_poll_received)>(4*poll_time):
             self.status = GatewayStatus.ERROR
             self.error_msg = "Polling msg was not received on time"
             logger.error(self.error_msg)
@@ -310,7 +344,6 @@ class gateway():
 
         # Check updates from drivers
         try:
-            updates = {}
             var_info = {}
             for driver_object, pipe in self.drivers.items():
                 if driver_object.is_alive() and pipe:
@@ -321,7 +354,7 @@ class gateway():
                             logger.debug(f'Driver {driver_object.name} output data updated: {data}')
                             for var_name, var_value in data.items():
                                 for handle in self.variables[driver_object][var_name]:
-                                    updates[handle] = var_value
+                                    self.driver_updates[handle] = var_value
                             
                         elif action == DriverActions.STATUS:
                             logger.debug(f'Driver {driver_object.name} status changed: {data}')
@@ -341,14 +374,38 @@ class gateway():
                             
                         needs_sleep = False
 
-            # Send telegrams
-            update_slice = {}
-            while updates:
-                (key, value) = updates.popitem()
-                update_slice[key] = value
-                if len(update_slice)>=MAX_UPDATES_PER_TELEGRAM or len(updates)==0:                
-                    self.send_message(id=self.get_new_message_id(), command="UPDATE", data=update_slice)
+            # Send telegrams ASYNC
+            if not self.sync_mode:
+                update_slice = {}
+                while self.driver_updates:
+                    (key, value) = self.driver_updates.popitem()
+                    update_slice[key] = value
+                    if len(update_slice)>=MAX_UPDATES_PER_TELEGRAM or len(self.driver_updates)==0:                
+                        self.send_message(id=self.get_new_message_id(), command="UPDATE", data=update_slice)
+                        update_slice = {}
+
+            # Send telegrams SYNC
+            if self.sync_mode and (time.perf_counter()-self.sync_last_telegram>=self.sync_period):
+                if self.driver_updates:
                     update_slice = {}
+                    while self.driver_updates:
+                        (key, value) = self.driver_updates.popitem()
+                        update_slice[key] = value
+                        if len(update_slice)>=MAX_UPDATES_PER_TELEGRAM or len(self.driver_updates)==0:   
+                            self.sync_telegram_counter = self.sync_telegram_counter + 1 if self.sync_telegram_counter<MAX_SYNC_TELEGRAM else 1             
+                            self.send_message(id=self.sync_telegram_counter, command="SYNC" if self.sync_mode else "UPDATE", data=update_slice)
+                            #print(f"SYNC sent with ID {self.sync_telegram_counter}")
+                            self.sync_last_telegram = time.perf_counter()
+                            self.sync_telegrams[self.sync_telegram_counter] = time.perf_counter()
+                            
+                            update_slice = {}
+                elif self.sync_mode:
+                    self.sync_telegram_counter = self.sync_telegram_counter + 1 if self.sync_telegram_counter<MAX_SYNC_TELEGRAM else 1
+                    self.send_message(id=self.sync_telegram_counter, command="SYNC", data={})
+                    #print(f"SYNC sent with ID {self.sync_telegram_counter}")
+                    self.sync_last_telegram = time.perf_counter()
+                    self.sync_telegrams[self.sync_telegram_counter] = time.perf_counter()
+            
             if self.driver_statuses: 
                 self.send_message(id=self.get_new_message_id(), command="STATUS", data=self.driver_statuses)
                 self.driver_statuses = {}
@@ -542,4 +599,4 @@ class gateway():
 # Testing
 if __name__ == '__main__':
     g = gateway()
-    g.run(ip='127.0.0.1', port=2323)
+    g.run(ip='0.0.0.0', port=2323)
