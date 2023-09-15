@@ -30,7 +30,7 @@ from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 
 
 # Version
-version = "4.2.1"
+version = "4.2.2"
 MAX_TELEGRAM_LENGTH = 2**13 # (8K)
 MAX_UPDATES_PER_TELEGRAM = 100
 
@@ -102,7 +102,7 @@ class gateway():
         self.udp_socket = None
         self.message_id = 0
         self.last_poll_sent = 0
-        self.last_poll_received = 0
+        self.last_message_received = 0
         self.last_processed_update = 0
         self.loop_counter = 0
         # Emulation
@@ -230,7 +230,7 @@ class gateway():
                     self.sync_mode = response_json.get("DATA") == 'SUCCESS_SYNC'
                     self.udp_socket.setblocking(0)
                     self.last_poll_sent = now
-                    self.last_poll_received = now
+                    self.last_message_received = now
                     self.status = GatewayStatus.CONNECTED
                     logger.debug("Gateway connected")
                     return
@@ -298,6 +298,7 @@ class gateway():
                 data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
                 # Process data if data received and address is valid 
                 if (data != None and address == self.server_address):
+                    self.last_message_received = time.perf_counter()
                     request_json = json.loads(data.decode('utf-8'))
                     telegram_id = request_json.get("ID")
                     telegram_command = request_json.get("COMMAND", '')
@@ -329,14 +330,14 @@ class gateway():
                         if telegram_data:
                             res = self.do_driver_updates(telegram_data)
                     elif 'POLLING' == telegram_command:
-                        self.last_poll_received = time.perf_counter()
+                        pass
                     needs_sleep = False
         except:
             # No data received
             pass
 
-        # Check receiving poll messages
-        if (time.perf_counter()-self.last_poll_received)>(4*poll_time):
+        # Check receiving messages: Any received message is valid to consider connection alive
+        if (time.perf_counter()-self.last_message_received)>(4*poll_time):
             self.status = GatewayStatus.ERROR
             self.error_msg = "Polling msg was not received on time"
             logger.error(self.error_msg)
