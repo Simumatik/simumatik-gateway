@@ -1,6 +1,7 @@
 __pycache__/
 build/
 dist/
+Output/
 .vscode
 gateway_logs.txt
 venv/

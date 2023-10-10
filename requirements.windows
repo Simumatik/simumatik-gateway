@@ -11,4 +11,4 @@ roslibpy
 SimpleWebSocketServer
 aiohttp
 requests
-pyinstaller
+pyinstaller==5.13.2
