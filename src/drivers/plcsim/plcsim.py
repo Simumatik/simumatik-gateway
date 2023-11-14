@@ -161,7 +161,7 @@ class plcsim(driver):
                     rarray = varray[:]
                     varray = []
 
-                self.PDU_COUNTER = self.PDU_COUNTER + 1 if self.PDU_COUNTER < self.MAX_PDU_COUNTER 1
+                self.PDU_COUNTER = self.PDU_COUNTER + 1 if self.PDU_COUNTER < self.MAX_PDU_COUNTER else 1
                 request_PDU = PDU_from_ReadAreas(self.PDU_COUNTER, rarray)
                 reply_PDU = self.exchangePDU(request_PDU)
 
