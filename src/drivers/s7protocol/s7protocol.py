@@ -41,6 +41,7 @@ class s7protocol(driver):
     # CONSTANTS
     MaxPDULength    = 1920
     PDU_COUNTER     = 0
+    MAX_PDU_COUNTER = 65535
     MAX_ITEMS       = 10 # Number of elements that can be read or write at the time
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
@@ -71,7 +72,7 @@ class s7protocol(driver):
             return False
 
         if connectPLC(self._connection, rack=self.rack, slot=self.slot):
-            self.PDU_COUNTER += 1
+            self.PDU_COUNTER = self.PDU_COUNTER + 1 if self.PDU_COUNTER < self.MAX_PDU_COUNTER else 1
             PDULength = PDULengthRequest(self._connection, self.PDU_COUNTER)
             if (self.MaxPDULength > PDULength): self.MaxPDULength = PDULength
             self.sendDebugInfo("New PDU Max length set to: "+str(self.MaxPDULength))
@@ -129,7 +130,7 @@ class s7protocol(driver):
                     rarray = varray[:]
                     varray = []
 
-                self.PDU_COUNTER += 1
+                self.PDU_COUNTER = self.PDU_COUNTER + 1 if self.PDU_COUNTER < self.MAX_PDU_COUNTER else 1
                 for (vname, vvalue, quality) in PDUReadAreas(self._connection, self.PDU_COUNTER, rarray):
                     res.append((vname, vvalue, quality))
         return res
@@ -156,7 +157,7 @@ class s7protocol(driver):
                     warray = varray[:]
                     varray = []
                 
-                self.PDU_COUNTER += 1
+                self.PDU_COUNTER = self.PDU_COUNTER + 1 if self.PDU_COUNTER < self.MAX_PDU_COUNTER else 1
                 for (vname, vvalue, quality) in PDUWriteAreas(self._connection, self.PDU_COUNTER, warray):
                     res.append((vname, vvalue, quality))
 

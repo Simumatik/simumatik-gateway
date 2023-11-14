@@ -51,6 +51,7 @@ class plcsim(driver):
     # CONSTANTS
     MaxPDULength    = 1920
     PDU_COUNTER     = 0
+    MAX_PDU_COUNTER = 65535
     MAX_ITEMS       = 10 # Number of elements that can be read or write at the time
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
@@ -87,7 +88,7 @@ class plcsim(driver):
 
         if self.connectPLCSim(ip=self.ip, rack=self.rack, slot=self.slot):
             # PDU length request
-            self.PDU_COUNTER += 1
+            self.PDU_COUNTER = self.PDU_COUNTER + 1 if self.PDU_COUNTER < self.MAX_PDU_COUNTER else 1
             PARAMS = b'\xf0\x00\x00\x01\x00\x01\x03\xc0'
             request_PDU = PDU(Command = 0x32,
                             Type = 0x01,
@@ -160,7 +161,7 @@ class plcsim(driver):
                     rarray = varray[:]
                     varray = []
 
-                self.PDU_COUNTER += 1
+                self.PDU_COUNTER = self.PDU_COUNTER + 1 if self.PDU_COUNTER < self.MAX_PDU_COUNTER 1
                 request_PDU = PDU_from_ReadAreas(self.PDU_COUNTER, rarray)
                 reply_PDU = self.exchangePDU(request_PDU)
 
@@ -190,7 +191,7 @@ class plcsim(driver):
                     warray = varray[:]
                     varray = []
                 
-                self.PDU_COUNTER += 1
+                self.PDU_COUNTER = self.PDU_COUNTER + 1 if self.PDU_COUNTER < self.MAX_PDU_COUNTER else 1
                 request_PDU = PDU_from_WriteAreas(self.PDU_COUNTER, warray)
                 reply_PDU = self.exchangePDU(request_PDU)
 
@@ -248,7 +249,7 @@ class plcsim(driver):
                     rec = self.receive_block()
 
                 # First telegram
-                self.PDU_COUNTER += 1
+                self.PDU_COUNTER = self.PDU_COUNTER + 1 if self.PDU_COUNTER < self.MAX_PDU_COUNTER else 1
                 user = self.PDU_COUNTER if not self.opt else 0
                 if not self.opt:
                     fdr = S7OexchangeBlock(user=user, application_block_opcode=0x00, application_block_subsystem=0x00)
@@ -265,7 +266,7 @@ class plcsim(driver):
 
                 # Set IP, rack and Slot
                 if not self.opt:
-                    self.PDU_COUNTER += 1
+                    self.PDU_COUNTER = self.PDU_COUNTER + 1 if self.PDU_COUNTER < self.MAX_PDU_COUNTER else 1
                     fdr = S7OexchangeBlock(user=self.PDU_COUNTER, opcode=1, application_block_opcode=self.app_opcode, application_block_subsystem=self.app_subs)
                     fdr.application_block_ssap = 2
                     fdr.application_block_remote_address_station = 114
