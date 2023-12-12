@@ -46,13 +46,15 @@ class plcsim(driver):
     mode: str
         PLCSim version to be used: S7comm or S7commPlus (1200/1500). Default = 'S7comm'
 
+    max_items_pdo: int 
+        MAx number of items send in each Read/Write PDU
+
     '''
 
     # CONSTANTS
     MaxPDULength    = 1920
     PDU_COUNTER     = 0
     MAX_PDU_COUNTER = 65535
-    MAX_ITEMS       = 10 # Number of elements that can be read or write at the time
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
         """
@@ -67,6 +69,7 @@ class plcsim(driver):
         self.rack = 0
         self.slot = 1
         self.mode = 'S7comm'
+        self.max_items_pdu = 10
 
 
     def connect(self) -> bool:
@@ -154,9 +157,9 @@ class plcsim(driver):
         if len(varray)>0:
             
             while len(varray):
-                if len(varray) >= self.MAX_ITEMS:
-                    rarray = varray[:self.MAX_ITEMS]
-                    del varray[:self.MAX_ITEMS]
+                if len(varray) >= self.max_items_pdu:
+                    rarray = varray[:self.max_items_pdu]
+                    del varray[:self.max_items_pdu]
                 else:
                     rarray = varray[:]
                     varray = []
@@ -184,9 +187,9 @@ class plcsim(driver):
         res = []
         if len(varray)>0:
             while len(varray):
-                if len(varray) >= self.MAX_ITEMS:
-                    warray = varray[:self.MAX_ITEMS]
-                    del varray[:self.MAX_ITEMS]
+                if len(varray) >= self.max_items_pdu:
+                    warray = varray[:self.max_items_pdu]
+                    del varray[:self.max_items_pdu]
                 else:
                     warray = varray[:]
                     varray = []

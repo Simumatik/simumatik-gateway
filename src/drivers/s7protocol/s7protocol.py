@@ -36,13 +36,15 @@ class s7protocol(driver):
     
     slot: int
         Slot number of the CPU. Default = 2
+    
+    max_items_pdo: int 
+        MAx number of items send in each Read/Write PDU
     '''
 
     # CONSTANTS
     MaxPDULength    = 1920
     PDU_COUNTER     = 0
     MAX_PDU_COUNTER = 65535
-    MAX_ITEMS       = 10 # Number of elements that can be read or write at the time
 
     def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
         """
@@ -56,6 +58,7 @@ class s7protocol(driver):
         self.ip = '192.168.0.1'
         self.rack = 0
         self.slot = 2
+        self.max_items_pdu = 10
         
 
     def connect(self) -> bool:
@@ -123,9 +126,9 @@ class s7protocol(driver):
         if len(varray)>0:
             
             while len(varray):
-                if len(varray) >= self.MAX_ITEMS:
-                    rarray = varray[:self.MAX_ITEMS]
-                    del varray[:self.MAX_ITEMS]
+                if len(varray) >= self.max_items_pdu:
+                    rarray = varray[:self.max_items_pdu]
+                    del varray[:self.max_items_pdu]
                 else:
                     rarray = varray[:]
                     varray = []
@@ -150,9 +153,9 @@ class s7protocol(driver):
         res = []
         if len(varray)>0:
             while len(varray):
-                if len(varray) >= self.MAX_ITEMS:
-                    warray = varray[:self.MAX_ITEMS]
-                    del varray[:self.MAX_ITEMS]
+                if len(varray) >= self.max_items_pdu:
+                    warray = varray[:self.max_items_pdu]
+                    del varray[:self.max_items_pdu]
                 else:
                     warray = varray[:]
                     varray = []
