@@ -114,12 +114,23 @@ class fanuc_roboguide(driver):
                         var_data['area'] = "GI"
                     elif var_id[:2]=="GO" and var_data['datatype'] in [VariableDatatype.BYTE,VariableDatatype.WORD,VariableDatatype.DWORD] and var_data['operation']==VariableOperation.READ:
                         var_data['area'] = "GO"
+                    elif var_id[:2]=="RI" and var_data['datatype'] in [VariableDatatype.BOOL] and var_data['operation']==VariableOperation.WRITE:
+                        var_data['area'] = "RI"
+                    elif var_id[:2]=="RO" and var_data['datatype'] in [VariableDatatype.BOOL] and var_data['operation']==VariableOperation.READ:
+                        var_data['area'] = "RO"
+                    elif var_id[:2]=="UO" and var_data['datatype'] in [VariableDatatype.BOOL] and var_data['operation']==VariableOperation.READ:
+                        var_data['area'] = "UO"
+                    elif var_id[:2]=="SO" and var_data['datatype'] in [VariableDatatype.BOOL] and var_data['operation']==VariableOperation.READ:
+                        var_data['area'] = "SO"
                     else:
                         self.sendDebugVarInfo((f'SETUP: Variable definition is wrong: {var_id}', var_id))
                         continue
                     try:
                         var_data['port'] = int(var_id[2:])
-                        assert var_data['port']>0, "Variable port number is wrong"
+                        if var_data['area'] == "SO":
+                            assert var_data['port']>=0, "Variable port number is wrong"
+                        else:
+                            assert var_data['port']>0, "Variable port number is wrong"
                     except:
                         self.sendDebugVarInfo((f'SETUP: Variable port number is wrong: {var_id}', var_id))
                         continue
@@ -168,6 +179,15 @@ class fanuc_roboguide(driver):
                 elif self.variables[var_id]['area'] == "GO":
                     buff = self.createBuffer(Int32, size)
                     (quality, read_value) = self._connection.ReadGO(port, buff, size)
+                elif self.variables[var_id]['area'] == "RO":
+                    buff = self.createBuffer(Int16, size)
+                    (quality, read_value) = self._connection.ReadRDO(port, buff, size)
+                elif self.variables[var_id]['area'] == "UO":
+                    buff = self.createBuffer(Int16, size)
+                    (quality, read_value) = self._connection.ReadUO(port, buff, size)
+                elif self.variables[var_id]['area'] == "SO":
+                    buff = self.createBuffer(Int16, size)
+                    (quality, read_value) = self._connection.ReadSO(port, buff, size)
                 if quality is True:
                     new_value = self.readBuffer(read_value)
                     res.append((var_id, new_value, VariableQuality.GOOD))
@@ -190,10 +210,14 @@ class fanuc_roboguide(driver):
                 buff = self.createBuffer(Int16, size)
                 self.writeBuffer(buff, new_value)
                 quality = self._connection.WriteSDI(port, buff, size)
-            else:
+            elif self.variables[var_id]['area'] == "GI":
                 buff = self.createBuffer(Int32, size)
                 self.writeBuffer(buff, new_value)
                 quality = self._connection.WriteGI(port, buff, size)
+            elif self.variables[var_id]['area'] == "RI":
+                buff = self.createBuffer(Int16, size)
+                self.writeBuffer(buff, new_value)
+                quality = self._connection.WriteRDI(port, buff, size)
             if quality == True:
                 res.append((var_id, new_value, VariableQuality.GOOD))
             else:
