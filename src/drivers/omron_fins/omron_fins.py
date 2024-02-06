@@ -147,7 +147,7 @@ class omron_fins(driver):
         """ Get an area info tupple from a string."""
         try:
             # Get area
-            if vaddress[0] in ['w','c','d','h','W','C','D','H']:
+            if vaddress[0].lower() in ['w','c','d','h']:
                 if vaddress[0].lower() == 'w':
                     memory_area = fins.FinsPLCMemoryAreas().WORK_WORD
                 elif vaddress[0].lower() == 'c':
