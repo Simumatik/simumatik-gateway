@@ -59,9 +59,9 @@ class omron_fins(driver):
         """
         try:
             self._connection = fins.udp.UDPFinsConnection()
-            self._connection.connect('192.168.0.1')
             self._connection.dest_node_add=1
             self._connection.srce_node_add=25
+            res = self._connection.connect('192.168.0.1')
 
         except Exception as e:
             self.sendDebugInfo(f"Socket connection with {self.ip} cannot be established.")
@@ -87,8 +87,8 @@ class omron_fins(driver):
         # TODO: Size is not considered
         for var_id in list(variables.keys()):
             var_data = dict(variables[var_id])
-            area = getAreaFromString(var_id, var_data['datatype'])
-            if area is not (None, None):
+            area = self.getAreaFromString(var_id, var_data['datatype'])
+            if area != (None, None):
                 var_data['area'] = area
                 var_data['value'] = None
                 self.variables[var_id] = var_data
@@ -105,9 +105,14 @@ class omron_fins(driver):
         res = []
         for var_id in variables:
             (area, address) = self.variables[var_id]['area']
-            response = self._connection.memory_area_read(area, address)
-            value = int.from_bytes(response[-2:], "big")
-            if True:
+            try:
+                response = self._connection.memory_area_read(area, address)
+                value = int.from_bytes(response[-2:], "big")
+                error = 0
+            except Exception as e:
+                print("readVariables Exception:", str(e))
+                error = 1
+            if error == 0:
                 res.append((var_id, value, VariableQuality.GOOD))
             else:
                 res.append((var_id, 0, VariableQuality.BAD))
@@ -123,54 +128,59 @@ class omron_fins(driver):
         res = []
         for (var_id, new_value) in variables:
             (area, address) = self.variables[var_id]['area']
-            response = self._connection.memory_area_write(area, address, new_value.to_bytes(2, 'big'), 1)
-            if True:
+            try:
+                response = self._connection.memory_area_write(area, address, new_value.to_bytes(2, 'big'), 1)
+                error = 0
+            except Exception as e:
+                print("writeVariables Exception:", str(e))
+                error = 1
+            if error == 0:
                 res.append((var_id, new_value, VariableQuality.GOOD))
             else:
                 res.append((var_id, 0, VariableQuality.BAD))
         return res
 
 
-def getAreaFromString(self, vaddress, vdtype):
-    """ Get an area info tupple from a string."""
-    try:
-        # Get area
-        if vaddress[:3] == "CIO":
-            if vaddress[3:].find('.') and vdtype == VariableDatatype.BOOL:
-                area = fins.FinsPLCMemoryAreas().CIO_BIT
-                [word, bit] = [int(i) for i in vaddress[3:].split('.',2)]
+    def getAreaFromString(self, vaddress, vdtype):
+        """ Get an area info tupple from a string."""
+        try:
+            # Get area
+            if vaddress[:3] == "CIO":
+                if vaddress[3:].find('.') and vdtype == VariableDatatype.BOOL:
+                    area = fins.FinsPLCMemoryAreas().CIO_BIT
+                    [word, bit] = [int(i) for i in vaddress[3:].split('.',2)]
+                elif vdtype == VariableDatatype.WORD:
+                    area = fins.FinsPLCMemoryAreas().CIO_WORD
+                    word = int(vaddress[3:])
+                    bit = 0
+            elif vaddress[0] == "D":
+                if vaddress[1:].find('.') and vdtype == VariableDatatype.BOOL:
+                    area = fins.FinsPLCMemoryAreas().DATA_MEMORY_BIT
+                    [word, bit] = [int(i) for i in vaddress[1:].split('.',2)]
+                elif vdtype == VariableDatatype.WORD:
+                    area = fins.FinsPLCMemoryAreas().DATA_MEMORY_WORD
+                    word = int(vaddress[1:])
+                    bit = 0
+            elif vaddress[0] == "H":
+                if vaddress[1:].find('.') and vdtype == VariableDatatype.BOOL:
+                    area = fins.FinsPLCMemoryAreas().HOLDING_BIT
+                    [word, bit] = [int(i) for i in vaddress[1:].split('.',2)]
+                elif vdtype == VariableDatatype.WORD:
+                    area = fins.FinsPLCMemoryAreas().HOLDING_WORD   
+                    word = int(vaddress[1:])
+                    bit = 0
+            elif vaddress[0] == "W":
+                if vaddress[1:].find('.') and vdtype == VariableDatatype.BOOL:
+                    area = fins.FinsPLCMemoryAreas().WORK_BIT
+                    [word, bit] = [int(i) for i in vaddress[1:].split('.',2)]
+                elif vdtype == VariableDatatype.WORD:
+                    area = fins.FinsPLCMemoryAreas().WORK_WORD
+                    word = int(vaddress[1:])
+                    bit = 0
             else:
-                area = fins.FinsPLCMemoryAreas().CIO_WORD
-                word = int(vaddress[3:])
-                bit = 0
-        elif vaddress[0] == "D":
-            if vaddress[1:].find('.') and vdtype == VariableDatatype.BOOL:
-                area = fins.FinsPLCMemoryAreas().DATA_MEMORY_BIT
-                [word, bit] = [int(i) for i in vaddress[1:].split('.',2)]
-            else:
-                area = fins.FinsPLCMemoryAreas().DATA_MEMORY_WORD
-                word = int(vaddress[3:])
-                bit = 0
-        elif vaddress[0] == "H":
-            if vaddress[1:].find('.') and vdtype == VariableDatatype.BOOL:
-                area = fins.FinsPLCMemoryAreas().HOLDING_BIT
-                [word, bit] = [int(i) for i in vaddress[1:].split('.',2)]
-            else:
-                area = fins.FinsPLCMemoryAreas().HOLDING_WORD   
-                word = int(vaddress[3:])
-                bit = 0
-        elif vaddress[0] == "W":
-            if vaddress[1:].find('.') and vdtype == VariableDatatype.BOOL:
-                area = fins.FinsPLCMemoryAreas().WORK_BIT
-                [word, bit] = [int(i) for i in vaddress[1:].split('.',2)]
-            else:
-                area = fins.FinsPLCMemoryAreas().WORK_WORD
-                word = int(vaddress[3:])
-                bit = 0
-        else:
-            return (None, None)
-        address = word.to_bytes(2, 'big')+ bit.to_bytes(2, 'big')
-        return (area, address)
+                return (None, None)
+            address = word.to_bytes(2, 'big')+ bit.to_bytes(1, 'big')
+            return (area, address)
 
-    except Exception as e:
-        return (None, None) 
+        except Exception as e:
+            return (None, None) 
