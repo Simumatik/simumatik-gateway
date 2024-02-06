@@ -24,22 +24,16 @@ from drivers.driver import VariableOperation, VariableDatatype
 
 # Define your I/O variables here
 VARIABLES = {
-    'CIO0.0':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
-    'CIO1.0':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
-    'CIO2':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
-    'CIO3':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
-    'D0.0':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
-    'D1.0':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
-    'D2':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
-    'D3':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
-    'H0.0':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
-    'H1.0':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
-    'H2':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
-    'H3':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
-    'W0.0':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
-    'W1.0':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
-    'W2':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
-    'W3':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
+    'd0':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.WRITE},
+    'd1':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
+    'd2':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.WRITE},
+    'd4':{'datatype': VariableDatatype.QWORD, 'size': 1, 'operation': VariableOperation.WRITE},
+    'd8':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.WRITE},
+    'd10':{'datatype': VariableDatatype.WORD, 'size': 1, 'operation': VariableOperation.READ},
+    'd11':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
+    'd12':{'datatype': VariableDatatype.DWORD, 'size': 1, 'operation': VariableOperation.READ},
+    'd14':{'datatype': VariableDatatype.QWORD, 'size': 1, 'operation': VariableOperation.READ},
+    'd18':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.READ},
     }
 
 # Add your custom logic in this test.
@@ -53,18 +47,17 @@ if d.connect():
 
     counter = 0
     start = time.perf_counter()
-    while time.perf_counter()-start < 100:
+    while time.perf_counter()-start < 10:
         d.writeVariables([
-            ('CIO0.0', counter%2),
-            ('CIO2', counter),
-            ('D0.0', counter%2),
-            ('D2', counter),
-            ('H0.0', counter%2),
-            ('H2', counter),
-            ('W0.0', counter%2),
-            ('W2', counter),
+            ('d0', counter),
+            ('d1', counter*2),
+            ('d2', counter*3),
+            ('d4', counter*4),
+            ('d8', counter*1.1),
             ])
-        d.readVariables(['CIO1.0', 'CIO3', 'D1.0', 'D3', 'H1.0', 'H3', 'W1.0', 'W3'])
+        res = d.readVariables(['d10', 'd11', 'd12', 'd14', 'd18'])
+        for (var_id, value, quality) in res: 
+            print(f"{var_id}: {value}")
         time.sleep(0.1)
         counter += 1
 
