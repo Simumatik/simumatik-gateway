@@ -183,7 +183,7 @@ class gateway():
     def receive_telegram(self):
         data_length, address = self.udp_socket.recvfrom(4)
         data, address = self.udp_socket.recvfrom(int.from_bytes(data_length, "big"))
-        #print("Message from Gateway", addr, data)
+        #print("Message from Gateway", address, data)
         return data, address
 
     def send_telegram(self, telegram_id:int, command:str, data:dict=None):
