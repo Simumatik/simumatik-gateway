@@ -37,6 +37,7 @@ poll_time = 1 # seconds
 MINIMUM_SYNC_PERIOD = 0.002
 STANDBY_SYNC_PERIOD = 0.1
 MAX_SYNC_TELEGRAM = 10000
+MAX_TELEGRAM_LENGTH = 2**16
 
 # Global
 WebSocketConnections = []
@@ -180,20 +181,17 @@ class gateway():
         ''' Exit Gateway'''
         self.status = GatewayStatus.EXIT
 
-    def receive_telegram(self):
-        data_length, address = self.udp_socket.recvfrom(4)
-        data, address = self.udp_socket.recvfrom(int.from_bytes(data_length, "big"))
-        #print("Message from Gateway", address, data)
-        return data, address
 
     def send_telegram(self, telegram_id:int, command:str, data:dict=None):
         msg = {"ID": telegram_id, "COMMAND":command}
         if data is not None:
             msg.update({"DATA": data})
         telegram = json.dumps(msg).encode('utf8')
-        self.udp_socket.sendto(len(telegram).to_bytes(4, 'big'), self.server_address)
-        self.udp_socket.sendto(telegram, self.server_address)
-
+        if len(telegram)<MAX_TELEGRAM_LENGTH:
+            self.udp_socket.sendto(telegram, self.server_address)
+        else:
+            logger.error(f'Message to Workspace is too long! Length = {len(telegram)}')
+            
     def doConnect(self):
         """ Executed to connect the gateway to the server."""
         now = time.perf_counter()
@@ -226,7 +224,7 @@ class gateway():
         # Get response before defined timeout (4 x poll_time)
         self.udp_socket.settimeout(poll_time*4)
         try:
-            data, address = self.receive_telegram()
+            data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
             if data != None and address == self.server_address:
                 response_json = json.loads(data.decode('utf-8'))
                 if response_json.get("COMMAND", "") == "REGISTER" and response_json.get("DATA", 'FAILED') in ['SUCCESS', 'SUCCESS_SYNC', 'SUCCESS_ASYNC']:
@@ -299,7 +297,7 @@ class gateway():
         # Check incomming telegrams
         try:
             while True:
-                data, address = self.receive_telegram()
+                data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
                 # Process data if data received and address is valid 
                 if (data != None and address == self.server_address):
                     self.last_message_received = time.perf_counter()
@@ -317,7 +315,7 @@ class gateway():
                         if not self.sync_mode:
                             while True:
                                 try:
-                                    data, address = self.receive_telegram()
+                                    data, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
                                 except:
                                     break
                     elif 'UPDATE' == telegram_command:
@@ -332,6 +330,7 @@ class gateway():
                             #print(f"SYNC received with ID {self.sync_telegram_counter}, {delta}")
                             self.sync_period = self.sync_period * 0.9 + last_period * 0.1
                         if telegram_data:
+                            #print(telegram_data)
                             res = self.do_driver_updates(telegram_data)
                     elif 'POLLING' == telegram_command:
                         pass
@@ -504,7 +503,7 @@ class gateway():
             return True
 
         except:
-            print("Error processing UPDATE telegram!")
+            logger.error("Error processing UPDATE telegram!")
             return False
 
     def doWebsocketInterface(self):
