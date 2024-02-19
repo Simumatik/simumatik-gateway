@@ -386,19 +386,12 @@ class gateway():
 
             # Send telegrams SYNC
             if self.sync_mode and (time.perf_counter()-self.sync_last_telegram>=self.sync_period):
-                if self.driver_updates:  
-                    self.sync_telegram_counter = self.sync_telegram_counter + 1 if self.sync_telegram_counter<MAX_SYNC_TELEGRAM else 1             
-                    self.send_telegram(telegram_id=self.sync_telegram_counter, command="SYNC" if self.sync_mode else "UPDATE", data=self.driver_updates)
-                    #print(f"SYNC sent with ID {self.sync_telegram_counter}")
-                    self.sync_last_telegram = time.perf_counter()
-                    self.sync_telegrams[self.sync_telegram_counter] = time.perf_counter()
-                    self.driver_updates = {}
-                elif self.sync_mode:
-                    self.sync_telegram_counter = self.sync_telegram_counter + 1 if self.sync_telegram_counter<MAX_SYNC_TELEGRAM else 1
-                    self.send_telegram(telegram_id=self.sync_telegram_counter, command="SYNC", data={})
-                    #print(f"SYNC sent with ID {self.sync_telegram_counter}")
-                    self.sync_last_telegram = time.perf_counter()
-                    self.sync_telegrams[self.sync_telegram_counter] = time.perf_counter()
+                self.sync_telegram_counter = self.sync_telegram_counter + 1 if self.sync_telegram_counter<MAX_SYNC_TELEGRAM else 1             
+                self.send_telegram(telegram_id=self.sync_telegram_counter, command="SYNC" if self.sync_mode else "UPDATE", data=self.driver_updates)
+                #print(f"SYNC sent with ID {self.sync_telegram_counter}")
+                self.sync_last_telegram = time.perf_counter()
+                self.sync_telegrams[self.sync_telegram_counter] = time.perf_counter()
+                self.driver_updates = {}
             
             if self.driver_statuses: 
                 self.send_telegram(telegram_id=self.get_new_message_id(), command="STATUS", data=self.driver_statuses)
