@@ -30,15 +30,14 @@ from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 
 
 # Version
-version = "4.3.4"
-MAX_TELEGRAM_LENGTH = 2**13 # (8K)
-MAX_UPDATES_PER_TELEGRAM = 100
+version = "4.4.1"
 
 # Settings
 poll_time = 1 # seconds
 MINIMUM_SYNC_PERIOD = 0.002
 STANDBY_SYNC_PERIOD = 0.1
 MAX_SYNC_TELEGRAM = 10000
+MAX_TELEGRAM_LENGTH = 2**16
 
 # Global
 WebSocketConnections = []
@@ -183,13 +182,16 @@ class gateway():
         self.status = GatewayStatus.EXIT
 
 
-    def send_message(self, id:int, command:str, data:dict=None):
-        msg = {"ID": id, "COMMAND":command}
+    def send_telegram(self, telegram_id:int, command:str, data:dict=None):
+        msg = {"ID": telegram_id, "COMMAND":command}
         if data is not None:
             msg.update({"DATA": data})
-        self.udp_socket.sendto(json.dumps(msg).encode('utf8'), self.server_address)
-
-
+        telegram = json.dumps(msg).encode('utf8')
+        if len(telegram)<MAX_TELEGRAM_LENGTH:
+            self.udp_socket.sendto(telegram, self.server_address)
+        else:
+            logger.error(f'Message to Workspace is too long! Length = {len(telegram)}')
+            
     def doConnect(self):
         """ Executed to connect the gateway to the server."""
         now = time.perf_counter()
@@ -201,8 +203,8 @@ class gateway():
             for driver_name, (_, driver_version) in registered_drivers.items():
                 drivers_list.update({driver_name:{'version':driver_version}})
             # Send REGISTER message
-            self.send_message(
-                id=0, 
+            self.send_telegram(
+                telegram_id=0, 
                 command="REGISTER",
                 data={
                     "SERVER_KEY": 'server key obtained from the user',
@@ -277,7 +279,7 @@ class gateway():
                     "DRIVER_COUNT": len(self.drivers),
                     "CYCLES": round(1000/self.loop_counter,2),
                     }
-                self.send_message(id=self.get_new_message_id(), command="POLLING", data=polling_data)
+                self.send_telegram(telegram_id=self.get_new_message_id(), command="POLLING", data=polling_data)
                 self.last_poll_sent = time.perf_counter()
                 needs_sleep = False
                 self.loop_counter = 0
@@ -305,10 +307,10 @@ class gateway():
                     telegram_data = request_json.get("DATA", None)
                     if 'SETUP' == telegram_command:
                         result = self.do_driver_setup(telegram_data)
-                        self.send_message(id=telegram_id, command='SETUP', data=result)
+                        self.send_telegram(telegram_id=telegram_id, command='SETUP', data=result)
                     elif 'CLEAN' == telegram_command:
                         self.clean_drivers()
-                        self.send_message(id=telegram_id, command='CLEAN', data='SUCCESS')
+                        self.send_telegram(telegram_id=telegram_id, command='CLEAN', data='SUCCESS')
                         # Clean telegram pipe
                         if not self.sync_mode:
                             while True:
@@ -328,6 +330,7 @@ class gateway():
                             #print(f"SYNC received with ID {self.sync_telegram_counter}, {delta}")
                             self.sync_period = self.sync_period * 0.9 + last_period * 0.1
                         if telegram_data:
+                            #print(telegram_data)
                             res = self.do_driver_updates(telegram_data)
                     elif 'POLLING' == telegram_command:
                         pass
@@ -377,44 +380,27 @@ class gateway():
 
             # Send telegrams ASYNC
             if not self.sync_mode:
-                update_slice = {}
-                while self.driver_updates:
-                    (key, value) = self.driver_updates.popitem()
-                    update_slice[key] = value
-                    if len(update_slice)>=MAX_UPDATES_PER_TELEGRAM or len(self.driver_updates)==0:                
-                        self.send_message(id=self.get_new_message_id(), command="UPDATE", data=update_slice)
-                        update_slice = {}
+                if self.driver_updates:               
+                    self.send_telegram(telegram_id=self.get_new_message_id(), command="UPDATE", data=self.driver_updates)
+                    self.driver_updates = {}
 
             # Send telegrams SYNC
             if self.sync_mode and (time.perf_counter()-self.sync_last_telegram>=self.sync_period):
-                if self.driver_updates:
-                    update_slice = {}
-                    while self.driver_updates:
-                        (key, value) = self.driver_updates.popitem()
-                        update_slice[key] = value
-                        if len(update_slice)>=MAX_UPDATES_PER_TELEGRAM or len(self.driver_updates)==0:   
-                            self.sync_telegram_counter = self.sync_telegram_counter + 1 if self.sync_telegram_counter<MAX_SYNC_TELEGRAM else 1             
-                            self.send_message(id=self.sync_telegram_counter, command="SYNC" if self.sync_mode else "UPDATE", data=update_slice)
-                            #print(f"SYNC sent with ID {self.sync_telegram_counter}")
-                            self.sync_last_telegram = time.perf_counter()
-                            self.sync_telegrams[self.sync_telegram_counter] = time.perf_counter()
-                            
-                            update_slice = {}
-                elif self.sync_mode:
-                    self.sync_telegram_counter = self.sync_telegram_counter + 1 if self.sync_telegram_counter<MAX_SYNC_TELEGRAM else 1
-                    self.send_message(id=self.sync_telegram_counter, command="SYNC", data={})
-                    #print(f"SYNC sent with ID {self.sync_telegram_counter}")
-                    self.sync_last_telegram = time.perf_counter()
-                    self.sync_telegrams[self.sync_telegram_counter] = time.perf_counter()
+                self.sync_telegram_counter = self.sync_telegram_counter + 1 if self.sync_telegram_counter<MAX_SYNC_TELEGRAM else 1             
+                self.send_telegram(telegram_id=self.sync_telegram_counter, command="SYNC" if self.sync_mode else "UPDATE", data=self.driver_updates)
+                #print(f"SYNC sent with ID {self.sync_telegram_counter}")
+                self.sync_last_telegram = time.perf_counter()
+                self.sync_telegrams[self.sync_telegram_counter] = time.perf_counter()
+                self.driver_updates = {}
             
             if self.driver_statuses: 
-                self.send_message(id=self.get_new_message_id(), command="STATUS", data=self.driver_statuses)
+                self.send_telegram(telegram_id=self.get_new_message_id(), command="STATUS", data=self.driver_statuses)
                 self.driver_statuses = {}
             if self.driver_infos: 
-                self.send_message(id=self.get_new_message_id(), command="INFO", data=self.driver_infos)
+                self.send_telegram(telegram_id=self.get_new_message_id(), command="INFO", data=self.driver_infos)
                 self.driver_infos = {}
             if var_info: 
-                self.send_message(id=self.get_new_message_id(), command="VAR_INFO", data=var_info)
+                self.send_telegram(telegram_id=self.get_new_message_id(), command="VAR_INFO", data=var_info)
 
         except Exception as e:
             self.status = GatewayStatus.ERROR
@@ -510,7 +496,7 @@ class gateway():
             return True
 
         except:
-            print("Error processing UPDATE telegram!")
+            logger.error("Error processing UPDATE telegram!")
             return False
 
     def doWebsocketInterface(self):
