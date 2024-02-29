@@ -20,7 +20,7 @@ Finally, go to the Simumatik App and connect to the Gateway. You have more infor
 
 Keep in mind that some drivers will need a special setup-up to work. Don't forget to check their code for more information about dependencies.
 
-The current dependencies only work up to Python 3.8 32bit
+The current dependencies only work up to Python 3.11 32bit
 
 ## Drivers available
 
