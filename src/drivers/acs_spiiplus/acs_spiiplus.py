@@ -51,10 +51,10 @@ except:
 # Driver that connects to ACS Motion Control using SPiiPlus
 class acs_spiiplus(driver):
     '''
-    TODO
+    Driver to communicate with ACS Motion controllers. Supports real controllers using TCP or UDP communication, as well as the simulator.
         
     ip: str
-        Ip address of the Yaskawa PLC. Default = '192.168.0.1'.
+        Ip address of the ACS Controller. Default = '192.168.0.1'.
     
     comm: str
         Communication type used: tcp, udp, simulator. Default = 'tcp'.
