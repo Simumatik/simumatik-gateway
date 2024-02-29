@@ -118,7 +118,8 @@ class acs_spiiplus(driver):
             for var_id, var_data in variables.items():
                 try:
                     value = self._connection.ReadVariable(var_id)
-                    var_data['value'] = None # Force first update
+                    var_data['value'] = value # Force first update
+                    self.variables[var_id] = var_data
                     self.sendDebugVarInfo((f'SETUP: Variable found {var_id}', var_id))
                 except:
                     self.sendDebugVarInfo((f'SETUP: Variable not found {var_id}', var_id))
@@ -152,11 +153,11 @@ class acs_spiiplus(driver):
         res = []
         try:
             for (var_id, new_value) in variables:
-                value = self._connection.WriteVariable(new_value, var_id)
-                if value == new_value:
+                v = self._connection.WriteVariable(new_value, var_id)
+                if v is None:
                     res.append((var_id, new_value, VariableQuality.GOOD))
                 else:
-                    res.append((var_id, value, VariableQuality.BAD))
+                    res.append((var_id, new_value, VariableQuality.BAD))
         except:
             pass
         return res
