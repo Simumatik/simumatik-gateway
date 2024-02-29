@@ -11,6 +11,7 @@ from .kuka_varproxy.kuka_varproxy import kuka_varproxy
 from .micro800_http.micro800_http import micro800_http
 from .modbustcp_master.modbustcp_master import modbustcp_master
 from .mqtt_client.mqtt_client import mqtt_client
+from .omron_fins.omron_fins import omron_fins
 from .opcua_client.opcua_client import opcua_client
 from .rosbridge.rosbridge import rosbridge
 from .s7protocol.s7protocol import s7protocol
@@ -33,6 +34,7 @@ registered_drivers = {
   "micro800_http": (micro800_http, "1"),
   "modbustcp_master": (modbustcp_master,"1"),
   "mqtt_client": (mqtt_client,"1"),
+  "omron_fins": (omron_fins, "1"),
   "opcua_client": (opcua_client, "1"),
   "rosbridge": (rosbridge, "1"),
   "s7protocol": (s7protocol, "1"),
