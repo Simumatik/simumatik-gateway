@@ -6,6 +6,7 @@ pyads
 pycomm3
 pyModbusTCP
 roslibpy
+fins
 SimpleWebSocketServer
 aiohttp
 requests
