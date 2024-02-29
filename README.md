@@ -26,22 +26,31 @@ The current dependencies only work up to Python 3.8 32bit
 
 Right now, the following drivers are supported in the Gateway:
 
+- ACS SPiiPlus
 - Allen Bradley Logix
 - CPRog CRI
 - Development (own purpose)
+- EthernetIP Generic Device
 - Fanuc Roboguide
 - Hokuyo UAM
+- Kuka VarProxy
 - Micro800 HTTP (Rockwell Automation CCW)
+- Modbus TCP
 - MQTT client
 - OPCUA client
+- OPCDA Client
+- Siemens PLCSim
+- Siemens PLCSim Advanced
 - RoboDK
 - RobotWare (ABB RobotStudio)
+- ROSBridge
 - S7Protocol
-- Simit (using shared memory)
+- Siemens Simit (using shared memory)
 - SQLite3
 - Twincat ADS
 - UDP generic
 - Universal Robots
+- YAskawa PLCi
 
 ## Architecture
 
