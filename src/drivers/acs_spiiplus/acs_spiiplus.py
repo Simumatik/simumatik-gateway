@@ -42,7 +42,7 @@ try:
                 import clr
                 clr.FindAssembly("ACS.SPiiPlusNET")
                 clr.AddReference("ACS.SPiiPlusNET")
-                from ACS.SPiiPlusNET import Api, EthernetCommOption
+                from ACS.SPiiPlusNET import Api, EthernetCommOption, ProgramBuffer
                 ACS_SPIIPLUS_FOUND = True
                 break
 except:
@@ -117,7 +117,18 @@ class acs_spiiplus(driver):
         try:
             for var_id, var_data in variables.items():
                 try:
-                    value = self._connection.ReadVariable(var_id)
+                    # Check if variable ID is an element of an array
+                    if "(" and ")" in var_id: 
+                        array_name, index = var_id.split("(")
+                        index = int(index.split(")")[0])
+                    else:
+                        index = None
+                    if index is not None:
+                        value = self._connection.ReadVariable(array_name, ProgramBuffer.ACSC_NONE, index, index)
+                        var_data['array_name'] = array_name
+                        var_data['index'] = index
+                    else:
+                        value = self._connection.ReadVariable(var_id)
                     var_data['value'] = value # Force first update
                     self.variables[var_id] = var_data
                     self.sendDebugVarInfo((f'SETUP: Variable found {var_id}', var_id))
@@ -135,7 +146,12 @@ class acs_spiiplus(driver):
         res = []
         try:
             for var_id in variables:
-                new_value = self._connection.ReadVariable(var_id)
+                index = self.variables[var_id].get('index', None)
+                if index is not None:
+                    array_name = self.variables[var_id].get('array_name', 0)
+                    new_value = self._connection.ReadVariable(array_name, ProgramBuffer.ACSC_NONE, index, index)
+                else:
+                    new_value = self._connection.ReadVariable(var_id)
                 if new_value is not None:
                     res.append((var_id, new_value, VariableQuality.GOOD))
                 else:
@@ -153,7 +169,12 @@ class acs_spiiplus(driver):
         res = []
         try:
             for (var_id, new_value) in variables:
-                v = self._connection.WriteVariable(new_value, var_id)
+                index = self.variables[var_id].get('index', None)
+                if index is not None:
+                    array_name = self.variables[var_id].get('array_name', 0)
+                    v = self._connection.WriteVariable(new_value, array_name, ProgramBuffer.ACSC_NONE, index, index)
+                else:
+                    v = self._connection.WriteVariable(new_value, var_id)
                 if v is None:
                     res.append((var_id, new_value, VariableQuality.GOOD))
                 else:

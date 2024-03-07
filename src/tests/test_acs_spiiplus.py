@@ -27,6 +27,10 @@ VARIABLES = {
     'I1':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
     'V0':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.WRITE},
     'V1':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.READ},
+    'I(0)':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.WRITE},
+    'I(1)':{'datatype': VariableDatatype.INTEGER, 'size': 1, 'operation': VariableOperation.READ},
+    'V(0)':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.WRITE},
+    'V(1)':{'datatype': VariableDatatype.FLOAT, 'size': 1, 'operation': VariableOperation.READ},
     }
 
 d = acs_spiiplus(None, 'test')
@@ -40,8 +44,8 @@ if d.connect():
     t = time.perf_counter()
     while time.perf_counter()-t < 10:
 
-        print(d.readVariables(['I1','V1']), counter)
-        d.writeVariables([('I0', counter),('V0', counter/9)])
+        print(d.readVariables(['I1','V1','I(1)','V(1)']), counter)
+        d.writeVariables([('I0', counter),('I(0)', counter),('V0', counter/9),('V(0)', counter/5)])
         counter += 1
 
     d.disconnect()
