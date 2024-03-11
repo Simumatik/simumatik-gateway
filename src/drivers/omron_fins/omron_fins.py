@@ -26,9 +26,15 @@ class omron_fins(driver):
     '''
     Driver to communicate with Omron CPUs using FINS protocol.
 
+    The following memory areas can be used:
+        * WORK (w)
+        * CIO (c)
+        * DATA_MEMORY (d)
+        * HOLDING (h)
+
     Parameters:
     ip: str
-        IP address of the controller that want to connect to. Default = '192.168.0.1'
+        IP address of the target controller for connection. Default = '192.168.0.1'
     
     dest_node_add: int
         Destination node address. Default = 0
