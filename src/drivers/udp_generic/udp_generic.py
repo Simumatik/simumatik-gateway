@@ -54,6 +54,7 @@ class udp_generic(driver):
         self.port = 8400
         self.polling = 1
         self.max_size = 1024
+        self._send_data = {}
 
 
     def connect(self) -> bool:
@@ -112,36 +113,16 @@ class udp_generic(driver):
 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        _recv_data = {}
-        try:
-            while True:
-                _data, address = self._connection.recvfrom(self.max_size)
-                if (_data != None and address == (self.ip, int(self.port))):
-                    _data = json.loads(_data.decode('utf-8'))
-                    _recv_data.update(_data)
-        except:
-            pass
-
-        if _recv_data.get("poll", None) != None:
-            self._last_recv_poll = int(time.perf_counter())
-            _recv_data.pop("poll")
-
-
-        if (int(time.perf_counter()) - self._last_recv_poll) > (2 * self.polling):
-            self.changeStatus(DriverStatus.ERROR)
-            self.sendDebugInfo("Polling msg was not received on time")
-
         res = []
         for var_id in variables:
-            if var_id in _recv_data:
-                new_value = _recv_data.pop(var_id)
-                new_value = self.getValueFromString(self.variables[var_id]['datatype'], new_value)
+            if var_id in self.variables:
+                new_value = self.variables[var_id]['value']
                 if new_value is not None:
                     res.append((var_id, new_value, VariableQuality.GOOD)) 
                 else:
                     res.append((var_id, new_value, VariableQuality.BAD)) 
             else:
-                res.append((var_id, self.variables[var_id]['value'], VariableQuality.GOOD))
+                res.append((var_id, None, VariableQuality.BAD))
         return res
 
 
@@ -151,26 +132,55 @@ class udp_generic(driver):
 
         : returns: list of tupples including (var_id, var_value, VariableQuality)
         """
-        _send_data = {}
-
-        sec_now = int(time.perf_counter())
-        if (sec_now - self._last_sent_poll) >= self.polling:
-            _send_data.update({"poll": sec_now})
-            self._last_sent_poll = sec_now   
-
         res = []
         for (var_id, new_value) in variables:
-            _send_data.update({var_id: new_value})
-
-        if _send_data:
-            try:
-                self._connection.sendto(json.dumps(_send_data).encode('utf8'), (self.ip, int(self.port)))
-                for (var_id, new_value) in variables:
-                    res.append((var_id, new_value, VariableQuality.GOOD))
-            except:
-                for (var_id, new_value) in variables:
-                    res.append((var_id, new_value, VariableQuality.BAD))
+            if var_id in self.variables:
+                self._send_data.update({var_id: new_value})
+                res.append((var_id, new_value, VariableQuality.GOOD))
+            else:
+                res.append((var_id, new_value, VariableQuality.BAD))                    
 
         return res
 
 
+    def loop(self):
+        """ Runs every iteration while the driver is active. Only use if strictly necessary.
+        """
+        if self._connection and self.status == DriverStatus.RUNNING:
+            # Send telegrams
+            sec_now = int(time.perf_counter())
+            if (sec_now - self._last_sent_poll) >= self.polling:
+                self._send_data.update({"poll": sec_now})
+                self._last_sent_poll = sec_now   
+
+            if self._send_data:
+                try:
+                    self._connection.sendto(json.dumps(self._send_data).encode('utf8'), (self.ip, int(self.port)))
+                    print(time.perf_counter(), "sent", self._send_data)
+                    self._send_data = {}
+                except:
+                    pass
+
+            # Receive telegrams        
+            try:
+                while True:
+                    _data, address = self._connection.recvfrom(self.max_size)
+                    print(time.perf_counter(), "received", _data)
+                    if (_data != None and address == (self.ip, int(self.port))):
+                        _recv_data = json.loads(_data.decode('utf-8'))
+                        
+                        if _recv_data.get("poll", None) != None:
+                            self._last_recv_poll = int(time.perf_counter())
+                            _recv_data.pop("poll")
+
+                        for var_id, new_value in _recv_data.items():
+                            if var_id in self.variables:
+                                self.variables[var_id]['value'] = self.getValueFromString(self.variables[var_id]['datatype'], new_value)
+
+            except:
+                pass
+
+            # Check communication
+            if (int(time.perf_counter()) - self._last_recv_poll) > (2 * self.polling):
+                self.changeStatus(DriverStatus.ERROR)
+                self.sendDebugInfo("Polling msg was not received on time")
