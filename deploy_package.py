@@ -34,8 +34,14 @@ elif PLATFORM=="darwin":
 TOKEN, AUDIENCE = GetSimumatikApiToken()
 assert TOKEN is not None, "Error getting Simumatik API token!"
 
+print("[+] Do you want to deploy a regular (Default) or experimental (1) package?")
+experimental = input() == '1'
+
 # TODO: Fix new paths for other platforms
-actual_version = asyncio.run(GetRequestJson(token=TOKEN, url=f'{AUDIENCE}/{PACKAGE}/version'))
+if experimental:
+    actual_version = asyncio.run(GetRequestJson(token=TOKEN, url=f'{AUDIENCE}/{PACKAGE}/experimental/version'))
+else:
+    actual_version = asyncio.run(GetRequestJson(token=TOKEN, url=f'{AUDIENCE}/{PACKAGE}/version'))
 
 print(f"Actual {PACKAGE} package version is: {actual_version}")
 print("[+] Introduce the new version number (i.e. '1.0.0'): ")
@@ -46,7 +52,13 @@ print("Ziping the package...")
 shutil.make_archive(f'{filepath}{PACKAGE}-{version}', 'zip', f'dist/{PACKAGE}')
 filename = f'{PACKAGE}-{version}.zip'
 print('Uploading package...')
-asyncio.run(UploadFile(token=TOKEN, url=f'{AUDIENCE}/admin/{PACKAGE}', path=filepath, filename=filename))
+if experimental:
+    asyncio.run(UploadFile(token=TOKEN, url=f'{AUDIENCE}/admin/{PACKAGE}/experimental', path=filepath, filename=filename))
+else:
+    asyncio.run(UploadFile(token=TOKEN, url=f'{AUDIENCE}/admin/{PACKAGE}', path=filepath, filename=filename))
 print('Package uploaded!')
-ersion = asyncio.run(GetRequestJson(token=TOKEN, url=f'{AUDIENCE}/{PACKAGE}/version'))
+if experimental:
+    version = asyncio.run(GetRequestJson(token=TOKEN, url=f'{AUDIENCE}/{PACKAGE}/experimental/version'))
+else:
+    version = asyncio.run(GetRequestJson(token=TOKEN, url=f'{AUDIENCE}/{PACKAGE}/version'))
 print(f"Uploaded {PACKAGE} package version is: {version}")
