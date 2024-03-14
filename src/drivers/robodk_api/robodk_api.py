@@ -77,9 +77,9 @@ class robodk_api(driver):
             #assert ROBODK_API_FOUND, "RoboDK API is not available."
             self._connection = Robolink()
             if self._connection:
-                self.robot = self._connection.Item(self.controller)
+                self.robot = self._connection.Item(name=self.controller, itemtype=ITEM_TYPE_ROBOT)
                 if self.robot:
-                    if self.robot.Valid() and self.robot.Type() == ITEM_TYPE_ROBOT:
+                    if self.robot.Valid():
                         self.sendDebugInfo(f'Driver RoboDK Connected to {self.controller}...')
                         return True
                     else:
