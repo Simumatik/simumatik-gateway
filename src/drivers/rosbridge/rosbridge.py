@@ -15,6 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import roslibpy
+import json
 from multiprocessing import Pipe
 from typing import Optional
 
@@ -48,9 +49,12 @@ class rosbridge(driver):
         # Parameters
         self.host = 'localhost'
         self.port = 9090
+        self.request_telegram_var = 'ros_message_request'
+        self.response_telegram_var = 'ros_message_response'
 
         # Interal vars
         self.new_values = {}
+        self.telegram_topics = {}
 
 
     def connect(self) -> bool:
@@ -95,7 +99,7 @@ class rosbridge(driver):
                 else:
                     #Get the correct message type from simumatik type
                     message_type = self.message_type_convertion(var_data['datatype'],var_data['size'])
-                    #Use 'data' as the value field for all std_msgsg
+                    #Use 'data' as the value field for all std_msgs
                     message_field = 'data'
 
                 var_data['value'] = self.defaultVariableValue(var_data['datatype'], var_data['size'])
@@ -144,13 +148,17 @@ class rosbridge(driver):
         res = []
         for (var_id, new_value) in variables:
             try:
-                if '/' in self.variables[var_id]['datatype']:
+                if var_id == self.request_telegram_var:
+                    if new_value:
+                        self.supervise_telegram(new_value)
+                elif '/' in self.variables[var_id]['datatype']:
                     self.variables[var_id]['publisher'].publish(roslibpy.Message({self.variables[var_id]['field'] : new_value}))
                 else:
                     self.variables[var_id]['publisher'].publish(roslibpy.Message({'data' : new_value}))
 
                 res.append((var_id, new_value, VariableQuality.GOOD))
-            except:
+            except Exception as e:
+                print(e)
                 res.append((var_id, new_value, VariableQuality.BAD))
                      
         return res
@@ -202,3 +210,21 @@ class rosbridge(driver):
             }
             
             return switcher.get(type_name, "Invalid type")
+    
+
+    def supervise_telegram(self, telegram_data):
+        # Update stored data for the message fields with the new telegram data, publish new data
+        topic_updates = json.loads(telegram_data)
+        for topic, data in topic_updates.items():
+            if topic in self.telegram_topics:
+                # Already existing topic, use stored publisher
+                self.telegram_topics[topic]['id'] = data['id']
+                self.telegram_topics[topic]['payload'].update(data['payload'])
+            else:
+                # New topic to write, create a new publisher
+                self.telegram_topics[topic] = data
+                self.telegram_topics[topic]['publisher'] = roslibpy.Topic(self._connection, topic, data['msg'])
+
+
+            msg = self.telegram_topics[topic]['payload']
+            self.telegram_topics[topic]['publisher'].publish(roslibpy.Message(msg))
