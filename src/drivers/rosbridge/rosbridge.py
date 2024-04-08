@@ -55,6 +55,7 @@ class rosbridge(driver):
         # Interal vars
         self.new_values = {}
         self.telegram_topics = {}
+        self.pending_telegram_response = {}
 
 
     def connect(self) -> bool:
@@ -132,7 +133,10 @@ class rosbridge(driver):
         """
         res = []
         for var_id in variables:
-            if var_id in self.new_values:
+            if var_id == self.response_telegram_var:
+                res.append((var_id, json.dumps(self.pending_telegram_response), VariableQuality.GOOD))
+                self.pending_telegram_response = {}
+            elif var_id in self.new_values:
                 res.append((var_id, self.new_values[var_id], VariableQuality.GOOD))
             else:
                 res.append((var_id, None, VariableQuality.BAD))
@@ -150,7 +154,7 @@ class rosbridge(driver):
             try:
                 if var_id == self.request_telegram_var:
                     if new_value:
-                        self.supervise_telegram(new_value)
+                        self.supervise_request_telegram(new_value)
                 elif '/' in self.variables[var_id]['datatype']:
                     self.variables[var_id]['publisher'].publish(roslibpy.Message({self.variables[var_id]['field'] : new_value}))
                 else:
@@ -212,19 +216,32 @@ class rosbridge(driver):
             return switcher.get(type_name, "Invalid type")
     
 
-    def supervise_telegram(self, telegram_data):
-        # Update stored data for the message fields with the new telegram data, publish new data
+    def supervise_request_telegram(self, telegram_data):
         topic_updates = json.loads(telegram_data)
         for topic, data in topic_updates.items():
-            if topic in self.telegram_topics:
-                # Already existing topic, use stored publisher
-                self.telegram_topics[topic]['id'] = data['id']
+            if not topic in self.telegram_topics:
+                self.telegram_topics[topic] = {}
+                self.telegram_topics[topic]['msg'] = data['msg']
+                self.telegram_topics[topic]['payload'] = {}
+                self.telegram_topics[topic]['ros_topic'] = roslibpy.Topic(self._connection, topic, data['msg'])
+
+            if 'subscribe' in data:
+                if data['subscribe'] == True:
+                    callback_lambda = lambda message, topic = topic : self.telegram_subscriber_callback(message, topic)
+                    self.telegram_topics[topic]['ros_topic'].subscribe(callback_lambda)
+                else:
+                    ... # Remove subscriber (if there is one)
+
+            self.telegram_topics[topic]['id'] = data.get('id', 0)
+            if 'payload' in data:
+                # Update stored topic values
                 self.telegram_topics[topic]['payload'].update(data['payload'])
-            else:
-                # New topic to write, create a new publisher
-                self.telegram_topics[topic] = data
-                self.telegram_topics[topic]['publisher'] = roslibpy.Topic(self._connection, topic, data['msg'])
+                # Publish new data
+                msg = self.telegram_topics[topic]['payload']
+                self.telegram_topics[topic]['ros_topic'].publish(roslibpy.Message(msg))
 
-
-            msg = self.telegram_topics[topic]['payload']
-            self.telegram_topics[topic]['publisher'].publish(roslibpy.Message(msg))
+    def telegram_subscriber_callback(self, message, topic):
+        self.telegram_topics[topic]['payload'].update(message)
+        self.pending_telegram_response[topic] = {}
+        self.pending_telegram_response[topic]['payload'] = self.telegram_topics[topic]['payload']
+        self.pending_telegram_response[topic]['id'] = self.telegram_topics[topic]['id'] + 1
