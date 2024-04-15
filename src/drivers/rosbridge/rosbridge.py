@@ -92,15 +92,21 @@ class rosbridge(driver):
         """
         for var_id, var_data in variables.items():
             try:
-                #For specific message type and field, it's indicated in the datatype.
-                #The use of '/' is compulsory to avoid mistakes.
+                # For telegram variables, skip adding the ros topic publisher/subscriber
+                if var_id in [self.request_telegram_var, self.response_telegram_var]:
+                    var_data['value'] = None
+                    self.variables[var_id] = var_data
+                    continue
+
+                # For specific message type and field, it's indicated in the datatype.
+                # The use of '/' is compulsory to avoid mistakes.
                 if '/' in var_data['datatype']:
                     message_type = var_data['datatype']
                     message_field = var_data['field']
                 else:
-                    #Get the correct message type from simumatik type
+                    # Get the correct message type from simumatik type
                     message_type = self.message_type_convertion(var_data['datatype'],var_data['size'])
-                    #Use 'data' as the value field for all std_msgs
+                    # Use 'data' as the value field for all std_msgs
                     message_field = 'data'
 
                 var_data['value'] = self.defaultVariableValue(var_data['datatype'], var_data['size'])
@@ -109,11 +115,11 @@ class rosbridge(driver):
                 if var_data['operation'] == VariableOperation.WRITE:
                     var_data['publisher'] = roslibpy.Topic(self._connection, var_id, message_type)
                 if var_data['operation'] == VariableOperation.READ:
-                    #Create a subscriber for the variable
+                    # Create a subscriber for the variable
                     var_data['subscriber'] = roslibpy.Topic(self._connection, var_id, message_type)
-                    #Define callback function with fixed name and field
+                    # Define callback function with fixed name and field
                     callback_lambda = lambda message, name = var_id, field = message_field : self.callback(message, name, field)
-                    #Subscribe using the callback function
+                    # Subscribe using the callback function
                     var_data['subscriber'].subscribe(callback_lambda)
 
                 if var_id in self.variables:
@@ -170,7 +176,7 @@ class rosbridge(driver):
 
     def callback(self, msg, var_id, field):
         # Callback function called when the subscriber recieves a message
-        #If the datatype is float, round.
+        # If the datatype is float, round.
         if  isinstance(msg[field], float):
             value = round(msg[field], 3)
         elif isinstance(msg[field], list) and isinstance(msg[field][0], float):
@@ -183,18 +189,18 @@ class rosbridge(driver):
 
 
     def message_type_convertion(self, type_name, size):
-        #Function used to extract the message type from simumatik types.
+        # Function used to extract the message type from simumatik types.
 
-        #There is a distinction depending on the size
+        # There is a distinction depending on the size
         if size == 1:
             switcher = {
                 'bool'  : 'std_msgs/Bool',
                 'byte'  : 'std_msgs/Byte',
-                'int'   : 'std_msgs/Int32', #Can be changed to Int64
+                'int'   : 'std_msgs/Int32', # Can be changed to Int64
                 'word'  : 'std_msgs/UInt16',
                 'dword' : 'std_msgs/UInt32',
                 'qword' : 'std_msgs/UInt64',
-                'float' : 'std_msgs/Float32', #Can be changed to Float64
+                'float' : 'std_msgs/Float32', # Can be changed to Float64
                 'str'   : 'std_msgs/String',
                 'string': 'std_msgs/String'
             }
@@ -203,14 +209,14 @@ class rosbridge(driver):
 
         else:
             switcher = {
-                #Bool of size different than 1 is not valid
+                # Bool of size different than 1 is not valid
                 'byte'  : 'std_msgs/ByteMultiArray',
-                'int'   : 'std_msgs/Int32MultiArray', #Can be changed to Int64
+                'int'   : 'std_msgs/Int32MultiArray', # Can be changed to Int64
                 'word'  : 'std_msgs/UInt16MultiArray',
                 'dword' : 'std_msgs/UInt32MultiArray',
                 'qword' : 'std_msgs/UInt64MultiArray',
-                'float' : 'std_msgs/Float32MultiArray', #Can be changed to Float64
-                #String of size different than 1 is not valid
+                'float' : 'std_msgs/Float32MultiArray', # Can be changed to Float64
+                # String of size different than 1 is not valid
             }
             
             return switcher.get(type_name, "Invalid type")
