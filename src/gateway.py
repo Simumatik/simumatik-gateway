@@ -19,7 +19,7 @@ from logs import logger
 import datetime
 from enum import Enum
 import json
-from multiprocessing import Pipe
+import multiprocessing
 import socket
 from threading import Thread
 import time
@@ -142,6 +142,9 @@ class gateway():
             driver_object, pipe = self.drivers.popitem()
             logger.debug('Cleaning driver: {}'.format(driver_object.name))
             pipe.send(json.dumps({DriverActions.EXIT: None}))
+            driver_object.join(timeout=1)
+            driver_object.kill()
+            print("Driver killed")
 
 
     def run(self, ip:str='0.0.0.0', port:int=2323):
@@ -447,9 +450,9 @@ class gateway():
 
                 else:
                     # Create new driver
-                    pipe, driver_pipe = Pipe()
+                    pipe, driver_pipe = multiprocessing.Pipe()
                     driver_object = driver_class(driver_handle, driver_pipe, parameter_data)
-                    driver_object.setDaemon(True)
+
                     self.drivers[driver_object] = pipe
                     driver_object.handles.append(driver_handle)
                     driver_object.start()
@@ -585,5 +588,6 @@ class gateway():
 
 # Testing
 if __name__ == '__main__':
+    multiprocessing.freeze_support()
     g = gateway()
     g.run(ip='0.0.0.0', port=2323)

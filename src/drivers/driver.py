@@ -14,8 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import threading
-from multiprocessing import Pipe
+from multiprocessing import Pipe, Process
 import time
 from enum import Enum
 import json
@@ -56,7 +55,7 @@ class VariableOperation(str, Enum):
     WRITE = 'write'
     BOTH = 'both'
 
-class driver(threading.Thread):
+class driver(Process):
     """
 
     Parameters:
@@ -79,7 +78,7 @@ class driver(threading.Thread):
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
         """
         # Inherit
-        threading.Thread.__init__(self, name=name, daemon=True)
+        Process.__init__(self, name=name, daemon=True)
 
         # Standard parameters
         self.rpi = 50
