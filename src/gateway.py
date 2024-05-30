@@ -30,7 +30,7 @@ from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 
 
 # Version
-version = "4.4.8"
+version = "4.4.9"
 
 # Settings
 poll_time = 1 # seconds
@@ -144,7 +144,6 @@ class gateway():
             pipe.send(json.dumps({DriverActions.EXIT: None}))
             driver_object.join(timeout=1)
             driver_object.kill()
-            print("Driver killed")
 
 
     def run(self, ip:str='0.0.0.0', port:int=2323):
