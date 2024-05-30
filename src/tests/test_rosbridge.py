@@ -63,20 +63,23 @@ if __name__ == '__main__':
 import sys
 from os import path
 import time
+import json, numpy
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from drivers.rosbridge.rosbridge import rosbridge
 from drivers.driver import VariableOperation
 
-HOST = "192.168.1.186"
+HOST = "127.0.0.1"
 PORT = 9090
 
 TOPIC_1 = "test_01"
 TOPIC_2 = "test_02"
+REQUEST_TELEGRAM_VAR = 'ros_message_request'
 
 VARIABLES = {
     TOPIC_1:{'datatype': "int", 'size': 1, 'operation': VariableOperation.WRITE},
     TOPIC_2:{'datatype': "int", 'size': 1, 'operation': VariableOperation.READ},
+    REQUEST_TELEGRAM_VAR: {'datatype': 'str', 'size': 1, 'operation': VariableOperation.BOTH},
 }
 
 d = rosbridge(None, 'test')
@@ -88,15 +91,36 @@ if d.connect():
 
     value = 0
     start_time = time.perf_counter()
+    id = 0
     while time.perf_counter() - start_time < 10:
-        d.writeVariables([(TOPIC_1, value)])
+        d.writeVariables([
+            (TOPIC_1, value),
+            (REQUEST_TELEGRAM_VAR, json.dumps({
+                'points_1': {
+                    'id': id,
+                    'msg': 'geometry_msgs/PointStamped',
+                    'payload': {
+                        'header': {
+                            'frame_id': 'base'
+                        },
+                        'point': {
+                            'x': numpy.sin(time.perf_counter()*5),
+                            'y': numpy.cos(time.perf_counter()*5),
+                            'z': -numpy.sin(time.perf_counter()*5)
+                        }
+                    }
+                },
+            }))
+        ])
 
-        time.sleep(1)
+        time.sleep(0.01)
 
         var_id, var_value, var_quality = d.readVariables([TOPIC_2])[0]
         print(var_id, var_value, var_quality)
         if var_value is not None:
             value = var_value + 1
+        
+        id += 1
 
     d.disconnect()
 else:
