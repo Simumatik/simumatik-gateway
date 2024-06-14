@@ -37,6 +37,8 @@ Right now, the following drivers are supported in the Gateway:
 - Micro800 HTTP (Rockwell Automation CCW)
 - Modbus TCP
 - MQTT client
+- Omron FINS
+- Omron NexSocket (Sysmac Simulator)
 - OPCUA client
 - OPCDA Client
 - Siemens PLCSim
@@ -46,11 +48,12 @@ Right now, the following drivers are supported in the Gateway:
 - ROSBridge
 - S7Protocol
 - Siemens Simit (using shared memory)
+- Simulink UDP
 - SQLite3
 - Twincat ADS
 - UDP generic
 - Universal Robots
-- YAskawa PLCi
+- Yaskawa PLCi
 
 ## Architecture
 
