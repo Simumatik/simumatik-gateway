@@ -155,7 +155,7 @@ class gateway():
         :param ip: Workspace ip address.
         """  
         if self._workspace_interface is None:      
-            self._workspace_interface = WorkspaceUDPInterface(disable_poll_check=True, log_level=self._log_level)
+            self._workspace_interface = WorkspaceUDPInterface(disable_poll_check=False, log_level=self._log_level)
             if self._workspace_interface.connect(ip=ip, port=4844, version=version):
                 self._connected_workspace_ip = ip
                 return True
