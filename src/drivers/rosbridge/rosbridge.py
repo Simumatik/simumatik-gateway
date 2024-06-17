@@ -16,11 +16,9 @@
 
 import roslibpy
 import json
-from multiprocessing import Pipe
-from typing import Optional
+import multiprocessing
 
 from ..driver import driver, VariableOperation, VariableQuality
-
 
 class rosbridge(driver):
     '''
@@ -38,7 +36,7 @@ class rosbridge(driver):
 
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
+    def __init__(self, name: str, pipe: multiprocessing.Pipe = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py

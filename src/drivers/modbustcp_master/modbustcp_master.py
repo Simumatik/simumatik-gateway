@@ -14,12 +14,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from ..driver import driver, VariableQuality, VariableDatatype, VariableOperation
-
-from multiprocessing import Pipe
-from typing import Optional
-
+import multiprocessing
 from pyModbusTCP.client import ModbusClient
+
+from ..driver import driver, VariableQuality, VariableDatatype, VariableOperation
     
 
 class modbustcp_master(driver):
@@ -44,7 +42,7 @@ class modbustcp_master(driver):
     use_relative_addresses: Boolean : use relative registen numbers instead of absolute ones (base on the ranges in the table above). Default False
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
+    def __init__(self, name: str, pipe: multiprocessing.Pipe = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py

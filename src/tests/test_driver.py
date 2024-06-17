@@ -15,29 +15,19 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import sys
+import logging
 from os import path
-import time
+
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
+from driver_tester import Test_Driver
+from setup_data import setup_data
 
-from drivers.micro800_http.micro800_http import micro800_http
-from drivers.driver import VariableOperation, VariableDatatype
+test_drivers = ['opcua_client', 'robodk_driver'] # JUST MODIFY THIS LIST TO TEST ONE OR MORE DRIVERS
 
-VARIABLES = {
-    '_IO_EM_DI_00':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.WRITE},
-    '_IO_EM_DO_00':{'datatype': VariableDatatype.BOOL, 'size': 1, 'operation': VariableOperation.READ},
-    }
-
-d = micro800_http(None, 'test')
-d.port = '65173'
-
-if d.connect():
-    d.addVariables(VARIABLES)
-
-    value = False
-    while time.perf_counter() < 5:
-        d.writeVariables([('_IO_EM_DI_00', value)])
-        print(d.readVariables(['_IO_EM_DO_00']))
-        time.sleep(0.1)
-        value = not value
-
-    d.disconnect()
+if __name__ == '__main__':
+    my_setup_data = {}
+    for driver_name in test_drivers:
+        if driver_name in setup_data:
+            my_setup_data.update({driver_name:setup_data[driver_name]})
+            
+    Test_Driver(setup_data=my_setup_data, run_time=10, log_level=logging.INFO, sleep_time=1e-2)

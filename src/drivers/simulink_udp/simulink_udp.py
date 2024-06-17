@@ -14,11 +14,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from multiprocessing import Pipe
+import multiprocessing
 import socket
 import time
 import json
-from typing import Optional
 
 from ..driver import driver, VariableQuality, DriverStatus 
 
@@ -41,7 +40,7 @@ class simulink_udp(driver):
         Max telegram size (bytes). Default = 1024
     """
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
+    def __init__(self, name: str, pipe: multiprocessing.Pipe = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py

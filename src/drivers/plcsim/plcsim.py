@@ -15,8 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import struct
-from multiprocessing import Pipe
-from typing import Optional
+import multiprocessing
 import ctypes
 import time
 
@@ -56,7 +55,7 @@ class plcsim(driver):
     PDU_COUNTER     = 0
     MAX_PDU_COUNTER = 65535
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
+    def __init__(self, name: str, pipe: multiprocessing.Pipe = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py

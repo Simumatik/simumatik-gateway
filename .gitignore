@@ -5,3 +5,4 @@ Output/
 .vscode
 gateway_logs.txt
 venv/
+*.txt

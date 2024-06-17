@@ -14,11 +14,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from ..driver import VariableDatatype, driver, VariableQuality 
+import multiprocessing
 
-from multiprocessing import Pipe
-from typing import Optional
-    
+from ..driver import VariableDatatype, driver, VariableQuality 
 
 class twincat_ads(driver):
     '''
@@ -30,7 +28,7 @@ class twincat_ads(driver):
     port    : Int       : port to connect to
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
+    def __init__(self, name: str, pipe: multiprocessing.Pipe = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py

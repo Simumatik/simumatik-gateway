@@ -14,15 +14,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from opcua import Client, ua
 from collections import deque
 import os
-from multiprocessing import Pipe
-from typing import Optional
+import multiprocessing
+import logging
+from opcua import Client, ua
 
 from ..driver import VariableOperation, driver, VariableQuality 
 
-import logging
 logging.getLogger('opcua').setLevel(logging.CRITICAL)
 
 class SubHandler(object):
@@ -45,7 +44,7 @@ class opcua_client(driver):
 
     """
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
+    def __init__(self, name: str, pipe: multiprocessing.Pipe = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
@@ -79,7 +78,10 @@ class opcua_client(driver):
         """ Disconnect driver.
         """
         if self._connection:
-            self._connection.disconnect()
+            try:
+                self._connection.disconnect()
+            except:
+                pass
 
 
     def addVariables(self, variables: dict):

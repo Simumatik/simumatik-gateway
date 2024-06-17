@@ -16,9 +16,7 @@
 
 import sys 
 import os
-
-from multiprocessing import Pipe
-from typing import Optional
+import multiprocessing
 
 from ..driver import driver, VariableQuality
 
@@ -44,7 +42,7 @@ class plcsim_advanced(driver):
     instanceName : The name of the PLC Sim Advanced Instance
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
+    def __init__(self, name: str, pipe: multiprocessing.Pipe = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py

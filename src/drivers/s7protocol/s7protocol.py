@@ -15,8 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import socket
-from multiprocessing import Pipe
-from typing import Optional
+import multiprocessing
 
 from .iso_on_tcp import (getAreaFromString, PDULengthRequest, PDUReadAreas, PDUWriteAreas, connectPLC)
 from ..driver import driver
@@ -46,7 +45,7 @@ class s7protocol(driver):
     PDU_COUNTER     = 0
     MAX_PDU_COUNTER = 65535
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
+    def __init__(self, name: str, pipe: multiprocessing.Pipe = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
