@@ -281,5 +281,5 @@ class gateway():
 if __name__ == '__main__':
     multiprocessing.freeze_support()
     print(sys.argv)
-    g = gateway(use_processes="--use_processes" in sys.argv, log_level=logging.INFO)
+    g = gateway(use_processes=False, log_level=logging.INFO)
     g.run(ws_ip='0.0.0.0', ws_port=2323)
