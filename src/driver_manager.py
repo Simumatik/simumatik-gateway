@@ -164,8 +164,10 @@ class DriverManager():
                     break
                 elif command == DriverMgrCommands.SETUP_DRIVERS:
                     self._logger.debug("Driver Manager: Setup Drivers request received")
-                    res = self.setupDrivers(data)
+                    res, status_updates = self.setupDrivers(data)
                     self._pipe.send((DriverMgrCommands.SETUP_DRIVERS, res))
+                    if status_updates:
+                        self._pipe.send((DriverMgrCommands.STATUS, status_updates))
                 elif command == DriverMgrCommands.UPDATES:
                     for var_handle, var_value in data.items():
                         (var_id, driver_name) = self._handles.get(var_handle, (None, None))
@@ -251,14 +253,17 @@ class DriverManager():
                 
         self._logger.debug("Driver Manager: Closed")
     
-    def setupDrivers(self, drivers_setup_data:dict)->dict:
+    def setupDrivers(self, drivers_setup_data:dict)->tuple:
         res = {}
+        status_updates = {}
         for driver_handle, driver_data in drivers_setup_data.items():
             driver_struct = self.findCompatibleDriver(driver_data)
             if driver_struct is not None:
                 driver_struct.addHandle(driver_handle)
                 self._logger.debug(f"Driver Manager: Driver {driver_handle} using compatible driver {driver_struct.name}")
                 res[driver_handle] = "SUCCESS"
+                if driver_struct.status:
+                    status_updates[driver_handle] = driver_struct.status
             else:
                 driver_struct = self.startDriver(driver_handle, driver_data)
                 if driver_struct is not None:
@@ -270,7 +275,7 @@ class DriverManager():
             if driver_struct is not None:
                 setup_data = driver_data.get("SETUP", {})
                 self._handles.update(driver_struct.addDriverVariables(setup_data.get("variables", {})))
-        return res 
+        return res, status_updates
     
     def cleanDrivers(self):
         for driver_name, driver_struct in self._drivers.items(): 
