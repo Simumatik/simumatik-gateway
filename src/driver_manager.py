@@ -3,6 +3,7 @@ import logging
 import multiprocessing
 import threading
 import enum 
+import os
 
 from drivers import *
 
@@ -95,7 +96,9 @@ class VariableStructure():
 
     def addHandle(self, handle:str):
         self.handlers.append(handle)
-    
+
+STATUS_FILE_PATH = os.path.dirname(os.path.abspath(__file__))+'/Driver_Manager_status.txt'
+
 class DriverManager():
     
     def __init__(self, pipe:multiprocessing.Pipe, use_processes:bool=False, log_level:int=logging.ERROR) -> None:
@@ -118,7 +121,8 @@ class DriverManager():
         self._drivers = {} # Dict to store drivers: {<driver_name>:<driver_struct>}
         self._driver_counter = 0
         self._handles = {} # Dict to store variables data: {<handle>: (<var_id>, <driver name>)}
-        self._logger.debug("Driver Manager: Created")
+        self._logger.debug("Driver Manager: Created")        
+        self._logger.debug(f"Driver Manager: Status File path is {STATUS_FILE_PATH}")
         self._running = True
         self._start_time = int(time.perf_counter())
         self._last_status_record = 0
@@ -126,19 +130,22 @@ class DriverManager():
     
     def saveStatus(self, now_sec:int):
         start = time.perf_counter()
-        with open('Driver_Manager_status.txt', 'w') as f:
-            N = 100
-            f.write(f'Driver Manager status: (clock = {now_sec}s, {round(self._save_status_time*1000,2)}ms to write)\n') 
-            f.write('-'*N+'\n')
-            for driver_struct in self._drivers.values():
-                f.write(f' {driver_struct.name}:\n') 
-                f.write(f'   - Type = {driver_struct.class_name}, Status = {driver_struct.status.value}, Info = {driver_struct.info}\n')
-                f.write(f'   - Parameters = {driver_struct.parameters}\n')
-                f.write(f'   - Handles = {driver_struct.handlers}, Variable count = {len(driver_struct.variables)}\n') 
-                f.write(f'   - Variables:\n')
-                for var_id, var_struct in driver_struct.variables.items():
-                    f.write(f'    - {var_id} {var_struct.handlers} = {var_struct.value}  (R:{var_struct.read_count} W:{var_struct.write_count}) - {var_struct.info}\n')
+        try:
+            with open(STATUS_FILE_PATH, 'w') as f:
+                N = 100
+                f.write(f'Driver Manager status: (clock = {now_sec}s, {round(self._save_status_time*1000,2)}ms to write)\n') 
                 f.write('-'*N+'\n')
+                for driver_struct in self._drivers.values():
+                    f.write(f' {driver_struct.name}:\n') 
+                    f.write(f'   - Type = {driver_struct.class_name}, Status = {driver_struct.status.value}, Info = {driver_struct.info}\n')
+                    f.write(f'   - Parameters = {driver_struct.parameters}\n')
+                    f.write(f'   - Handles = {driver_struct.handlers}, Variable count = {len(driver_struct.variables)}\n') 
+                    f.write(f'   - Variables:\n')
+                    for var_id, var_struct in driver_struct.variables.items():
+                        f.write(f'    - {var_id} {var_struct.handlers} = {var_struct.value}  (R:{var_struct.read_count} W:{var_struct.write_count}) - {var_struct.info}\n')
+                    f.write('-'*N+'\n')
+        except:
+            pass
         self._save_status_time = time.perf_counter() - start
         
     def run(self) -> None:
