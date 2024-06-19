@@ -9,8 +9,9 @@ from simumatik_api_helper import UploadFile, GetRequestJson, GetSimumatikApiToke
 PLATFORM = sys.platform
 OS_EXECUTABLE_EXT = {"win32": "exe", "linux": "sh", "darwin": "sh"}
 
-PACKAGE = 'gateway' 
-PACKAGE_EXECUTABLE = f'Gateway.{OS_EXECUTABLE_EXT[PLATFORM]}'
+print("[+] Do you want to deploy the Gateway (Default) or the ControllerBridge (1) package?")
+PACKAGE = 'ControllerBridge' if input() == '1' else 'Gateway'
+PACKAGE_EXECUTABLE = f'{PACKAGE}.{OS_EXECUTABLE_EXT[PLATFORM]}'
     
 print(f"Deploying {PACKAGE} package for platform {PLATFORM}...")
 
@@ -19,7 +20,7 @@ if PLATFORM=="win32":
     SIGNTOOLS_PATH = "\"C:/Program Files (x86)/Windows Kits/10/bin/10.0.22000.0/x86/signtool.exe\""
     TIMESTAMP_URL = "http://timestamp.comodoca.com"
     PACKAGE_PATH = 'C:/Git/'
-    PACKAGE_SPEC_PATH = f'{PACKAGE_PATH}simumatik-gateway/gateway_package.spec'
+    PACKAGE_SPEC_PATH = f'{PACKAGE_PATH}simumatik-gateway/{PACKAGE}_package.spec'
     PYTHON_PATH = 'C:/python312/python.exe'
     subprocess.call(f'{PYTHON_PATH} -m PyInstaller --noconfirm {PACKAGE_SPEC_PATH}', shell=True)
     subprocess.call(f"{SIGNTOOLS_PATH} sign /tr {TIMESTAMP_URL} /td sha256 /fd sha256 /a dist/{PACKAGE}/{PACKAGE_EXECUTABLE}", shell=True)

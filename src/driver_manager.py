@@ -121,8 +121,8 @@ class DriverManager():
         self._drivers = {} # Dict to store drivers: {<driver_name>:<driver_struct>}
         self._driver_counter = 0
         self._handles = {} # Dict to store variables data: {<handle>: (<var_id>, <driver name>)}
-        self._logger.debug("Driver Manager: Created")        
-        self._logger.debug(f"Driver Manager: Status File path is {STATUS_FILE_PATH}")
+        self._logger.info("Driver Manager: Created")        
+        self._logger.info(f"Driver Manager: Status File path is {STATUS_FILE_PATH}")
         self._running = True
         self._start_time = int(time.perf_counter())
         self._last_status_record = 0
@@ -150,8 +150,9 @@ class DriverManager():
         
     def run(self) -> None:
         MAX_PIPE_LOOPS = 10 # Is important to not never get locked in while loops
-        self._logger.debug("Driver Manager: Running")
+        self._logger.info("Driver Manager: Running")
         while self._running:
+            can_sleep = True
             # INCOMMING COMMANDS (MULTIPLEX)
             counter = 0
             while self._pipe.poll():
@@ -186,6 +187,7 @@ class DriverManager():
                 else:
                     self._logger.error(f"Driver Manager: Command not implemented!!!! {command}")
                 counter += 1
+                can_sleep = False
                 if counter>=MAX_PIPE_LOOPS: break
                 
             # OUTGOING COMMANDS (DEMULTIPLEX)
@@ -226,9 +228,9 @@ class DriverManager():
                                         updates.update({handle: value})       
                     else:
                         self._logger.debug(f"Driver Manager: Message received from {driver_struct.name}, {command} -> {data}")
+                    can_sleep = False
                     counter += 1
                     if counter>=MAX_PIPE_LOOPS: break
-
             if status:
                 self._pipe.send((DriverMgrCommands.STATUS, status))
             if info:
@@ -250,6 +252,10 @@ class DriverManager():
                     }
                 ))
                 self.saveStatus(now_sec)            
+            
+            # SLEEP IF NO ACTIVITY
+            if can_sleep:
+                time.sleep(1e-3)    
                 
         self._logger.debug("Driver Manager: Closed")
     
@@ -260,7 +266,7 @@ class DriverManager():
             driver_struct = self.findCompatibleDriver(driver_data)
             if driver_struct is not None:
                 driver_struct.addHandle(driver_handle)
-                self._logger.debug(f"Driver Manager: Driver {driver_handle} using compatible driver {driver_struct.name}")
+                self._logger.info(f"Driver Manager: Driver {driver_handle} using compatible driver {driver_struct.name}")
                 res[driver_handle] = "SUCCESS"
                 if driver_struct.status:
                     status_updates[driver_handle] = driver_struct.status
@@ -268,7 +274,7 @@ class DriverManager():
                 driver_struct = self.startDriver(driver_handle, driver_data)
                 if driver_struct is not None:
                     self._drivers[driver_struct.name] =driver_struct
-                    self._logger.debug(f"Driver Manager: New Driver started {driver_struct.name} -> {driver_struct.class_name}")
+                    self._logger.info(f"Driver Manager: New Driver started {driver_struct.name} -> {driver_struct.class_name}")
                     res[driver_handle] = "SUCCESS"
                 else:
                     res[driver_handle] = "FAILED"

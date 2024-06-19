@@ -1,0 +1,34 @@
+{
+    "drivers":{
+        "Driver_1": {
+            "DRIVER": "opcua_client", 
+            "SETUP": {
+                "parameters": {
+                    "url":"opc.tcp://127.0.0.1:4840", 
+                    "rpi":60
+                },
+                "variables": {
+                    "inputs_1":{"handle":"h0001", "datatype": "word", "size": 1, "operation": "write"},
+                    "outputs_1":{"handle":"h0002", "datatype": "word", "size": 1, "operation": "read"}
+                }
+            }
+        },
+        "Driver_2": {
+            "DRIVER": "opcua_client", 
+            "SETUP": {
+                "parameters": {
+                    "url":"opc.tcp://127.0.0.1:4840", 
+                    "rpi":50
+                },
+                "variables": {
+                    "inputs_2":{"handle":"h0003", "datatype": "word", "size": 1, "operation": "write"},
+                    "outputs_2":{"handle":"h0004", "datatype": "word", "size": 1, "operation": "read"}
+                }
+            }
+        }
+    },
+    "connections":{
+        "h0002":"h0003",
+        "h0004":"h0001"
+    }
+}
