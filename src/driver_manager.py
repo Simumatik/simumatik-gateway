@@ -76,7 +76,7 @@ class DriverStructure():
                     var_setup_data[var_id] = var_data
                 else:
                     # TODO: Consider a variable that already has ben setup but now is the other type (READ/WRITE) so it should be changed to BOTH
-                    # An option can be to store the variable type as well in the self.variables dict ([handles], var_type)
+                    # An option can be to store the variable operation as well in the self.variables dict ([handles], operation)
                     var_structure = self.variables[var_id] 
                     var_structure.addHandle(var_handle)   
                 res[var_handle] = (var_id, self.name)
