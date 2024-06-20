@@ -16,7 +16,9 @@
 
 import multiprocessing
 import ssl
-import paho.mqtt.client as mqtt
+import paho.mqtt
+import paho.mqtt.client
+import paho.mqtt.enums
 
 from ..driver import driver, VariableOperation, VariableQuality
 
@@ -71,7 +73,11 @@ class mqtt_client(driver):
         try:
             self.port = int(self.port)
 
-            self._connection = mqtt.Client(self._name, clean_session=not self.retain)
+            self._connection = paho.mqtt.client.Client(
+                callback_api_version=paho.mqtt.enums.CallbackAPIVersion.VERSION2, 
+                client_id=self.name, 
+                clean_session=not self.retain
+                )
             self._connection.on_message = self.onMessage
             
             if self.enable_ssl_tls:

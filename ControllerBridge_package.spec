@@ -10,6 +10,7 @@ a = Analysis(
       ('src\\drivers\\robodk_api\\robodk.py','.'),
       ('src\\drivers\\robodk_api\\robolink.py','.'),
       ('src\\Controller_Bridge_Setup.json','.'),
+      ('CONTROLLER BRIDGE README.md','.'),
    ],
    datas=[],
    hiddenimports=['numpy','pyads','win32timezone'],

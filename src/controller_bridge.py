@@ -66,7 +66,8 @@ class ControllerBridge():
                     if counter >= MAX_PIPE_LOOPS: break
                 if pending_writes:
                     self._pipe.send((DriverMgrCommands.UPDATES, pending_writes))
-                time.sleep(1e-3)
+                if counter == 0:
+                    time.sleep(1e-3)
     
 if __name__ == '__main__':
     multiprocessing.freeze_support()
