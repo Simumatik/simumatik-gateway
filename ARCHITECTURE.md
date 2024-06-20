@@ -102,6 +102,23 @@ The Simumatik Server requests drivers creation/removal on-demand to the Gateway.
     {"ID": "<request_msg_id>", "COMMAND": "SETUP", "DATA": {"driver_handle": "SUCCESS / FAILED"}}
     ```
 
+- **SETUP BRIDGE**: Create a new bridge betwen two drivers. This message contains the setup of tboth drivers and the variables that will be connected.
+
+    Server request:
+    ```json
+    {"ID": "<msg_id>", "COMMAND": "SETUP_BRIDGE", "DATA": {
+        "Driver_A": {"DRIVER": "<driver_type>", "SETUP": "<setup_data>"},
+        "Driver_B": {"DRIVER": "<driver_type>", "SETUP": "<setup_data>"},
+        "Driver_AtoB" {"address_A": {"datatype":"<data_type>", "size":"<int>", "address_B":"<str>", "functions":["invert_byte_order"]}},
+        "Driver_BtoA" {"address_B": {"datatype":"<data_type>", "size":"<int>", "address_A":"<str>", "functions":[]}}
+        }
+    }
+    ```
+    Gateway response:
+    ```json
+    {"ID": "<request_msg_id>", "COMMAND": "SETUP", "DATA": "SUCCESS / FAILED"}
+    ```
+
 - **CLEAN**: Remove all drivers.
 
     Server request:
