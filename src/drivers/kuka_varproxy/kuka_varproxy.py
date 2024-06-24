@@ -153,6 +153,8 @@ class kuka_varproxy(driver):
                     var_value = int(var_value)
                 elif self.variables[var_id]['datatype'] == VariableDatatype.FLOAT:
                     var_value = float(var_value)
+                elif self.variables[var_id]['datatype'] == VariableDatatype.BOOL:
+                    var_value = var_value == b'TRUE'
             except Exception as e:
                 res.append((var_id, var_value, VariableQuality.BAD))
             else:
