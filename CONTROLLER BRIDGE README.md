@@ -31,7 +31,7 @@ Here we can define several drivers to be created. Each of them will have a uniqu
                     "rpi":6
                 },
                 "variables": {
-                    "inputs_1":{"handle":"h0001", "datatype": "word", "size": 1, "operation": "write"},
+                    "inputs_1":{"handle":"h0001", "datatype": "word", "size": 1, "operation": "write","invert_byte_order":true},
                     "outputs_1":{"handle":"h0002", "datatype": "word", "size": 1, "operation": "read"}
                 }
             }
@@ -52,6 +52,7 @@ The "SETUP" includes 2 parts "parameters" and "variables".
     - "datatype" (str): is used to define the variable data type (bool, byte, int, word, dword, qword, float, str).
     - "size" (int): It defines if the variable is an array. If not defined it is asumed is not an array or dimension 1.
     - "operation" (str): It defines if the variable should be written or read by the driver in the controller (read, write).
+    - "invert_byte_order" (bool): When the datatype is "word", "dword" or "qword" this flag can invert the order after reading or before writing.
 
 ### Connections
 

@@ -9,7 +9,9 @@
                 },
                 "variables": {
                     "inputs_1":{"handle":"h0001", "datatype": "word", "size": 1, "operation": "write"},
-                    "outputs_1":{"handle":"h0002", "datatype": "word", "size": 1, "operation": "read"}
+                    "outputs_W":{"handle":"h0002", "datatype": "word", "size": 1, "operation": "read","invert_byte_order":true},
+                    "outputs_DW":{"handle":"h0003", "datatype": "dword", "size": 1, "operation": "read","invert_byte_order":true},
+                    "outputs_QW":{"handle":"h0004", "datatype": "qword", "size": 1, "operation": "read","invert_byte_order":true}
                 }
             }
         },
@@ -21,14 +23,18 @@
                     "rpi":50
                 },
                 "variables": {
-                    "inputs_2":{"handle":"h0003", "datatype": "word", "size": 1, "operation": "write"},
-                    "outputs_2":{"handle":"h0004", "datatype": "word", "size": 1, "operation": "read"}
+                    "inputs_W":{"handle":"h0005", "datatype": "word", "size": 1, "operation": "write"},
+                    "inputs_DW":{"handle":"h0006", "datatype": "dword", "size": 1, "operation": "write"},
+                    "inputs_QW":{"handle":"h0007", "datatype": "qword", "size": 1, "operation": "write"},
+                    "outputs_1":{"handle":"h0008", "datatype": "word", "size": 1, "operation": "read"}
                 }
             }
         }
     },
     "connections":{
-        "h0002":"h0003",
-        "h0004":"h0001"
+        "h0002":"h0005",
+        "h0003":"h0006",
+        "h0004":"h0007",
+        "h0008":"h0001"
     }
 }
