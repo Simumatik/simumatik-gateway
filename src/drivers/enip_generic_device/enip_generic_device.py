@@ -14,22 +14,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from multiprocessing import Pipe
-from typing import Optional
+import multiprocessing
 import socket
 import struct
-from enum import Enum 
+import enum 
 import time
+
 from .enip import EnipPacket, EnipIOpacket, RegisterSessionData, SendRRData, CMitem, CM_SocketAddressInfo
-
 from ..driver import driver, VariableDatatype, VariableOperation, VariableQuality
-
 
 MAX_TELEGRAM_SIZE = 4096
 DEFAULT_ENIP_PORT = 44818
 MAX_CIP_COUNTER = 0xffff
 
-class STATE(str, Enum):
+class STATE(str, enum.Enum):
     WAITING_CONNECTION = 'Waiting connection'
     REGISTERING_SESSION = 'Rregistering session'
     CONNECTTION_STABLISHED = 'Connection stablished'
@@ -48,7 +46,7 @@ class enip_generic_device(driver):
         Size in bytes of the data sent from the Device to the PLC.
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
+    def __init__(self, name: str, pipe: multiprocessing.Pipe = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py

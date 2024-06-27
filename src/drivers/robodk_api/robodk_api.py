@@ -14,37 +14,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from multiprocessing import Pipe
-from typing import Optional
-from logs import logger
-
-from ..driver import driver, VariableQuality
-
 import sys
 import os
-import winreg
+import multiprocessing
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from robolink import Robolink, ITEM_TYPE_ROBOT
+from ..driver import driver, VariableQuality
 
-"""
-ROBODK_API_FOUND = False
-
-try:
-    if os.name == 'nt':
-        reg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
-        key = winreg.OpenKey(reg, r"SOFTWARE\RoboDK")
-        robodk_path = winreg.QueryValueEx(key, "INSTDIR")[0] + "\Python"
-        sys.path.append(robodk_path)
-        logger.info(f"Robodk API found: {robodk_path}")
-        import robolink
-        ROBODK_API_FOUND = True
-except Exception as e:
-    logger.error(f"Robodk API not found! {e}")
-"""
-
-
-# Driver that connects to robodk
 class robodk_api(driver):
     '''
     This driver uses the RoboDK API to connect to a robot controller. It is based on the Robodk API (https://robodk.com/offline-programming).
@@ -56,7 +33,7 @@ class robodk_api(driver):
         Robot name in RoboDK. Default = '', will take the first that founds.
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
+    def __init__(self, name: str, pipe: multiprocessing.Pipe = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py

@@ -15,13 +15,12 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-from multiprocessing import Pipe
-from typing import Optional
-
-from ..driver import VariableQuality, VariableDatatype, driver
+import multiprocessing
 import socket
 import struct
 import random
+
+from ..driver import VariableQuality, VariableDatatype, driver
 
 def axis_act_to_list(read_data):
     '''
@@ -86,7 +85,7 @@ class kuka_varproxy(driver):
         The port number used to communicate with KukaVarProxy server. Default = 7000
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
+    def __init__(self, name: str, pipe: multiprocessing.Pipe = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
@@ -154,6 +153,8 @@ class kuka_varproxy(driver):
                     var_value = int(var_value)
                 elif self.variables[var_id]['datatype'] == VariableDatatype.FLOAT:
                     var_value = float(var_value)
+                elif self.variables[var_id]['datatype'] == VariableDatatype.BOOL:
+                    var_value = var_value == b'TRUE'
             except Exception as e:
                 res.append((var_id, var_value, VariableQuality.BAD))
             else:

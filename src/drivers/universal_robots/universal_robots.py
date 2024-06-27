@@ -14,17 +14,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from multiprocessing import Pipe
-from typing import Optional
-
-from ..driver import driver, VariableOperation, VariableQuality
-
+import multiprocessing
+import logging
 # This driver is based on the RTDE provided by Universal Robots:
 # https://github.com/UniversalRobots/RTDE_Python_Client_Library
 # https://www.universal-robots.com/how-tos-and-faqs/how-to/ur-how-tos/real-time-data-exchange-rtde-guide-22229/
 from .rtde import rtde
+from ..driver import driver, VariableOperation, VariableQuality
 
-import logging
 logging.getLogger('rtde').setLevel(logging.CRITICAL)
 
 # Driver that connects to robodk
@@ -41,7 +38,7 @@ class universal_robots(driver):
         Data writting interval
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
+    def __init__(self, name: str, pipe: multiprocessing.Pipe = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py

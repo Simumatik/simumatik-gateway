@@ -14,20 +14,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import threading
-from multiprocessing import Pipe
+import multiprocessing
 import time
-from enum import Enum
-import json
-from typing import Optional
+import enum
 
-class DriverStatus(str, Enum):
+class DriverStatus(str, enum.Enum):
     STANDBY = 'STANDBY'
     RUNNING = 'RUNNING'
     ERROR = 'ERROR'
     EXIT = 'EXIT'
 
-class DriverActions(str, Enum):
+class DriverActions(str, enum.Enum):
     ADD_VARIABLES = 'ADD_VARIABLES'
     UPDATE = 'UPDATE'
     STATUS = 'STATUS'
@@ -36,12 +33,12 @@ class DriverActions(str, Enum):
     RESET = 'RESET'
     EXIT = 'EXIT'
 
-class VariableQuality(str, Enum):
+class VariableQuality(str, enum.Enum):
     GOOD = 'GOOD'
     BAD = 'BAD'
     ERROR = 'ERROR'
 
-class VariableDatatype(str, Enum):
+class VariableDatatype(str, enum.Enum):
     BOOL = 'bool'
     BYTE = 'byte'
     INTEGER = 'int'
@@ -51,12 +48,12 @@ class VariableDatatype(str, Enum):
     FLOAT = 'float'
     STRING = 'str'
 
-class VariableOperation(str, Enum):
+class VariableOperation(str, enum.Enum):
     READ = 'read'
     WRITE = 'write'
     BOTH = 'both'
 
-class driver(threading.Thread):
+class driver():
     """
 
     Parameters:
@@ -73,14 +70,11 @@ class driver(threading.Thread):
     
     """
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
+    def __init__(self, name: str, pipe: multiprocessing.Pipe = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
         """
-        # Inherit
-        threading.Thread.__init__(self, name=name, daemon=True)
-
         # Standard parameters
         self.rpi = 50
         self.force_write = 1 
@@ -118,10 +112,8 @@ class driver(threading.Thread):
         while self.status != DriverStatus.EXIT:
 
             try:
-                if self.pipe.poll():
-
-                    sdata = self.pipe.recv()
-                    action, data = json.loads(sdata).popitem()
+                while self.pipe.poll():
+                    (action, data) = self.pipe.recv()
                     
                     try:
                         # Action EXIT
@@ -168,7 +160,7 @@ class driver(threading.Thread):
                         self.sendDebugInfo('Exception executing action: ' + str(e))
                 
             except Exception as e:
-                self.sendDebugInfo('Exception parsing pipe message: '+str(e)+', '+str(sdata))
+                self.sendDebugInfo('Exception parsing pipe message: '+str(e))
 
             # Driver running
             if self.status == DriverStatus.RUNNING:
@@ -212,7 +204,7 @@ class driver(threading.Thread):
             self.status = new_status
             self.last_status_change = time.perf_counter()
             if self.pipe:
-                self.pipe.send(json.dumps({DriverActions.STATUS: self.status}))
+                self.pipe.send((DriverActions.STATUS, self.status))
         except:
             pass
 
@@ -224,7 +216,7 @@ class driver(threading.Thread):
         """
         try:
             if self.pipe:
-                self.pipe.send(json.dumps({DriverActions.INFO: debug_info}))
+                self.pipe.send((DriverActions.INFO, debug_info))
         except:
             pass
 
@@ -235,7 +227,7 @@ class driver(threading.Thread):
         """
         try:
             if self.pipe:
-                self.pipe.send(json.dumps({DriverActions.VAR_INFO: debug_info}))
+                self.pipe.send((DriverActions.VAR_INFO, debug_info))
         except:
             pass
 
@@ -247,7 +239,7 @@ class driver(threading.Thread):
         """
         try:
             if self.pipe:
-                self.pipe.send(json.dumps({DriverActions.UPDATE: data}))
+                self.pipe.send((DriverActions.UPDATE, data))
         except:
             pass
 
@@ -269,22 +261,6 @@ class driver(threading.Thread):
         
         return False
 
-
-    def checkSetupCompatible(self, param_data: dict) -> bool:
-        """ Tells if the provided parameter data is compatible with the actual driver. 
-
-        :param param_data: Setup specific data including parameters. (See documentation)
-
-        :returns: True if setup_data is compatible or False if not
-        """
-        for key, value in param_data.items():
-            if key in self.params:
-                if self.params[key] != value:
-                    return False
-            else:
-                return False
-        return True
-        
 
     def _addVariables(self, variable_data: dict) -> bool:
         """ Executed when setup is already done but new variables want to be added. 
@@ -311,8 +287,7 @@ class driver(threading.Thread):
             self.disconnect()
             self.variables = {}        
         except Exception as e:
-            self.sendDebugInfo('Exception during cleanup: '+str(e))
-        
+            self.sendDebugInfo('Exception during cleanup: '+str(e)) 
         finally:
             self._connection = None
 

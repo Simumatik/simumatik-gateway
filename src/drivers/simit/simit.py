@@ -14,9 +14,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from multiprocessing import Pipe, shared_memory
+import multiprocessing
+
 import struct
-from typing import Optional
 
 from ..driver import VariableDatatype, VariableQuality, driver
 
@@ -90,7 +90,7 @@ class simit(driver):
         big_endian : True if big endian, else little endian
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
+    def __init__(self, name: str, pipe: multiprocessing.Pipe = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
@@ -114,7 +114,7 @@ class simit(driver):
         : returns: True if connection established False if not
         """
         try:
-            self._connection = shared_memory.SharedMemory(name=self.SHM_name)
+            self._connection = multiprocessing.shared_memory.SharedMemory(name=self.SHM_name)
         except Exception as e:
             self.sendDebugInfo(f"SETUP: Connection with {self.SHM_name} cannot be eestablished. ({e})")
             return False

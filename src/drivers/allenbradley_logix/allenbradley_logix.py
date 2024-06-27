@@ -14,12 +14,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from ..driver import driver, VariableQuality, VariableDatatype
-
-from multiprocessing import Pipe
-from typing import Optional
+import multiprocessing
 from pycomm3 import LogixDriver
-    
+
+from ..driver import driver, VariableQuality, VariableDatatype
 
 class allenbradley_logix(driver):
     '''
@@ -34,7 +32,7 @@ class allenbradley_logix(driver):
 
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
+    def __init__(self, name: str, pipe: multiprocessing.Pipe = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py

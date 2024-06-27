@@ -14,12 +14,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from multiprocessing import Pipe
-from typing import Optional
+import multiprocessing
 import sqlite3
 
 from ..driver import driver, VariableOperation, VariableQuality
-
 
 class sqlite3_conn(driver):
     '''
@@ -38,7 +36,7 @@ class sqlite3_conn(driver):
         This is the name of the column which includes the variable values. Default = "value"
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
+    def __init__(self, name: str, pipe: multiprocessing.Pipe = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py

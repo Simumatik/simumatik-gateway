@@ -16,11 +16,9 @@
 
 import socket
 import time
-from multiprocessing import Pipe
-from typing import Optional
+import multiprocessing
 
 from ..driver import VariableDatatype, driver, VariableQuality
-
 
 class cprog_cri(driver):
     '''
@@ -47,7 +45,7 @@ class cprog_cri(driver):
         CPRog CRI Interface Server IP. It is the IP of the machine running CPRog. Default = '127.0.0.1'
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
+    def __init__(self, name: str, pipe: multiprocessing.Pipe = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py

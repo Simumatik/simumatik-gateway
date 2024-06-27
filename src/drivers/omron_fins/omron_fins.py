@@ -14,13 +14,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from multiprocessing import Pipe
-from typing import Optional
-from ..driver import VariableQuality, VariableDatatype
-
+import multiprocessing
 import fins.udp
-from ..driver import driver
 
+from ..driver import driver
+from ..driver import VariableQuality, VariableDatatype
 
 class omron_fins(driver):
     '''
@@ -43,7 +41,7 @@ class omron_fins(driver):
         Source node address. Default = 0
     '''
 
-    def __init__(self, name: str, pipe: Optional[Pipe] = None, params:dict = None):
+    def __init__(self, name: str, pipe: multiprocessing.Pipe = None, params:dict = None):
         """
         :param name: (optional) Name for the driver
         :param pipe: (optional) Pipe used to communicate with the driver thread. See gateway.py
