@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import paho.mqtt.client as mqtt
+import paho
 from multiprocessing import Pipe
 from typing import Optional
 import ssl
@@ -73,7 +73,11 @@ class mqtt_client(driver):
         try:
             self.port = int(self.port)
 
-            self._connection = mqtt.Client(self._name, clean_session=not self.retain)
+            self._connection = paho.mqtt.client.Client(
+                callback_api_version=paho.mqtt.enums.CallbackAPIVersion.VERSION2, 
+                client_id=self.name, 
+                clean_session=not self.retain
+                )
             self._connection.on_message = self.onMessage
             
             if self.enable_ssl_tls:
