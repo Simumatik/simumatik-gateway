@@ -40,9 +40,9 @@ experimental = input() == '1'
 
 # TODO: Fix new paths for other platforms
 if experimental:
-    actual_version = asyncio.run(GetRequestJson(token=TOKEN, url=f'{AUDIENCE}/{PACKAGE}/experimental/version'))
+    actual_version = asyncio.run(GetRequestJson(token=TOKEN, url=f'{AUDIENCE}/{PACKAGE.lower()}/experimental/version'))
 else:
-    actual_version = asyncio.run(GetRequestJson(token=TOKEN, url=f'{AUDIENCE}/{PACKAGE}/version'))
+    actual_version = asyncio.run(GetRequestJson(token=TOKEN, url=f'{AUDIENCE}/{PACKAGE.lower()}/version'))
 
 print(f"Actual {PACKAGE} package version is: {actual_version}")
 print("[+] Introduce the new version number (i.e. '1.0.0'): ")
@@ -54,12 +54,12 @@ shutil.make_archive(f'{filepath}{PACKAGE}-{version}', 'zip', f'dist/{PACKAGE}')
 filename = f'{PACKAGE}-{version}.zip'
 print('Uploading package...')
 if experimental:
-    asyncio.run(UploadFile(token=TOKEN, url=f'{AUDIENCE}/admin/{PACKAGE}/experimental', path=filepath, filename=filename))
+    asyncio.run(UploadFile(token=TOKEN, url=f'{AUDIENCE}/admin/{PACKAGE.lower()}/experimental', path=filepath, filename=filename))
 else:
-    asyncio.run(UploadFile(token=TOKEN, url=f'{AUDIENCE}/admin/{PACKAGE}', path=filepath, filename=filename))
+    asyncio.run(UploadFile(token=TOKEN, url=f'{AUDIENCE}/admin/{PACKAGE.lower()}', path=filepath, filename=filename))
 print('Package uploaded!')
 if experimental:
-    version = asyncio.run(GetRequestJson(token=TOKEN, url=f'{AUDIENCE}/{PACKAGE}/experimental/version'))
+    version = asyncio.run(GetRequestJson(token=TOKEN, url=f'{AUDIENCE}/{PACKAGE.lower()}/experimental/version'))
 else:
-    version = asyncio.run(GetRequestJson(token=TOKEN, url=f'{AUDIENCE}/{PACKAGE}/version'))
+    version = asyncio.run(GetRequestJson(token=TOKEN, url=f'{AUDIENCE}/{PACKAGE.lower()}/version'))
 print(f"Uploaded {PACKAGE} package version is: {version}")
