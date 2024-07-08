@@ -311,6 +311,8 @@ setup_data.update({
             "parameters": {
                 "server": "Matrikon.OPC.Simulation.1",
                 "client_class": "OPC.Automation.1",
+                "async_connection": False,
+                "data_source": 2
             },
             "variables": {
                 "GP2.bool":{"datatype": VariableDatatype.BOOL, "size": 1, "operation": VariableOperation.READ},
