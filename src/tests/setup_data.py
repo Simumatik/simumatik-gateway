@@ -310,6 +310,7 @@ setup_data.update({
         "SETUP": {
             "parameters": {
                 "server": "Matrikon.OPC.Simulation.1",
+                "client_class": "OPC.Automation.1",
             },
             "variables": {
                 "GP2.bool":{"datatype": VariableDatatype.BOOL, "size": 1, "operation": VariableOperation.READ},
@@ -543,7 +544,7 @@ setup_data.update({
 
 # sqlite3_conn
 ADDRESS = "C:\TEMP\mydb.db"
-"""
+'''
 connection = sqlite3.connect(ADDRESS)
 cursor = connection.cursor()
 cursor.execute("SELECT count(name) FROM sqlite_master WHERE type="table" AND name="variables"")
@@ -553,7 +554,7 @@ if cursor.fetchone()[0] != 1:
     cursor.execute("""INSERT INTO variables (name, value) VALUES ("outputs", "11")""")		
 connection.commit()
 connection.close()
-"""
+'''
 setup_data.update({
     "sqlite3_conn": {
         "DRIVER": "sqlite3_conn", 

@@ -22,10 +22,13 @@ import pythoncom
 
 from ..driver import VariableOperation, VariableQuality, driver
 
-OPC_CLASS = 'Graybox.OPC.DAWrapper.1;OPC.Automation;RSI.OPCAutomation;Matrikon.OPC.Automation.1;HSCOPC.Automation'
+OPC_CLASS_LIST = [
+    'Graybox.OPC.DAWrapper.1',
+    'OPC.Automation',
+    'RSI.OPCAutomation',
+    'Matrikon.OPC.Automation.1',
+    'HSCOPC.Automation']
 OPC_CLIENT = 'Simumatik'
-SOURCE_CACHE = 1
-SOURCE_DEVICE = 2
 
 class GroupEvents:
     def __init__(self):
@@ -58,6 +61,8 @@ class opcda_client(driver):
         # Parameters
         self.server = 'Matrikon.OPC.Simulation.1'
         self.async_connection = False
+        self.client_class = ''
+        self.data_source = 2 # SOURCE_CACHE = 1, SOURCE_DEVICE = 2
 
         # Internal
         self.read_group = None
@@ -78,19 +83,24 @@ class opcda_client(driver):
 
         ''' Rows below are copied from OpenOPC'''
         self._connection = None
-        for c in OPC_CLASS.split(';'):
+        if self.client_class == '':
+            client_list = list(OPC_CLASS_LIST)
+        else:
+            client_list = [self.client_class]
+        for self.client_class in client_list:
             try:
-                self._connection = win32com.client.Dispatch(c, 0)
+                self._connection = win32com.client.Dispatch(self.client_class, 0)
+                self.sendDebugInfo(f"Using OPC COM object: {self.client_class}")
                 break
             except Exception as e:
-                pass
-        
+                pass          
+    
+        if self._connection is None:
+            self.sendDebugInfo(f"Could not get OPC COM object: {self.client_class}")
+            return False
+
         if self.async_connection:
             self._event = win32event.CreateEvent(None,0,0,None)
-
-        if self._connection is None:
-            self.sendDebugInfo("Could not get OPC COM object.")
-            return False
         
         try:
             servers = self._connection.GetOPCServers('localhost')
@@ -119,7 +129,7 @@ class opcda_client(driver):
             self.write_group.IsSubscribed = 0
             self.write_group.IsActive = 1
 
-            self.sendDebugInfo(f"{c} Connected to OPC DA server: {self.server}")
+            self.sendDebugInfo(f"{self.client_class} Connected to OPC DA server: {self.server}")
             return True
         except Exception as e:
             self.sendDebugInfo(f"Could not connect to OPC DA server: {self.server}")
@@ -152,7 +162,7 @@ class opcda_client(driver):
                     server_handles, errors = self.read_group.OPCItems.AddItems(1, [0,var_id], [0,self.handle_num])
                     if self.async_connection:
                         self._tx_id = self._tx_id+1 if self._tx_id< 0xFFFF else 0
-                        self.read_group.AsyncRefresh(SOURCE_DEVICE, self._tx_id)       
+                        self.read_group.AsyncRefresh(self.data_source, self._tx_id)       
                 else:
                     server_handles, errors = self.write_group.OPCItems.AddItems(1, [0,var_id], [0,self.handle_num])
                 if errors[0] == 0:
@@ -195,7 +205,7 @@ class opcda_client(driver):
                     names.append(var_id)
             if handles:
                 try:
-                    values, errors, _, _ = self.read_group.SyncRead(SOURCE_DEVICE, len(handles), [0]+handles)
+                    values, errors, _, _ = self.read_group.SyncRead(self.data_source, len(handles), [0]+handles)
                     for i, error in enumerate(errors):
                         if error == 0:
                             res.append((names[i], values[i], VariableQuality.GOOD))

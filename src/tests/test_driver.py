@@ -22,7 +22,7 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 from driver_tester import Test_Driver
 from setup_data import setup_data
 
-test_drivers = ['opcua_client', 'robodk_driver'] # JUST MODIFY THIS LIST TO TEST ONE OR MORE DRIVERS
+test_drivers = ['opcda_client'] # JUST MODIFY THIS LIST TO TEST ONE OR MORE DRIVERS
 
 if __name__ == '__main__':
     my_setup_data = {}
