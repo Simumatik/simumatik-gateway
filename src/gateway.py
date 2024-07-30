@@ -27,7 +27,7 @@ from gateway_ws_interface import GatewayWsInterface, GatewayWsCommands
 from workspace_udp_interface import WorkspaceUDPInterface, WorkspaceCommand, MINIMUM_SYNC_PERIOD, STANDBY_SYNC_PERIOD
 
 # Version
-version = "5.0.6"
+version = "5.0.7"
 
 MAX_PIPE_LOOPS = 10
 '''
