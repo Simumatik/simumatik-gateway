@@ -21,8 +21,9 @@ import sys
 import threading
 import time
 import socket
+import os
 
-from driver_manager import RunDriverManager, DriverMgrCommands
+from driver_manager.driver_manager import RunDriverManager, DriverMgrCommands
 from gateway_ws_interface import GatewayWsInterface, GatewayWsCommands
 from workspace_udp_interface import WorkspaceUDPInterface, WorkspaceCommand, MINIMUM_SYNC_PERIOD, STANDBY_SYNC_PERIOD
 
@@ -52,7 +53,7 @@ class GatewayStatus(str, enum.Enum):
 
 class gateway():
 
-    def __init__(self, use_processes:bool=False, log_level:int=logging.ERROR):
+    def __init__(self, use_processes:bool=False, log_level:int=logging.ERROR, status_file_path:str=''):
         """
         :param use_processes: Allows to use processes instead of threads for drivers.
             it will have impact in performance and used resources
@@ -65,6 +66,7 @@ class gateway():
         self._logger.setLevel(log_level)
         if not self._logger.handlers: self._logger.addHandler(logging.StreamHandler())
         self._log_level = log_level
+        self._status_file_path = status_file_path
         self._use_processes = use_processes
         self._connected_workspace_ip = None
         self._workspace_interface = None
@@ -178,7 +180,7 @@ class gateway():
         if self._driver_manager is None:
             self._DM_pipe, pipe = multiprocessing.Pipe()
             self._DM_stats = {'SLEEP_TIME':0}
-            self._driver_manager = threading.Thread(target=RunDriverManager, args=(pipe, self._use_processes, self._log_level,), daemon=True)
+            self._driver_manager = threading.Thread(target=RunDriverManager, args=(pipe, self._use_processes, self._log_level, self._status_file_path,), daemon=True)
             self._driver_manager.start()
             self._pending_writes = {}
             self._pending_reads = {}
@@ -281,5 +283,6 @@ class gateway():
 if __name__ == '__main__':
     multiprocessing.freeze_support()
     print(sys.argv)
-    g = gateway(use_processes=False, log_level=logging.INFO)
+    STATUS_FILE_PATH = os.path.dirname(os.path.abspath(__file__))+'/Driver_Manager_status.txt'
+    g = gateway(use_processes=False, log_level=logging.INFO, status_file_path=STATUS_FILE_PATH)
     g.run(ws_ip='0.0.0.0', ws_port=2323)

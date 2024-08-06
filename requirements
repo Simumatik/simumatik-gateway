@@ -1,0 +1,5 @@
+git+https://github.com/Simumatik/simumatik-driver-manager
+SimpleWebSocketServer
+aiohttp
+requests
+pyinstaller
