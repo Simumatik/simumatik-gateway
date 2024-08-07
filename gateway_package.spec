@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 a = Analysis(
-   ['src\\gateway.py'],
+   ['gateway.py'],
    pathex=['C:\\Git\\simumatik-gateway'],
    binaries=[
       ('C:\\Python312-32\\Lib\\site-packages\\driver_manager\\drivers\\fanuc_roboguide\\RobotInterfaceDotNet.dll','.'),
