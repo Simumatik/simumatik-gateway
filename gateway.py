@@ -282,7 +282,7 @@ class gateway():
 
 if __name__ == '__main__':
     multiprocessing.freeze_support()
-    print(sys.argv)
+    #print(sys.argv)
     STATUS_FILE_PATH = os.path.dirname(os.path.abspath(__file__))+'/Driver_Manager_status.txt'
     g = gateway(use_processes=False, log_level=logging.INFO, status_file_path=STATUS_FILE_PATH)
     g.run(ws_ip='0.0.0.0', ws_port=2323)
