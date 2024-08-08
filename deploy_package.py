@@ -9,8 +9,7 @@ from simumatik_api_helper import UploadFile, GetRequestJson, GetSimumatikApiToke
 PLATFORM = sys.platform
 OS_EXECUTABLE_EXT = {"win32": "exe", "linux": "sh", "darwin": "sh"}
 
-print("[+] Do you want to deploy the Gateway (Default) or the ControllerBridge (1) package?")
-PACKAGE = 'ControllerBridge' if input() == '1' else 'Gateway'
+PACKAGE = 'Gateway'
 PACKAGE_EXECUTABLE = f'{PACKAGE}.{OS_EXECUTABLE_EXT[PLATFORM]}'
     
 print(f"Deploying {PACKAGE} package for platform {PLATFORM}...")

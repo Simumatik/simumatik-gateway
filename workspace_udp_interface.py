@@ -4,7 +4,7 @@ import socket
 import time
 import enum
 
-from drivers import *
+from driver_manager.drivers import *
 
 POLL_TIME = 1 # seconds
 MINIMUM_SYNC_PERIOD = 0.002
