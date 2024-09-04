@@ -23,7 +23,7 @@ import time
 import socket
 import os
 
-DEBUG_DRIVER_MANAGER = True
+DEBUG_DRIVER_MANAGER = False
 if DEBUG_DRIVER_MANAGER:
     # Make sure to uninstall the driver-manager package when testing against the local commit
     # Remove package: pip uninstall simumatik-driver-manager
