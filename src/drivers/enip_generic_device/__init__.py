@@ -1,1 +1,0 @@
-from .enip_generic_device import enip_generic_device

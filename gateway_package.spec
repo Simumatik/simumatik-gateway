@@ -1,14 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 a = Analysis(
-   ['src\\gateway.py'],
+   ['gateway.py'],
    pathex=['C:\\Git\\simumatik-gateway'],
    binaries=[
-      ('src\\drivers\\fanuc_roboguide\\RobotInterfaceDotNet.dll','.'),
-      ('src\\drivers\\plcsim_advanced\\Siemens.Simatic.Simulation.Runtime.Api.x64.dll','.'),
-      ('src\\drivers\\plcsim_advanced\\Siemens.Simatic.Simulation.Runtime.Api.x86.dll','.'),
-      ('src\\drivers\\robodk_api\\robodk.py','.'),
-      ('src\\drivers\\robodk_api\\robolink.py','.'),
+      ('C:\\Python312-32\\Lib\\site-packages\\driver_manager\\drivers\\fanuc_roboguide\\RobotInterfaceDotNet.dll','.'),
+      ('C:\\Python312-32\\Lib\\site-packages\\driver_manager\\drivers\\plcsim_advanced\\Siemens.Simatic.Simulation.Runtime.Api.x64.dll','.'),
+      ('C:\\Python312-32\\Lib\\site-packages\\driver_manager\\drivers\\plcsim_advanced\\Siemens.Simatic.Simulation.Runtime.Api.x86.dll','.'),
+      ('C:\\Python312-32\\Lib\\site-packages\\driver_manager\\drivers\\robodk_api\\robodk.py','.'),
+      ('C:\\Python312-32\\Lib\\site-packages\\driver_manager\\drivers\\robodk_api\\robolink.py','.'),
    ],
    datas=[],
    hiddenimports=['numpy','pyads','win32timezone'],
