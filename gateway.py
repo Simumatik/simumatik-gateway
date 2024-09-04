@@ -23,12 +23,20 @@ import time
 import socket
 import os
 
+DEBUG_DRIVER_MANAGER = True
+if DEBUG_DRIVER_MANAGER:
+    # Make sure to uninstall the driver-manager package when testing against the local commit
+    # Remove package: pip uninstall simumatik-driver-manager
+    # Clone repo: git clone https://github.com/Simumatik/simumatik-driver-manager.git
+    # Reinstall package: pip install --upgrade -r .\requirements
+    sys.path.append("simumatik-driver-manager")
+    
 from driver_manager.driver_manager import RunDriverManager, DriverMgrCommands
 from gateway_ws_interface import GatewayWsInterface, GatewayWsCommands
 from workspace_udp_interface import WorkspaceUDPInterface, WorkspaceCommand, MINIMUM_SYNC_PERIOD, STANDBY_SYNC_PERIOD
 
 # Version
-version = "5.1.2"
+version = "5.1.3"
 
 MAX_PIPE_LOOPS = 10
 '''
