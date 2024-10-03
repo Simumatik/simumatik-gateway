@@ -114,6 +114,7 @@ class WorkspaceUDPInterface():
                 self.send_telegram(telegram_id=self.get_new_message_id(), command=WorkspaceCommand.POLLING, data=polling_data)
                 self.last_poll_sent = now
                 self.loop_counter = 0
+                # Clean any old telegram timestamps
                 for id in list(self.sync_telegrams.keys()):
                     if id < self.sync_telegram_counter:
                         self.sync_telegrams.pop(id)

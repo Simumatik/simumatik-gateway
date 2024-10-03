@@ -36,7 +36,7 @@ from gateway_ws_interface import GatewayWsInterface, GatewayWsCommands
 from workspace_udp_interface import WorkspaceUDPInterface, WorkspaceCommand, MINIMUM_SYNC_PERIOD, STANDBY_SYNC_PERIOD
 
 # Version
-version = "5.1.4"
+version = "5.1.5"
 
 MAX_PIPE_LOOPS = 10
 '''
@@ -207,8 +207,8 @@ class gateway():
                 if command == DriverMgrCommands.CLEAN:
                     self._logger.debug(f"Gateway: Cleaning response received from DriverManager -> {result}")
                     break
-            self._driver_manager.join()
             self._driver_manager = None
+            self._DM_pipe = None
             self._logger.debug("Gateway: Cleaned up, DriverManager closed")
         else:
             self._logger.error("Gateway: DriverManager stop requested when already stopped")
