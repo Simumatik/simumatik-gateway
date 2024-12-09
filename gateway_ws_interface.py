@@ -20,7 +20,7 @@ class GatewayWsInterfaceClient(WebSocket):
         return self.server._pipe.recv()
 
     def handleMessage(self):
-        if self.server._actual_connection == self:
+        if self in self.server._connections:
             try:
                 msg = json.loads(self.data)
                 assert 'request' in msg
@@ -34,23 +34,20 @@ class GatewayWsInterfaceClient(WebSocket):
                 self.server._logger.error(f'GatewayWsInterface: Message received has wrong format {self.address} -> {self.data}')
         
     def handleConnected(self):
-        if self.server._actual_connection is not None:
-            self.server._logger.info(f'GatewayWsInterface: New connection request, disconnecting previous connection from {self.server._actual_connection.address}')
-            self.server._actual_connection.close()
-        self.server._actual_connection = self
+        self.server._connections.append(self)
         self.server._logger.info(f'GatewayWsInterface: Connected to {self.address}')
             
 
     def handleClose(self):
-        if self.server._actual_connection == self:
+        if self in self.server._connections:
+            self.server._connections.remove(self)
             self.server._logger.info(f'GatewayWsInterface: Disconnected from {self.address}')
-            self.server._actual_connection = None
 
 # WebSocket Thread method
 def GatewayWsInterface(ip:str, port:int, pipe:any, log_level:int=logging.ERROR):
     server = SimpleWebSocketServer(ip, port, GatewayWsInterfaceClient)
     server._pipe = pipe
-    server._actual_connection = None
+    server._connections = []
     server._logger = logging.getLogger('GatewayWSInterface')
     server._logger.setLevel(log_level)
     if not server._logger.handlers: server._logger.addHandler(logging.StreamHandler())
