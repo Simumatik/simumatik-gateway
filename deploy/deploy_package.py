@@ -20,7 +20,7 @@ if PLATFORM=="win32":
     TIMESTAMP_URL = "http://timestamp.comodoca.com"
     PACKAGE_PATH = 'C:/Git/'
     PACKAGE_SPEC_PATH = f'{PACKAGE_PATH}simumatik-gateway/deploy/{PACKAGE}_package.spec'
-    PYTHON_PATH = 'C:/python312-32/python.exe'
+    PYTHON_PATH = 'C:/python312/python.exe'
     subprocess.call(f'{PYTHON_PATH} -m PyInstaller --noconfirm {PACKAGE_SPEC_PATH}', shell=True)
     subprocess.call(
         f"{SIGNTOOLS_PATH} sign /tr {TIMESTAMP_URL} /td sha256 /fd sha256 /a ./dist/{PACKAGE}/{PACKAGE_EXECUTABLE}",
