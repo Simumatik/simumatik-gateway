@@ -1,7 +1,9 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+block_cipher = None
+
 a = Analysis(
-   ['gateway.py'],
+   ['../src/gateway.py'],
    pathex=['C:\\Git\\simumatik-gateway'],
    binaries=[
       ('C:\\Python312-32\\Lib\\site-packages\\driver_manager\\drivers\\fanuc_roboguide\\RobotInterfaceDotNet.dll','.'),
@@ -11,15 +13,14 @@ a = Analysis(
       ('C:\\Python312-32\\Lib\\site-packages\\driver_manager\\drivers\\robodk_api\\robolink.py','.'),
    ],
    datas=[],
-   hiddenimports=['numpy','pyads','win32timezone'],
+   hiddenimports=['numpy','roslibpy','pyads','win32timezone'],
    hookspath=[],
    runtime_hooks=[],
-   excludes=[],
-   noarchive=False,
-   optimize=0,
+   excludes=['IPython','win32com','matplotlib', 'qt5'],
+   cipher=block_cipher,
 )
-pyz = PYZ(a.pure)
-
+pyz = PYZ(a.pure, a.zipped_data,
+             cipher=block_cipher)
 exe = EXE(
    pyz,
    a.scripts,
@@ -32,12 +33,6 @@ exe = EXE(
    strip=False,
    upx=True,
    console=False,
-   disable_windowed_traceback=False,
-   argv_emulation=False,
-   target_arch=None,
-   codesign_identity=None,
-   entitlements_file=None,
-   contents_directory='.',
 )
 coll = COLLECT(
    exe,
@@ -45,7 +40,6 @@ coll = COLLECT(
    a.datas,
    strip=False,
    upx=True,
-   upx_exclude=[],
    name='Gateway'
 )
 
