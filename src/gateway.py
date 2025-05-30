@@ -36,7 +36,7 @@ from gateway_ws_interface import GatewayWsInterface, GatewayWsCommands
 from workspace_udp_interface import WorkspaceUDPInterface, WorkspaceCommand, MINIMUM_SYNC_PERIOD, STANDBY_SYNC_PERIOD
 
 # Version
-version = "5.1.8"
+version = "6.0.1"
 
 MAX_PIPE_LOOPS = 10
 '''
@@ -188,7 +188,7 @@ class gateway():
         if self._driver_manager is None:
             self._DM_pipe, pipe = multiprocessing.Pipe()
             self._DM_stats = {'SLEEP_TIME':0}
-            self._driver_manager = threading.Thread(target=RunDriverManager, args=(pipe, self._use_processes, self._log_level, self._status_file_path,), daemon=True)
+            self._driver_manager = threading.Thread(target=RunDriverManager, args=(pipe, self._use_processes, self._status_file_path,), daemon=True)
             self._driver_manager.start()
             self._pending_writes = {}
             self._pending_reads = {}
