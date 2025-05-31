@@ -16,7 +16,7 @@ print(f"Deploying {PACKAGE} package for platform {PLATFORM}...")
 
 # WINDOWS
 if PLATFORM=="win32":
-    SIGNTOOLS_PATH = "\"C:/Program Files (x86)/Windows Kits/10/bin/10.0.22000.0/x86/signtool.exe\""
+    SIGNTOOLS_PATH = "\"C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x86/signtool.exe\""
     TIMESTAMP_URL = "http://timestamp.comodoca.com"
     PACKAGE_PATH = 'C:/Git/'
     PACKAGE_SPEC_PATH = f'{PACKAGE_PATH}simumatik-gateway/deploy/{PACKAGE}_package.spec'
