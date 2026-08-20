@@ -22,6 +22,7 @@ class WorkspaceCommand(str, enum.Enum):
     VAR_INFO = "VAR_INFO"
     REGISTER = 'REGISTER'
     POLLING = 'POLLING'
+    NONE    = 'NONE'
     UNKNOWN = 'UNKNOWN'
     
 class WorkspaceUDPInterface():
@@ -78,7 +79,8 @@ class WorkspaceUDPInterface():
                 "DRIVERS": drivers_list
             })
         try:
-            for _, command, data in self.receive_telegrams():
+            while (True):
+                _, command, data = self.receive_telegram()
                 if command == WorkspaceCommand.REGISTER:
                     if data in ['SUCCESS', 'SUCCESS_SYNC', 'SUCCESS_ASYNC']:
                         self.udp_socket.setblocking(0)
@@ -88,8 +90,10 @@ class WorkspaceUDPInterface():
                         return True
                     else:
                         self._logger.error(f'WorkspaceInterface: Workspace refused gateway connection with status: {data}')
+                        return False
                 else:
                     self._logger.error("WorkspaceInterface: Datagram id or ip does not match")
+                    return False
         except Exception as e:
             self._logger.error(f"WorkspaceInterface: Invalid json datagram received: {e}")  
         return False
@@ -156,22 +160,22 @@ class WorkspaceUDPInterface():
         else:
             self._logger.error(f'WorkspaceInterface: Message to Workspace is too long! Length = {len(telegram)}')
     
-    def receive_telegrams(self, min_sync_period:float=STANDBY_SYNC_PERIOD):
+    def receive_telegram(self, min_sync_period:float=STANDBY_SYNC_PERIOD):
         try:
-            while True:
-                telegram, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
-                assert address == self.server_address
-                if telegram != None:
-                    self.last_message_received = time.perf_counter()
-                    request_json = json.loads(telegram.decode('utf-8'))
-                    command = request_json.get("COMMAND", '')
-                    if command != WorkspaceCommand.POLLING:
-                        telegram_id = request_json.get("ID")
-                        data = request_json.get("DATA", {})
-                        if command == WorkspaceCommand.SYNC:
-                            self.calculate_sync_period(telegram_id, min_sync_period)
-                        if data:
-                            self._logger.debug(f'WorkspaceInterface: Telegram received from {address}: {telegram}')
-                        yield (telegram_id, command, data)
+            telegram, address = self.udp_socket.recvfrom(MAX_TELEGRAM_LENGTH)
+            assert address == self.server_address
+            if telegram != None:
+                self.last_message_received = time.perf_counter()
+                request_json = json.loads(telegram.decode('utf-8'))
+                command = request_json.get("COMMAND", '')
+                if command != WorkspaceCommand.POLLING:
+                    telegram_id = request_json.get("ID")
+                    data = request_json.get("DATA", {})
+                    if command == WorkspaceCommand.SYNC:
+                        self.calculate_sync_period(telegram_id, min_sync_period)
+                    if data:
+                        self._logger.debug(f'WorkspaceInterface: Telegram received from {address}: {telegram}')
+                    return (telegram_id, command, data)
         except:
             pass        
+        return (None, WorkspaceCommand.NONE, None)
