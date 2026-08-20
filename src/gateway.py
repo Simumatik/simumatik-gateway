@@ -97,7 +97,8 @@ class gateway():
                 can_sleep = True
                 # INCOMMING TELEGRAMS FROM WORKSPACE
                 counter = 0
-                for (telegram_id, command, data) in self._workspace_interface.receive_telegrams(MINIMUM_SYNC_PERIOD if self._driver_manager is not None else STANDBY_SYNC_PERIOD):
+                while counter < MAX_PIPE_LOOPS:
+                    (telegram_id, command, data) = self._workspace_interface.receive_telegram(MINIMUM_SYNC_PERIOD if self._driver_manager is not None else STANDBY_SYNC_PERIOD)
                     if WorkspaceCommand.SETUP == command:
                         if self._driver_manager is None: self.startDriverManager()
                         self._DM_pipe.send((DriverMgrCommands.SETUP_DRIVERS, data))
@@ -107,11 +108,12 @@ class gateway():
                     elif WorkspaceCommand.CLEAN == command:
                         if self._driver_manager is not None: self.stopDriverManager()
                         self._workspace_interface.send_telegram(telegram_id=telegram_id, command=WorkspaceCommand.CLEAN, data='SUCCESS')
+                    elif WorkspaceCommand.NONE == command:
+                        break
                     else:
                         self._logger.error(f"Gateway: Unknown command received: {command} -> {data}")
                     can_sleep = False
-                    counter += 1
-                    if counter >= MAX_PIPE_LOOPS: break                    
+                    counter += 1                   
                 # INCOMING/OUTGOING DATA FROM/TO DRIVER MANAGER
                 if self._driver_manager:
                     if self._pending_writes:
