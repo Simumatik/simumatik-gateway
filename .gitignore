@@ -4,3 +4,4 @@ dist/
 Output/
 .vscode
 *.txt
+metadata.json

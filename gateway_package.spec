@@ -3,7 +3,7 @@
 block_cipher = None
 
 a = Analysis(
-   ['../src/gateway.py'],
+   ['src/gateway.py'],
    pathex=['C:\\Git\\simumatik-gateway'],
    binaries=[
       ('C:\\Python314\\Lib\\site-packages\\driver_manager\\drivers\\fanuc_roboguide\\RobotInterfaceDotNet.dll','.'),

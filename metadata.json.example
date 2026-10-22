@@ -1,0 +1,6 @@
+{
+  "Endpoint": "<replace this>",
+  "CodeSigningAccountName": "<replace this>",
+  "CertificateProfileName": "<replace this>",
+  "CorrelationId": "<replace this>"
+}
