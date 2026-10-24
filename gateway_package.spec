@@ -2,6 +2,8 @@
 
 block_cipher = None
 
+EXECUTABLE_NAME = "Gateway"
+
 a = Analysis(
    ['src/gateway.py'],
    pathex=['C:\\Git\\simumatik-gateway'],
@@ -26,7 +28,7 @@ exe = EXE(
    a.scripts,
    [],
    exclude_binaries=True,
-   name='Gateway',
+   name=EXECUTABLE_NAME,
    icon='icon.ico',
    debug=False,
    bootloader_ignore_signals=False,
@@ -40,6 +42,6 @@ coll = COLLECT(
    a.datas,
    strip=False,
    upx=True,
-   name='Gateway'
+   name=EXECUTABLE_NAME
 )
 
