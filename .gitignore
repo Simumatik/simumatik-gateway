@@ -1,3 +1,4 @@
+# Ignore
 __pycache__/
 build/
 dist/
@@ -5,3 +6,6 @@ Output/
 .vscode
 *.txt
 metadata.json
+
+# Allow
+!requirements.txt

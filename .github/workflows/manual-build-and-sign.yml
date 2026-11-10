@@ -1,0 +1,84 @@
+name: Manual build and sign
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version number of the release used when tagging the commit and docker image"
+        required: true
+        type: string
+
+jobs:
+  build-and-sign:
+    name: Build executable and sign with codesign
+    environment: Github-Production-Signing-Simumatik-Gateway
+    runs-on: windows-latest
+    permissions:
+      id-token: write # This is required for requesting the JWT
+      contents: write
+      
+    steps:
+      - name: Checkout ${{ github.ref_name }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Python 3.14
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 #v7.1.0
+        with:
+          python-version: '3.14'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run PyInstaller
+        run: python -m PyInstaller --noconfirm gateway_package.spec
+
+      - name: Azure login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Sign files with Artifact Signing
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: https://weu.codesigning.azure.net/
+          signing-account-name: ${{ secrets.SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ secrets.CERTIFICATE_PROFILE_NAME }}
+          files-folder: ${{ github.workspace }}\dist\workspace
+          files-folder-filter: exe,dll
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Upload Artifact
+        id: artifact-upload-step
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Gateway-${{inputs.version}}
+          path: |
+            ${{ github.workspace }}\dist\gateway\_internal
+            ${{ github.workspace }}\dist\workspace\Gateway.exe
+          if-no-files-found: error
+
+      - if: success()
+        name: Google Chat Notification
+        uses: Co-qn/google-chat-notification@04e7733ead0e8a31a502adb271aadbc7f8d496d9 # v2
+        with:
+          name: Manual build and sign
+          url: ${{ secrets.GOOGLE_CHAT_DEPLOYMENT_NOTIFICATION_WEBHOOK }}
+          status: ${{ job.status }}
+          metadata: |
+            Artifact Name: Gateway-${{inputs.version}}
+            Artifact ID: ${{ steps.artifact-upload-step.outputs.artifact-id }}
+            Artifact Download URL (valid for 90 days): ${{ steps.artifact-upload-step.outputs.artifact-url }}
+            SHA256 digest: ${{ steps.artifact-upload-step.outputs.artifact-digest }}
+
+      - if: failure()
+        name: Google Chat Notification
+        uses: Co-qn/google-chat-notification@04e7733ead0e8a31a502adb271aadbc7f8d496d9 # v2
+        with:
+          name: Manual build and sign
+          url: ${{ secrets.GOOGLE_CHAT_DEPLOYMENT_NOTIFICATION_WEBHOOK }}
+          status: ${{ job.status }}

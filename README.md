@@ -8,7 +8,7 @@ Assuming that you have Python3 and Pip installed, you need to clone the reposito
 ```Shell
 git clone https://github.com/Simumatik/simumatik-gateway.git
 cd simumatik-gateway
-pip install -r requirements.<os>
+pip install -r requirements.txt
 ```
 
 You are now ready to launch it. You can use the debug flag to see all the messages:
@@ -66,10 +66,15 @@ Before opening an issue or PR, please read the content in the [Contributing](CON
 
 ## Build
 
-It is possible to build an distributable package of the Gateway using pyinstaller library. To do so, simply run the next command:
+### Manual build 
+It is possible to build a distributable package of the Gateway using the PyInstaller library. To do so, simply run the following command:
 
 ```Shell
 pyinstaller gateway_package.spec
 ```
 
 The executable file and all additional files will be included inside the folder dist/gateway.
+
+### Github Action workflow
+
+The Github Actions workflow "Manual Build and Sign" can be triggered manually from the repository in Github. The workflow builds and signs the executable and uploads result as a temporary Github artifact (valid for 90 days).
