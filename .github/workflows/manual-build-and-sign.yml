@@ -32,9 +32,10 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 #v7.1.0
         with:
           python-version: '3.14'
-          pip-install: -r requirements.txt
-          cache: 'pip' # caching pip dependencies
-          cache-dependency-path: requirements.txt
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
       - name: Run PyInstaller
         run: python -m PyInstaller --noconfirm gateway_package.spec
@@ -45,7 +46,7 @@ jobs:
           endpoint: https://weu.codesigning.azure.net/
           signing-account-name: ${{ secrets.SIGNING_ACCOUNT_NAME }}
           certificate-profile-name: ${{ secrets.CERTIFICATE_PROFILE_NAME }}
-          files-folder: ${{ github.workspace }}\dist\Gateway.exe
+          files: ${{ github.workspace }}\dist\Gateway\Gateway.exe
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
