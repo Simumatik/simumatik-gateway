@@ -58,7 +58,7 @@ jobs:
           name: Gateway-${{inputs.version}}
           path: |
             ${{ github.workspace }}\dist\gateway\_internal
-            ${{ github.workspace }}\dist\workspace\Gateway.exe
+            ${{ github.workspace }}\dist\gateway\Gateway.exe
           if-no-files-found: error
 
       - if: success()
