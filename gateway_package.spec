@@ -27,6 +27,7 @@ a = Analysis(
    pathex=['./'],
    binaries=[
       (DRIVER_MANAGER_DRIVERS_FOLDER / 'fanuc_roboguide/RobotInterfaceDotNet.dll', '.'),
+      (DRIVER_MANAGER_DRIVERS_FOLDER / 'plcsim/s7onlinx64.dll', '.'),
       (DRIVER_MANAGER_DRIVERS_FOLDER / 'plcsim_advanced/Siemens.Simatic.Simulation.Runtime.Api.x64.dll', '.'),
       (DRIVER_MANAGER_DRIVERS_FOLDER / 'plcsim_advanced/Siemens.Simatic.Simulation.Runtime.Api.x86.dll', '.'),
       (DRIVER_MANAGER_DRIVERS_FOLDER / 'robodk_api/robodk.py', '.'),
